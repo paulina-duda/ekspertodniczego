@@ -1,0 +1,19 @@
+# Python bytecode and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Tool caches and editor settings
+.pytest_cache/
+.mypy_cache/
+.idea/
+.vscode/
+.DS_Store
+
+# Rendered media is reproducible from the scripts and is kept locally.
+*.gif
+*.mp4
+
+# Manim render output
+media/
