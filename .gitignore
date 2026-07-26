@@ -11,9 +11,5 @@ venv/
 .vscode/
 .DS_Store
 
-# Rendered media is reproducible from the scripts and is kept locally.
-*.gif
-*.mp4
-
 # Manim render output
 media/
