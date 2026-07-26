@@ -1,25 +1,17 @@
-# Atraktory i animacje Manim
+# Expert at Nothing
 
-Zbior skryptow Pythona do tworzenia wizualizacji atraktorow, oscylatora
-glikolitycznego Selkova i sieci Hopfielda oraz animacji Manim.
+Generative science animations built with Python, NumPy, Pillow, and FFmpeg.
 
-## Instalacja
+## Collections
+
+- [`generative-science-art/`](generative-science-art/) — polished 9:16 editions with equations, neon colour, and ready-to-post MP4 files.
+- [`attractors/`](attractors/) — generators, parameter studies, colour variants, previews, and source exports.
+
+## Run
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
 pip install -r requirements.txt
+python3 generative-science-art/source/clifford_science_art.py
 ```
 
-Do eksportu GIF i MP4 potrzebny jest takze `ffmpeg` dostepny w systemie.
-
-## Struktura
-
-- `atraktory/` — skrypty Lorentza oraz wygenerowane lokalnie GIF-y;
-- `atraktory/skrypty/` — skrypty do eksportu MP4 dla Instagrama;
-- `atraktory/final*/` — opisy wariantow finalnych; same MP4 sa ignorowane przez Git;
-- `densenet_manim.py` — scena Manim przedstawiajaca DenseNet.
-
-Wyniki renderowania (`.gif`, `.mp4` i katalog `media/`) pozostaja lokalnie i
-nie sa wersjonowane. Mozna je odtworzyc skryptami opisanymi w README w
-katalogach wynikowych.
+FFmpeg with an H.264 encoder is required for video export.
