@@ -1,9 +1,17 @@
 # Attractors
 
+Generators, parameter studies, colour variants, and source exports, plus two
+curated collections built from them for Instagram: the seamless
+[`luminous-editions/`](luminous-editions/) and the line-drawn
+[`trace-editions/`](trace-editions/). See each project's own README for what
+it does differently and why.
+
 ```text
 attractors/
 ├── README.md
 ├── IDEAS.md
+├── luminous-editions/
+├── trace-editions/
 ├── lorenz/
 │   ├── README.md
 │   ├── source/lorenz_instagram.py
