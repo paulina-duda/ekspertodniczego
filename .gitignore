@@ -13,3 +13,9 @@ venv/
 
 # Manim render output
 media/
+
+# Large, reproducible legacy animation exports
+on-growth-and-form/biomorph-editions/legacy/gif/
+
+# Large local coordinate inputs (for example, 8CKB is about 429 MB)
+libra/data/cif/
