@@ -2,7 +2,7 @@
 
 Three deposited protein assemblies, breathing in solvent, rendered in the same
 house style as the attractor pieces in
-[`generative-science-art/trace-editions/`](../../generative-science-art/trace-editions/).
+[`attractors/trace-editions/`](../../attractors/trace-editions/).
 
 | Edition | Structure | Palette |
 | --- | --- | --- |

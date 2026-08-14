@@ -84,5 +84,5 @@ remain small enough for normal Git hosting.
 index by architecture rather than by ratio — a clathrin cage, a chaperonin
 barrel, a rotary ATP synthase — and renders each as a glowing backbone trace set
 moving with an elastic-network model of its own low-frequency motion, in the
-same house style as [`../generative-science-art/`](../generative-science-art/).
+same house style as [`../attractors/`](../attractors/).
 See its README for the method and what it does and does not claim to simulate.

@@ -55,17 +55,17 @@ luminous-editions/
 ## Run
 
 ```bash
-python3 generative-science-art/luminous-editions/source/render_editions.py
+python3 attractors/luminous-editions/source/render_editions.py
 ```
 
 One edition at a time, or a fast preview:
 
 ```bash
-python3 generative-science-art/luminous-editions/source/render_editions.py --edition lorenz
+python3 attractors/luminous-editions/source/render_editions.py --edition lorenz
 ```
 
 ```bash
-python3 generative-science-art/luminous-editions/source/render_editions.py --width 360 --height 640 --duration 2 --fps 12
+python3 attractors/luminous-editions/source/render_editions.py --width 360 --height 640 --duration 2 --fps 12
 ```
 
 Requirements are unchanged — `numpy`, `Pillow`, and an FFmpeg with an H.264

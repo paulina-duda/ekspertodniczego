@@ -79,18 +79,18 @@ trace-editions/
 ## Run
 
 ```bash
-python3 generative-science-art/trace-editions/source/render_traces.py
+python3 attractors/trace-editions/source/render_traces.py
 ```
 
 One edition, or a fast preview (dimensions must be even — H.264 chroma
 subsampling):
 
 ```bash
-python3 generative-science-art/trace-editions/source/render_traces.py --edition aizawa
+python3 attractors/trace-editions/source/render_traces.py --edition aizawa
 ```
 
 ```bash
-python3 generative-science-art/trace-editions/source/render_traces.py --width 300 --height 532 --duration 3 --fps 10 --trajectories 40 --steps 4000
+python3 attractors/trace-editions/source/render_traces.py --width 300 --height 532 --duration 3 --fps 10 --trajectories 40 --steps 4000
 ```
 
 Exports are `1080 × 1920`, 12 s, 30 fps, H.264, no audio.
