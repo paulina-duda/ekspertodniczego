@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Three growth processes: two taken from biology, one from arithmetic.
+"""Four processes on a substrate: three taken from biology, one from arithmetic.
 
 The companion set in `../source/` runs two mathematical processes and one
-biological one. This one inverts that. `Hyphae` and `Cleavage` are things a
-microscope can be pointed at; `Sandpile` is a rule about integers that has no
-business producing an organism and does anyway.
+biological one. This one inverts that. `Hyphae`, `Cleavage` and `Excitable` are
+things a microscope can be pointed at; `Sandpile` is a rule about integers that
+has no business producing an organism and does anyway.
 
 Every model exposes the same three things -- `step`, `metric` and whatever the
 renderer needs to draw -- so the renderer can measure a process it knows nothing
@@ -341,3 +341,189 @@ class Sandpile:
         # lighting it is what keeps a static fractal reading as a growing one.
         density += 0.55 * (self.grid != self.previous)
         return density.astype(np.float32), np.clip(shade, 0.0, 1.0)
+
+
+class Excitable:
+    """Spiral waves in a sheet of excitable tissue, and the beat that starts them.
+
+    An excitable medium has one move: rest until a neighbour pushes it over a
+    threshold, fire once, then refuse to fire again until it has recovered.
+    Heart muscle does it, so do neurons and the Belousov-Zhabotinsky reaction,
+    and the whole of it is two lines -- Barkley's model, a fast variable `u`
+    that fires and diffuses and a slow one `v` that holds the tissue shut
+    behind the front.
+
+    Run that on a sheet and waves travel outwards and annihilate when they meet,
+    because each one runs into the other's refractory wake. Nothing in the rule
+    says *spiral*. A spiral needs a wave with a free end -- a break -- and the
+    honest way to make one is the way a cardiology lab does it: deliver a second
+    stimulus early, into the tail of the wave that just passed, so half of it
+    lands on tissue that has recovered and half on tissue that has not. The half
+    that can propagate curls around the half that cannot, and the free end
+    starts to rotate. That is reentry: the wave re-enters tissue it has already
+    been through, and it circulates until something stops it. In a heart, this
+    is not a metaphor for the failure -- it *is* the failure.
+
+    The sheet is deliberately not uniform. Real tissue is not, and a wave that
+    meets a patch it cannot excite fast enough breaks there on its own, which is
+    how one rotor becomes several without anyone stimulating anything.
+    """
+
+    def __init__(
+        self,
+        height: int,
+        width: int,
+        radius: float | None = None,
+        a: float = 0.75,
+        b: float = 0.02,
+        epsilon: float = 0.05,
+        diffusion: float = 1.0,
+        dt: float = 0.10,
+        roughness: float = 0.016,
+        afterglow: float = 260.0,
+        seed: int = 20260823,
+    ) -> None:
+        self.height, self.width = height, width
+        self.a, self.epsilon, self.diffusion, self.dt = a, epsilon, diffusion, dt
+        # The excited state is two cells wide and gone in a moment: rendered
+        # honestly and nothing else, the piece is a few bright threads on black
+        # with no record of where they have been. `afterglow` is the half-life,
+        # in steps, of a decaying memory of the last firing -- a phosphor, and
+        # the same thing an optical mapping rig sees when it images voltage dye.
+        self.decay = float(0.5 ** (1.0 / max(afterglow, 1.0)))
+        self.generator = np.random.default_rng(seed)
+
+        rows, columns = np.mgrid[0:height, 0:width]
+        centre = (width * 0.5, height * 0.5)
+        self.radius = float(min(height, width) * 0.44 if radius is None else radius)
+        self.dish = (
+            (columns - centre[0]) ** 2 + (rows - centre[1]) ** 2 < self.radius**2
+        )
+
+        # Excitability varies from place to place, smoothly. Diffusing white
+        # noise is the cheapest way to a field with a length scale: a few dozen
+        # passes of the same laplacian the model itself uses turns a per-pixel
+        # scatter into patches a wavelength or so across.
+        rough = self.generator.normal(0.0, 1.0, (height, width)).astype(np.float32)
+        for _ in range(40):
+            rough += 0.25 * self._laplacian(rough)
+        rough /= max(float(rough.std()), 1e-6)
+        self.b = np.clip(b + rough * roughness, 0.004, 0.09).astype(np.float32)
+
+        self.u = np.zeros((height, width), dtype=np.float32)
+        self.v = np.zeros((height, width), dtype=np.float32)
+        self.wake = np.zeros((height, width), dtype=np.float32)
+        self.fired = np.zeros((height, width), dtype=bool)
+        self.step_index = 0
+
+    @staticmethod
+    def _laplacian(field: np.ndarray) -> np.ndarray:
+        # The dish is a hole in a much larger black frame and the wave never
+        # reaches the array's edge, so wrapping costs nothing and `np.roll` is
+        # the fastest five-point stencil numpy has.
+        return (
+            np.roll(field, 1, 0)
+            + np.roll(field, -1, 0)
+            + np.roll(field, 1, 1)
+            + np.roll(field, -1, 1)
+            - 4.0 * field
+        )
+
+    def stimulate(self, row: int, column: int, radius: int = 16) -> None:
+        """Fire a small round patch of tissue, whatever state it is in.
+
+        Round because a square one stays square: the wave it launches keeps the
+        corners for long enough to be visible on screen as an electrode-shaped
+        artefact, and there is nothing square anywhere else in the piece.
+        """
+        rows = slice(max(row - radius, 0), min(row + radius + 1, self.height))
+        columns = slice(max(column - radius, 0), min(column + radius + 1, self.width))
+        grid_rows, grid_columns = np.ogrid[rows, columns]
+        patch = (grid_rows - row) ** 2 + (grid_columns - column) ** 2 <= radius * radius
+        self.u[rows, columns][patch] = 1.0
+        self.u *= self.dish
+
+    def premature_site(self) -> tuple[int, int] | None:
+        """A spot in the wake of the last wave, half recovered and half not.
+
+        `v` is monotone in how long ago the tissue fired, so a band of it is
+        exactly the S2 window: excite here and one side of the stimulus goes and
+        the other cannot. Picking at random inside the band, rather than at the
+        single best pixel, is what stops every rotor in the piece from being
+        born in the same place.
+        """
+        window = self.dish & (self.v > 0.30) & (self.v < 0.55)
+        candidates = np.flatnonzero(window)
+        if not len(candidates):
+            return None
+        choice = int(self.generator.choice(candidates))
+        return divmod(choice, self.width)
+
+    def step(self, count: int = 1) -> None:
+        for _ in range(count):
+            self.step_index += 1
+            # Barkley: u fires fast (1/epsilon) once it passes the threshold
+            # (v + b)/a and diffuses to its neighbours; v just follows u, and
+            # its lag is the refractory period.
+            self.u += self.dt * (
+                self.diffusion * self._laplacian(self.u)
+                + self.u * (1.0 - self.u) * (self.u - (self.v + self.b) / self.a) / self.epsilon
+            )
+            self.v += self.dt * (self.u - self.v)
+            np.clip(self.u, 0.0, 1.0, out=self.u)
+            np.clip(self.v, 0.0, 1.0, out=self.v)
+            self.u *= self.dish
+            self.v *= self.dish
+            np.maximum(self.wake * self.decay, self.u, out=self.wake)
+            self.fired |= self.u > 0.5
+
+    def record(
+        self, frames: int, steps_per_frame: int, stimuli: tuple[float, ...] = ()
+    ) -> list[tuple[np.ndarray, np.ndarray]]:
+        """Bank the whole clip, one state per frame, as bytes.
+
+        Waves travel at a fixed speed, so unlike every other process in this set
+        this one needs no schedule: equal steps of the clock already are equal
+        steps of the process. Eight bits per variable is plenty -- both are
+        bounded, and the bloom and the tone curve wash out the quantisation long
+        before anyone could see it -- and it keeps the whole eight seconds under
+        a quarter of a gigabyte instead of two.
+
+        `stimuli` are the fractions of the clip at which a premature beat is
+        delivered. The first wave is launched at the centre, in the clear.
+        """
+        planned = {max(int(fraction * frames), 1) for fraction in stimuli}
+        self.stimulate(self.height // 2, self.width // 2, radius=22)
+        states: list[tuple[np.ndarray, np.ndarray]] = []
+        for index in range(frames):
+            if index in planned:
+                site = self.premature_site()
+                if site is not None:
+                    self.stimulate(*site)
+            self.step(steps_per_frame)
+            states.append(
+                (
+                    (self.u * 255.0).astype(np.uint8),
+                    (self.wake * 255.0).astype(np.uint8),
+                )
+            )
+        return states
+
+    def metric(self) -> float:
+        return float(self.fired.sum())
+
+    @staticmethod
+    def fields(state: tuple[np.ndarray, np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
+        """Brightness from what is firing now, colour from how long ago it did.
+
+        `u` is the front: a couple of cells wide and, for the moment it lasts,
+        the brightest thing in the dish. The afterglow behind it is one scalar
+        running from just-fired to long-recovered, and that -- not where the
+        wave is, but how recently it went past -- is the only thing about this
+        medium worth colouring.
+        """
+        u = state[0].astype(np.float32) / 255.0
+        wake = state[1].astype(np.float32) / 255.0
+        density = u + 0.75 * wake
+        shade = np.maximum(u, wake * 0.92)
+        return density, shade

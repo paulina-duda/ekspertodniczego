@@ -18,8 +18,8 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 
-MONO_FONT = Path(__file__).resolve().parent.parent / "fonts" / "IBMPlexMono-Regular.ttf"
-MONO_BOLD_FONT = Path(__file__).resolve().parent.parent / "fonts" / "IBMPlexMono-Bold.ttf"
+MONO_FONT = Path("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf")
+MONO_BOLD_FONT = Path("/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf")
 
 
 def build_palette(stops: list[tuple[int, int, int]], samples: int = 1024) -> np.ndarray:
@@ -206,31 +206,31 @@ def make_caption(
     top_margin: int | None = None,
     bottom_margin: int | None = None,
     scrim: float = 0.0,
+    equation_face: Path | None = None,
 ) -> Image.Image:
-    """Transparent caption layer: spaced title top-left, equation bottom-left.
+    """Transparent caption layer: spaced title top-left, data block bottom-left.
 
-    The original 22 px right-aligned block is close to unreadable once
-    Instagram has finished with it, so this runs larger, sits on the left where
-    the eye lands first, and carries a soft shadow for contrast against the
-    bright parts of the render.
+    The block sits on the left where the eye lands first and carries a soft
+    shadow so it survives against the bright parts of the render.
 
-    `top_margin` and `bottom_margin` override the symmetric inset. Posted as a
-    Reel, the player lays its own chrome over the frame -- the header across the
-    top, the account row and caption across the bottom -- and anything drawn
-    under either becomes text on text. Both default to `margin`, which is the
-    full-frame layout the older wetware cuts were made with.
+    Top and bottom insets are separate from the left one: the Reel player puts
+    its header over the top of the frame and its controls over the bottom, and
+    the two need different amounts of clearance.
+
+    `equation_face` overrides the face used for the data block alone. A caption
+    carrying Greek has to fall back to DejaVu for those glyphs, but the title
+    and everything else in the frame should stay in Plex; without the override
+    one Greek letter drags the whole layer onto the fallback face.
     """
     if not MONO_FONT.exists() or not MONO_BOLD_FONT.exists():
-        raise RuntimeError(f"IBM Plex Mono is required: {MONO_FONT}")
-    equation_font = ImageFont.truetype(str(MONO_FONT), equation_size)
+        raise RuntimeError(f"DejaVu Sans Mono is required: {MONO_FONT}")
+    equation_font = ImageFont.truetype(str(equation_face or MONO_FONT), equation_size)
     title_font = ImageFont.truetype(str(MONO_BOLD_FONT), title_size)
 
     top = margin if top_margin is None else top_margin
     bottom = margin if bottom_margin is None else bottom_margin
 
     overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
-
     if scrim > 0.0:
         # A soft darkening under the text, strongest at the very edge and gone
         # well before the middle of the frame. Pieces that fill the frame leave
@@ -245,6 +245,7 @@ def make_caption(
         veil = np.zeros((height, width, 4), dtype=np.uint8)
         veil[:, :, 3] = (ramp * (255.0 * scrim)).astype(np.uint8)
         overlay.alpha_composite(Image.fromarray(veil, "RGBA"))
+    draw = ImageDraw.Draw(overlay)
 
     spaced_title = " ".join(title.upper())
     draw.text(
@@ -273,25 +274,6 @@ def make_caption(
         stroke_fill=(0, 0, 0, 150),
     )
     return overlay
-
-
-def caption_ink_top(
-    height: int,
-    equation: tuple[str, ...],
-    equation_size: int = 27,
-    bottom_margin: int = 190,
-) -> int:
-    """Where the data block's first line of ink lands, in frame coordinates.
-
-    Anything set above the block -- the hook -- has to be positioned off this
-    rather than off the block's own drawing origin.
-    """
-    font = ImageFont.truetype(str(MONO_FONT), equation_size)
-    draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
-    box = draw.multiline_textbbox(
-        (0, 0), "\n".join(equation), font=font, spacing=max(4, equation_size // 3)
-    )
-    return height - bottom_margin - box[3] - 4 + box[1]
 
 
 def compose(frame: np.ndarray, caption: Image.Image) -> np.ndarray:

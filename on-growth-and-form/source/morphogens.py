@@ -146,10 +146,19 @@ class Physarum:
         decay: float = 0.92,
         deposit: float = 1.0,
         avoidance: float = 0.55,
+        band: tuple[float, float] | None = None,
         seed: int = 20260814,
     ) -> None:
         generator = np.random.default_rng(seed)
         self.height, self.width = height, width
+        # A band turns the frame into a cylinder: it still wraps left to right,
+        # and top to bottom the agents turn back at the margin. Reflection
+        # rather than a spring, because an agent has a heading rather than a
+        # velocity -- there is nothing to decelerate, so the honest equivalent
+        # of a soft wall is to bounce it and let its own sensors take over
+        # again. The trail is not deposited outside the band either, so the
+        # network genuinely ends there instead of being cropped.
+        self.band = None if band is None else (float(band[0]), float(band[1]))
         self.sensor_distance = sensor_distance
         self.sensor_angle = sensor_angle
         self.turn_angle = turn_angle
@@ -164,17 +173,27 @@ class Physarum:
         # bakes in a radial burst and then reinforces it. Seeding everywhere
         # means there is trail to follow from the first step, and what the clip
         # shows is the network condensing out of noise.
+        low, high = self.band if self.band else (0.0, float(height))
         self.x = generator.uniform(0.0, width, agents).astype(np.float32)
-        self.y = generator.uniform(0.0, height, agents).astype(np.float32)
+        self.y = generator.uniform(low, high, agents).astype(np.float32)
         self.heading = generator.uniform(0.0, 2.0 * math.pi, agents).astype(np.float32)
         self.species = (generator.random(agents) < 0.5).astype(np.int8)
         self.trail = np.zeros((2, height, width), dtype=np.float32)
         self.generator = generator
 
     def _sample(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
-        """Trail strength each agent perceives: own species minus the other."""
+        """Trail strength each agent perceives: own species minus the other.
+
+        With a band the vertical does not wrap, so the sensor is clamped rather
+        than wrapped: letting an agent at the top of the band smell the trail at
+        the bottom would stitch the network across the black margin, which is
+        the one thing the margin exists to prevent.
+        """
         column = np.mod(np.floor(x).astype(np.int64), self.width)
-        row = np.mod(np.floor(y).astype(np.int64), self.height)
+        if self.band is None:
+            row = np.mod(np.floor(y).astype(np.int64), self.height)
+        else:
+            row = np.clip(np.floor(y).astype(np.int64), 0, self.height - 1)
         own = self.trail[self.species, row, column]
         other = self.trail[1 - self.species, row, column]
         return own - self.avoidance * other
@@ -211,7 +230,19 @@ class Physarum:
             self.heading = np.where(straight, self.heading, self.heading + turn).astype(np.float32)
 
             self.x = np.mod(self.x + self.speed * np.cos(self.heading), self.width).astype(np.float32)
-            self.y = np.mod(self.y + self.speed * np.sin(self.heading), self.height).astype(np.float32)
+            if self.band is None:
+                self.y = np.mod(self.y + self.speed * np.sin(self.heading), self.height).astype(np.float32)
+            else:
+                # Reflect at the band: mirror the position back inside and flip
+                # the heading's vertical component, which is what a wall does to
+                # something that walks rather than falls.
+                low, high = self.band
+                stepped = self.y + self.speed * np.sin(self.heading)
+                turned = (stepped < low) | (stepped > high)
+                stepped = np.where(stepped < low, 2.0 * low - stepped, stepped)
+                stepped = np.where(stepped > high, 2.0 * high - stepped, stepped)
+                self.y = np.clip(stepped, low, high).astype(np.float32)
+                self.heading = np.where(turned, -self.heading, self.heading).astype(np.float32)
 
             # Clamp rather than trust the wrap: in float32, np.mod of a value a
             # hair below zero rounds up to exactly the modulus, which lands one

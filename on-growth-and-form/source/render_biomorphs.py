@@ -21,14 +21,17 @@ import subprocess
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 import glow
 import morphogens
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
-DEFAULT_OUTPUT_DIR = PROJECT_DIR / "instagram" / "phone-9x16"
+# These three are the wetware edition, and its cuts live with it. The source
+# sits one level up because `wetware-editions/source/` was never filled in --
+# worth remembering before looking for this file where the outputs are.
+DEFAULT_OUTPUT_DIR = PROJECT_DIR / "wetware-editions" / "instagram" / "phone-9x16"
 
 # Cyberpunk rather than the attractors' spectrum ramps: these stay inside the
 # violet-magenta-cyan band that reads as circuitry, and only reach white where
@@ -71,6 +74,7 @@ EDITIONS: dict[str, dict] = {
             "600,000 agents  ·  two species",
             "sensor 28°  ·  turn 34°",
         ),
+        "hook": ("No brain. One cell. Still finds a way.",),
     },
     "folding": {
         "kind": "curve",
@@ -178,6 +182,48 @@ def compose_field(
     return glow.compose(frame, caption)
 
 
+def build_overlay(width: int, height: int, spec: dict, args) -> Image.Image:
+    """Title, hook and data block -- the layout the substrate set settled on.
+
+    Plex throughout, spaced bold title 240 px down, data block 190 px up, hook
+    centred at 34 px with its lowest ink 82 px clear of the block, soft scrim at
+    both edges. Reused rather than re-derived: the numbers were measured off the
+    `cleavage` cut pixel by pixel and there is no reason for a second opinion.
+    """
+    overlay = glow.make_caption(
+        width,
+        height,
+        spec["title"],
+        spec["caption"],
+        equation_size=args.caption_size,
+        margin=args.margin,
+        top_margin=args.title_top,
+        bottom_margin=args.caption_bottom,
+        scrim=args.scrim,
+    )
+    lines = spec.get("hook") if args.hook else None
+    if not lines:
+        return overlay
+
+    ink_top = glow.caption_ink_top(height, spec["caption"], args.caption_size, args.caption_bottom)
+    font = ImageFont.truetype(str(glow.MONO_FONT), args.hook_size)
+    draw = ImageDraw.Draw(overlay)
+    text = "\n".join(lines)
+    spacing = max(6, args.hook_size // 3)
+    box = draw.multiline_textbbox((0, 0), text, font=font, spacing=spacing)
+    draw.multiline_text(
+        ((width - (box[2] - box[0])) // 2, ink_top - args.hook_gap - box[3]),
+        text,
+        font=font,
+        fill=(255, 255, 255, 244),
+        spacing=spacing,
+        align="center",
+        stroke_width=4,
+        stroke_fill=(0, 0, 0, 165),
+    )
+    return overlay
+
+
 def field_channels(model, spec, palette, palette_b, height, width, reference):
     """Build the (density, shade, palette) channels for a field edition."""
     if spec["kind"] == "physarum":
@@ -224,7 +270,8 @@ def build(name: str, args: argparse.Namespace):
             seeds=3,
         )
     if spec["kind"] == "physarum":
-        return morphogens.Physarum(args.height, args.width, agents=args.agents)
+        band = (args.band_top, args.band_bottom) if args.band_top < args.band_bottom else None
+        return morphogens.Physarum(args.height, args.width, agents=args.agents, band=band)
     return morphogens.DifferentialGrowth(
         (args.width * 0.5, args.height * 0.5), 55.0, nodes=200, spacing=2.5, repulsion_radius=11.0
     )
@@ -234,7 +281,7 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
     spec = EDITIONS[name]
     width, height = args.width, args.height
     frames = round(args.duration * args.fps)
-    caption = glow.make_caption(width, height, spec["title"], spec["caption"])
+    caption = build_overlay(width, height, spec, args)
     palette = glow.build_palette(spec["palette"])
     palette_b = glow.build_palette(spec["palette_b"]) if "palette_b" in spec else None
 
@@ -281,6 +328,11 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
         cover = compose_field(channels, reference, spec, args, caption)
 
     stem = f"{spec['slug']}_{width}x{height}_{args.duration:g}s_{args.fps}fps"
+    if args.hook and spec.get("hook"):
+        stem += "_hook_plex"
+    if args.tag:
+        # A variant cut written alongside the original rather than over it.
+        stem += f"_{args.tag}"
     output = args.output_dir / f"{stem}.mp4"
     encoder = start_encoder(output, width, height, args.fps)
     assert encoder.stdin is not None
@@ -328,6 +380,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fill", type=float, default=0.88)
     parser.add_argument("--bloom-threshold", type=float, default=0.30)
     parser.add_argument("--bloom-strength", type=float, default=0.60)
+    parser.add_argument("--tag", help="suffix for a variant cut")
+    # The house layout, same numbers as the substrate and alife sets. The older
+    # wetware cuts predate it and used a symmetric 64 px inset with no scrim
+    # and no hook, which is why they need re-rendering rather than patching.
+    parser.add_argument("--margin", type=int, default=64)
+    parser.add_argument("--title-top", type=int, default=240)
+    parser.add_argument("--caption-bottom", type=int, default=190)
+    parser.add_argument("--caption-size", type=int, default=27)
+    parser.add_argument("--scrim", type=float, default=0.95)
+    parser.add_argument("--no-hook", dest="hook", action="store_false")
+    parser.add_argument("--hook-size", type=int, default=34)
+    parser.add_argument("--hook-gap", type=int, default=82)
+    # Physarum only: the band the agents are held in, so the title and the hook
+    # have black to sit on. Set band-top >= band-bottom to switch it off.
+    parser.add_argument("--band-top", type=float, default=330.0)
+    parser.add_argument("--band-bottom", type=float, default=1400.0)
     return parser.parse_args()
 
 

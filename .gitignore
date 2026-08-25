@@ -14,8 +14,10 @@ venv/
 # Manim render output
 media/
 
-# Large, reproducible legacy animation exports
+# Rendered output stays out of git: every clip is reproducible from the source
+# beside it, and the history is already 1.1 GB heavier than it needed to be
+# from when they were committed. What went out is logged in INSTAGRAM.md.
+*.mp4
+*.gif
+**/instagram/phone-9x16/
 on-growth-and-form/biomorph-editions/legacy/gif/
-
-# Large local coordinate inputs (for example, 8CKB is about 429 MB)
-libra/data/cif/
