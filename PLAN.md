@@ -1,438 +1,262 @@
 # Plan — @ekspertodniczego
 
-Profile bio, as it reads on the account:
+**What is decided, what is built, what is next.** The standing rules and the
+acceptance tests are in [`BRIEF.md`](BRIEF.md) — read that, not this, before
+proposing anything. What has been published is in
+[`INSTAGRAM.md`](INSTAGRAM.md). What has been turned down, and which test it
+failed, is in [`REJECTED.md`](REJECTED.md).
 
-> **Biology is the original algorithm**
->
-> Bioinformatician
->
-> wetware in motion · artificial life
+### How this file stays small
 
-The through-line of the whole account is that first line. Every piece is a
-process that computes something — a form, a network, a decision about where to
-grow — running on wet matter instead of silicon, and filmed as it computes.
-Where a piece has an opinion, that opinion is the one: the algorithm came
-first, and biology has been running it far longer than we have.
+It was 858 lines and half of it was archaeology. The rules that keep it down:
 
-This file records what has been **decided** — the rules a piece obeys, the
-formats it can be cut in, what is built and how, and what is still queued.
-[`INSTAGRAM.md`](INSTAGRAM.md) records only what has been **published**.
-
----
-
-## The four editions
-
-Each edition takes one class of process and asks the same question of it: what
-is the thing actually doing, and can that be the picture? They differ in where
-the process comes from, and how strong a claim the piece is making.
-
-| Edition | Directory | The process is | The claim |
-| --- | --- | --- | --- |
-| **Wetware** | `on-growth-and-form/wetware-editions/` | morphogenesis — how a body builds itself | this is biology, filmed as the algorithm it is |
-| **Substrate** | `on-growth-and-form/substrate-editions/` | something a microscope can be pointed at, on a medium | the medium is the computer |
-| **Biomorph** | `on-growth-and-form/biomorph-editions/` | a parametric equation, not a simulation | it only *looks* alive — and that is the point |
-| **Artificial Life** | `on-growth-and-form/alife-editions/` | a rule invented inside a computer | being alive may be organisation, so it can be built from numbers |
-
-**Wetware** films real developmental biology: reaction-diffusion laying down a
-pattern, a slime mould solving a transport problem, a sheet growing faster than
-its own boundary can absorb. Nothing is invented; these are the algorithms
-bodies actually run.
-
-**Substrate** is about *where* a process happens. A mycelium in a plate, an
-embryo cleaving at constant volume, a wave in excitable tissue — plus one rule
-about integers (`sandpile`) that has no biology in it at all and produces a
-radiolarian anyway. That contrast is the edition's whole argument: the
-substrate does the computing, and it need not be alive to look it.
-
-**Biomorph** is the honest odd one out. These are creatures drawn from harmonic
-and parametric maths — nothing emerges, nothing is simulated, and the piece
-makes no claim that anything is alive. It earns its place because *apparent*
-life from a closed-form equation is a real and slightly uncomfortable fact
-about how readily we read intention into motion.
-
-**Artificial Life** is the only edition whose subject is an *argument* rather
-than a fact. Everything else films something the world already does; this films
-the claim, made since Langton, that what is alive about a living thing might be
-the organisation rather than the chemistry — in which case it can be built out
-of anything, including numbers. Worth keeping that distinction in the copy.
-
----
-
-## Formats
-
-Three shapes, two add-ons. The names are the vocabulary — ask for a piece "in
-**dish** with a **hook**" and everything below is implied.
-
-The shape names are microscopy, deliberately: they are the three ways you
-actually look at something small.
-
-### The three shapes
-
-| Name | What it is | Used by |
-| --- | --- | --- |
-| **field** | the process fills the frame edge to edge | `folding`, `turing`, `soliton`, `medusa`, `cosine-creature` |
-| **dish** | the process is confined to a disc, black all around | `hyphae`, `cleavage`, `sandpile`, `reentry` |
-| **slide** | the process is confined to a horizontal band, black above and below | `physarum`, `affinity` |
-
-**field** is the default and needs no work: the process is simply allowed to
-fill the frame. Its cost is that the title and the hook end up sitting on
-texture, which the scrim can soften but not solve.
-
-**dish** suits anything that grows outwards from a seed. Bound the model to a
-disc of radius ≈ 0.44 × the short side, centred. It is not only typographic —
-a mycelium or a colony *is* normally looked at in a plate, so the frame is
-honest as well as convenient.
-
-**slide** is what to reach for when a process would otherwise cover everything
-and there is text that needs black underneath it. Hold the population inside a
-horizontal band well clear of the caption.
-
-### Confining the model, not the drawing
-
-For **dish** and **slide**, confine the *simulation*, not the render. Cropping
-what gets drawn leaves structures sliced off mid-stride at the boundary;
-confining the model means the black is black because nothing was ever allowed
-to be there. Two ways, depending on what state the model carries:
-
-- **A spring**, for anything with velocity (`affinity`, `swarm.ParticleLife`):
-  a restoring force that only switches on once something is outside the band,
-  so the population *thins* towards the margin. A hard wall draws a bright rim
-  across the frame — a structure the rule itself never made.
-- **Reflection**, for anything with only a heading and no velocity (`physarum`,
-  `morphogens.Physarum`): there is nothing to decelerate, so the honest
-  equivalent is to mirror the position back inside and flip the heading's
-  component across the boundary. That is what bouncing *is*, for something that
-  walks rather than falls.
-
-Three things that follow, none of them optional:
-
-1. **Clamp sensing at the boundary, do not wrap it.** Otherwise the population
-   smells or sees straight through the black margin and stitches structure
-   across it. Found in `physarum`, whose trail sensor still read the frame as
-   periodic in the direction the band had just closed off.
-2. **Rescale the population to the band's area.** These rules react to density
-   — how many neighbours a thing has — not to raw area. Shrinking the usable
-   frame without shrinking the count quietly hands the piece a denser world
-   than it was tuned for (`affinity`: 20 000 → 11 667).
-3. **Re-rank anything that was chosen by search.** A table or a matrix is only
-   best in the world it was scored in. `affinity`'s matrix was re-searched
-   under the band and won again — verified, not assumed.
-4. **Set the band well inside the clearance it needs.** A cluster straddling
-   the edge drags its own members out however stiff the spring is; measured
-   over a whole clip the excursion is ~90 px. `affinity` ships band 385–1345,
-   `wall 0.25`, worst-case rows 293 and 1424 against a title whose ink ends at
-   270 and a hook whose first line starts near 1460.
-
-### The two add-ons
-
-Both work on any of the three shapes.
-
-**hook** — one line, at most two, in the black strip between the form and the
-data block. Plex regular 34 px, centred on the frame, its lowest ink 82 px
-above the data block's first line of ink. Louder than the block and no louder
-than that: every pixel it takes is a pixel the organism gives up. It is the
-sentence that turns the payoff into a question, so it states the paradox and
-never explains it. Files that carry it are suffixed `_hook_plex`.
-
-The geometry was measured off the `cleavage` cut pixel by pixel and now lives
-in code — `substrate-editions/source/render_substrate.py` (`build_overlay`),
-mirrored in `alife-editions/source/render_alife.py` and
-`source/render_biomorphs.py` — so nobody has to measure a video again.
-
-**card** — an opening title card, held a few seconds and then faded, before the
-piece proper starts (`--title-card`, in the biomorph renderers; output suffixed
-`_titlecard`). Costs the beginning of the clip, which is the most valuable
-part, so it needs a reason.
-
----
-
-## House rules
-
-Every piece, every edition, no exceptions.
-
-1. **Black field.** Additive splatting into a float buffer, multi-scale bloom,
-   log-density tone mapping. Brightness comes from how much *stuff* is there.
-2. **Colour means something measured.** Never decoration. It must be intrinsic
-   to the subject and independent of the camera — speed for an attractor,
-   when-it-grew for a morphogen, which-species for a swarm. If a scalar is
-   strongly skewed, **rank it** rather than scaling it, or the whole piece comes
-   out one flat colour.
-3. **Frame one is the finished object.** Instagram uses it as the grid
-   thumbnail; growth plays from frame two. The exception is `affinity`, where
-   the population is densest at the *start* and thins as it settles, so frame
-   one is the first simulated state instead — check which end of your timeline
-   is actually the better picture rather than assuming it is the last.
-4. **1080 × 1920, 30 fps, H.264, no audio.** 8 s unless there is a reason.
-5. **Two fonts, one job each.**
-   - **IBM Plex Mono** (`IBMPlexMono-Regular.ttf` / `-Bold.ttf`, vendored in
-     `on-growth-and-form/fonts/` rather than system-installed, so a clone
-     renders identically without anyone installing anything) is the default for
-     everything: title, data block, hook. **Bold for the title only**, regular
-     everywhere else — mixing weights inside one text layer is what made the
-     DejaVu-era captions read as two typefaces.
-   - **DejaVu Sans Mono** (system, `/usr/share/fonts/truetype/dejavu/`) is the
-     fallback **only** where a caption needs Greek or similar symbols. Plex has
-     no σ, ρ, β, α (confirmed against its cmap — they render as empty boxes).
-     Reach for it for attractor equations and anything rule 6 covers, and set
-     *only the data block* in it via `make_caption`'s `equation_face`, so one
-     Greek glyph does not drag the whole layer onto the fallback face.
-     Superscripts (³, ²) and `°`, `·` are fine in either.
-   - Spaced bold title top-left at 30 px, data block bottom-left at 27 px.
-     **Top margin 240 px, bottom margin 190 px** — not symmetric, and not
-     optional: the Reel player's chrome covers roughly the top 120–140 px and
-     the bottom 150 px, so anything closer is clipped by Instagram's UI rather
-     than by the render. Reuse these two numbers rather than re-deriving them.
-   - Soft scrim at top and bottom edges, strongest at the very edge and gone
-     well before the middle. Never reading as a box.
-6. **Greek stays Greek.** σ, ρ, β, α — not `s`, `r`, `b`, `a`. Superscripts are
-   typeset (z³, x²).
-7. **Palettes stay in the family.** Neon on black. Deep, dark low end; bright
-   only where the process is dense. **Not garish** — the wetware edition is the
-   reference for how far to push it. Knowingly broken once: `affinity`'s neon
-   cut runs four fully saturated hues, and `sandpile`'s four-stop `LATTICE` is
-   the loudest thing in the account.
-8. **Blue is not a favourite.** Fine as an accent or where it is neutral; never
-   a whole piece in blue.
-9. **No camera turn on plane processes.** Attractors and proteins rotate
-   because they are objects with a far side. Fields and curves in a plane do
-   not.
-
-### A note on the look
-
-The soft haloed glow the whole account shares comes from the **render**, not
-the palette: multi-scale bloom over a log-density map. It can be turned down —
-`--bloom-threshold 0.55 --bloom-strength 0.25 --exposure 1.00 --boost 1.05` —
-for genuine black instead of a mid-tone haze.
-
-The two decisions are linked, not independent. A palette is chosen against a
-tone curve: `affinity`'s original hues included a pale near-white species and a
-muted amber, which worked only because the bloom bleached every core towards
-white anyway. Turn the halo down and those two read as pastel. **Change one,
-re-look at the other.**
-
-Tried once so far, on `affinity` (`_sharp` and `_neon` cuts). Not yet a house
-rule — worth deciding, if it comes up again, whether it is a per-edition option
-or something to offer everywhere.
-
----
-
-## Technical gotchas, learned the hard way
-
-- **ffmpeg**: never install it into conda — that build lacks libx264,
-  advertises libopenh264 and then fails at render time. Use `/usr/bin/ffmpeg`;
-  the renderers probe for a working encoder themselves.
-- **Even dimensions only.** yuv420p subsamples chroma by two; an odd width or
-  height fails with a message that says nothing about the cause.
-- **`np.roll` is wrong whenever several loops share one array** — it stitches
-  the end of one to the start of the next. The model's neighbour links and the
-  renderer's segment list both need per-loop wrapping, and the renderer has to
-  be told about it separately.
-- **float32 `np.mod`** can return exactly the modulus for a value a hair below
-  zero, landing one cell past the end of a grid — or exactly *on* the wall of a
-  box that is meant to be half-open, at which point `cKDTree(boxsize=...)`
-  refuses the whole array. Clamp after wrapping.
-- **Bloom pyramids need padding** to a multiple of 2^levels, or the coarse
-  levels drift out of alignment and the halo sits visibly offset.
-- **Sample lines by length, not by a fixed count per line.** A fixed count
-  turns long segments into dotted rules across the frame — and it looks like a
-  layout bug rather than a sampling one, which cost real time in `descent`.
-- **`wetware-editions/source/` is empty.** Its renderer `render_biomorphs.py`
-  (Turing, Physarum, Folding) lives in `on-growth-and-form/source/`, one level
-  up. A per-edition `source/` does not always hold its own code.
-- **A renderer's default output directory can point at the wrong edition.**
-  `render_biomorphs.py` wrote to `on-growth-and-form/instagram/` instead of
-  `wetware-editions/instagram/` until 2026-08-25. The render still succeeds, it
-  just lands a level too high — check `DEFAULT_OUTPUT_DIR` against where the
-  sibling cuts already are.
-- **Environment**: `conda activate ekspertodniczego` — python 3.12, numpy,
-  scipy, pillow, torch 2.11+cu128. RTX 5090 is Blackwell `sm_120`; older torch
-  wheels install fine and only fail on the first GPU call.
+- **A piece gets one row in the table below.** Everything it cost to get right
+  goes in its edition's own `README.md`, written *after* it exists.
+- **A rejected cut comes off the disk.** The mp4 and its cover are deleted; the
+  model, renderer and weights stay. The row in `REJECTED.md` is the record.
+- **Nothing enters this file that does not change a decision.** A render that
+  taught nothing new leaves no trace here.
+- **Numbers live in the skills, not here.** Margins, shapes, geometry and
+  confinement are the `reel` skill's; verification is `check`'s; the four
+  acceptance tests are `BRIEF.md`'s. Do not mirror any of them into this file.
+- **A rejection is a row in `REJECTED.md`**, not a paragraph here.
 
 ---
 
 ## Built
 
-### Wetware
-`wetware-editions/` · morphogenesis · colour = when it grew, or which species.
+Shape and hook are the shipping state. **Posted** means it is on the grid;
+everything else is cut and waiting. The long-form record for each is in its
+edition's README.
 
-- **Folding** — differential growth, four closed curves. **Posted.** `field`,
-  no hook, DejaVu-era layout.
-- **Physarum** — slime mould transport network, two species, 600 000 agents.
-  Reworked 2026-08-25 into `slide` + hook + Plex: the band is 330–1400, held by
-  **reflection** (it has a heading, not a velocity), and the trail sensor is
-  clamped at the boundary or the two-species braid stitches itself across the
-  black margin. Hook *"No brain. One cell. Still finds a way."* The old
-  DejaVu-era cut is kept alongside.
-- **Turing** — Gray-Scott reaction-diffusion, four seeds. Still on the
-  pre-rework layout; its data block carries Greek, so a re-cut needs the
-  DejaVu `equation_face` override.
+### Wetware — [`README`](on-growth-and-form/wetware-editions/README.md)
 
-### Substrate
-`substrate-editions/` · a process on a medium · four cuts, all now sharing the
-hooked Plex layout.
+| Piece | Shape | State | Hook |
+| --- | --- | --- | --- |
+| `folding` | field | **posted** — DejaVu-era layout, needs a re-cut | — |
+| `turing` | field | **posted** — DejaVu-era layout, needs a re-cut | — |
+| `physarum` | slide + hook | reworked 2026-08-25 | *No brain. One cell. Still finds a way.* |
+| `somite` | field + hook | built, **rejected** — fails T4 | *Your spine was counted, not measured.* |
+| `phyllotaxis` | field + hook | built 2026-08-29 | *The plant is not counting. You are.* |
+| `comet` | field + hook | built 2026-08-30 | *No motor. It is pushed by what it builds.* |
+| `trabecula` | field + hook | built, **rejected** — fails T1/T4 | *No one drew this. The load did.* |
+| `venation` | field | built, **rejected** — T1 confirmed on the cut, 44.4% still | *The vein is not a route. It is a leftover.* |
 
-- **Cleavage** — an embryo dividing at constant volume. **Posted**, in the
-  DejaVu-era `dish` layout; the Plex re-cut exists and needs to replace it.
-- **Hyphae** — fungal mycelium: extend, branch, anastomose. **Posted**, `dish`
-  + hook. Colour is age — dark where the colony started, white at the front.
-  Hook *"A tree branches. A fungus branches back."*
-- **Reentry** — spiral waves in excitable tissue, Barkley's model. A sheet
-  fires once and cannot fire again until it recovers; waves annihilate on each
-  other's wakes and nothing in the rule says *spiral*. A spiral needs a wave
-  with a free end, so the piece induces one the way a cardiology lab does — a
-  premature beat into the tail of the wave before it, half onto tissue that has
-  recovered and half onto tissue that has not. Four of those plus a
-  deliberately non-uniform excitability field (`roughness 0.016` — the one
-  number that decides the piece: below it the dish stays orderly, above it the
-  first wave shatters before it has been a wave). Colour is time since firing,
-  carried by a decaying phosphor (`afterglow`); without it the excited state is
-  two cells wide and gone, and the frame holds no record of where the wave has
-  been. Hook *"Nothing in the rule says spiral."*
-- **Sandpile** — four grains topple, one to each neighbour, and 150 000 grains
-  on one square stabilise into the same sharply-bounded fractal every time. The
-  mathematics of the set, and it earns its place by looking like a radiolarian
-  while containing no biology at all. Hook *"One rule about integers. No
-  biology at all."*
+Neither `somite` nor `trabecula` is going out, and both leave an axis behind:
+`somite` is the first piece in the account **with a beat** and `trabecula` the
+first **subtractive** one. Reuse the axes, not the cuts.
 
-### Artificial Life
-`alife-editions/` · rules invented in a computer · the argument edition. GPU
-throughout: big grids, many particles, whole populations.
+### Substrate — [`README`](on-growth-and-form/substrate-editions/README.md)
 
-`soliton` → `descent` is a matched pair — the same genome and the same fitness,
-found first by looking and then by breeding. Emergence, then selection. Post
-them in that order; `soliton` is already out.
+| Piece | Shape | State | Hook |
+| --- | --- | --- | --- |
+| `cleavage` | dish | **posted** — DejaVu-era; the Plex re-cut exists and should replace it | — |
+| `hyphae` | dish + hook | **posted** | *A tree branches. A fungus branches back.* |
+| `reentry` | dish + hook | **posted** (9th) | *Nothing in the rule says spiral.* |
+| `condensate` | dish + hook | built, **rejected** — fails T1/T2 | *Nothing was built. It only stopped mixing.* |
+| `sandpile` | dish + hook | built | *One rule about integers. No biology at all.* |
 
-- **Affinity** — particle life. Four species; one number per *ordered* pair
-  saying attract or repel; one universal short-range repulsion. Nothing else —
-  no cell, no membrane, no goal. Bodies come out anyway, and they swim, because
-  the table does not have to agree with itself: if magenta chases mint while
-  mint flees magenta, neither can settle. Symmetric tables crystallise.
-  **Posted**, `slide` + hook.
-  - **The table is found, not designed** — twenty random tables scored on
-    assembly × motility × coverage. The measurement that matters is speed *of
-    the particles already assembled*: mean speed over everything cannot tell a
-    swimmer from a gas, because loose particles rattle faster than anything
-    organised. A first attempt scored packing × overall speed and picked tables
-    that make round static dots. **The scoring function is the aesthetic** —
-    re-read it before re-running the search.
-  - **Density and radius decide the rest.** Interaction range sets how big a
-    body is; neighbour count decides whether the population condenses into a
-    few lumps or thousands of small animals.
-  - Hook is the edition's thesis rather than a paradox, over two lines:
-    *"Being alive is a matter of organization, / so it can be built from
-    numbers."* Data block closes on *"16 numbers are enough to make them
-    chase"*. Colour = species.
-  - **The `_neon` cut is the one that went out**, not the default: low bloom
-    plus four fully saturated hues. So the account's one published example of
-    the sharp look is this piece, which is worth remembering when deciding
-    whether the rest of the grid should follow.
-- **Soliton** — Lenia (Chan 2019). Continuous Life: real-valued cells, a ring
-  kernel, one growth curve, divided time. **Posted**, `field` + hook, 10 s.
-  Credit is carried in-frame in the data block.
-  - **Two failure modes, everything interesting between them.** Almost every
-    seed either collapses to nothing or grows without limit. ~1 in 2 000 random
-    draws is a self-limiting individual; ~1 in 100 of those travels.
-  - **The audition has to be long, and re-run at the render size.** A 300-step
-    window passes slowly-expanding colonies off as creatures — the first search
-    did exactly that. The fix is a second window 300 steps later checking the
-    mass has actually stopped rising. Separately, Lenia is only *approximately*
-    scale-invariant: of 105 survivors found at radius 18, seven stopped being
-    self-limiting at radius 30. **Never ship on the audition alone.**
-  - **The seed is six numbers, not a bitmap** — an arc, a soft annulus with one
-    side faded, which is what every traveller in Lenia looks like at the start,
-    because a front and a back on step one is all a soliton needs to pick a
-    direction. `phase` is that direction.
-  - **The collision is the piece.** Twelve copies of one animal, spaced so they
-    are seen swimming first; two touch, and what replaces them is not a bigger
-    creature but a colony that spreads until it takes the frame. Hook *"Every
-    one of these was stable on its own."*
-  - **Run length and clip length are separate knobs.** `--lenia-total` fixes
-    how far the process gets; the frame count only sets the speed. Tying steps
-    to frames silently turns a longer cut into a different picture. Shipped at
-    `--duration 10 --lenia-total 600`; past ~720 steps the colonies cover
-    everything, the black is gone and the text has nothing to sit on.
-- **Descent** — a genetic algorithm over that same genome and fitness. 64
-  genomes, 40 generations, tournament of 3, two elites. **Built, not posted.**
-  - **The run tells the story by itself.** Generation 0: none of the 64 random
-    genomes scored at all — selection had nothing to act on, the first parents
-    were chosen between equals at random, and the first living thing in the
-    piece is a mutation of something dead. By generation 9 exactly one founder
-    line is left; the other 63 leave nothing.
-  - **Weak selection on purpose.** Tournament of 3, not best-of-population:
-    taking the best every time collapses the pedigree to a single line inside
-    three generations — a worse picture *and* worse search.
-  - **The picture is the pedigree, not the creature.** Layout decides
-    everything: a gene on the horizontal draws the population converging into a
-    thread up the middle (true, empty); an even spread per generation fills the
-    frame but makes a line that has just ended look identical to one that goes
-    on. What works is the phylogeny — last generation dealt across the width by
-    ancestry, ancestors at the mean of their descendants, dead ends hung off
-    their parent. A canopy over a trunk, standing in coloured scrub.
-  - Colour = which founder; brightness = fitness. Hook *"Everything at the top
-    has one ancestor."*
+### Artificial Life — [`README`](on-growth-and-form/alife-editions/README.md)
 
-### Biomorph
-`biomorph-editions/` · parametric creatures · nothing emerges, and that is
-stated rather than hidden.
+| Piece | Shape | State | Hook |
+| --- | --- | --- | --- |
+| `affinity` | slide + hook | **posted** — the `_neon` cut, not the default | *Being alive is a matter of organization, / so it can be built from numbers* |
+| `soliton` | field + hook, 10 s | **posted** | *Every one of these was stable on its own.* |
+| `shoal` | lane + hook | built, **rejected** — fails T1/T2 | *Generation zero could only fill its world. / Forty generations later it crosses it.* |
+| `descent` | — | built, **rejected** — fails T2/T4 | *Everything at the top has one ancestor.* |
+| `cohort` | grid of panels | built, **rejected** — fails T2/T3 | *Not one of the first sixty-four was alive. / Everything alive here is a copy of one.* |
 
-- **Cosine-creature** — **posted**, `field`. Inspired by **yuruyurau**;
-  credited on the post.
-- **Medusa** — metachronal wave; a bell and fourteen tentacles driven by one
-  sine with fourteen phase delays. Built with hook (`HOOK_GAP = 82`, same
-  numbers as everywhere else). Its data block carries Greek (ξ, φ), so the
-  title stays Plex while the block itself is drawn in DejaVu via
-  `equation_face`. Not posted.
+**One run, told three ways, and none of them holds.** `descent` draws the
+pedigree, `cohort` panels the animals, `shoal` races them in lanes — the first
+two are reveals that sit still, and `shoal` moves without developing (flat
+profile, and it passed the motion count at 4.2% for weeks on that basis). The
+genetic algorithm was worth running and never became a reel. `soliton` carries
+the Lenia argument on the grid by itself.
+
+**Do not propose a fourth telling.** The subject has had three attempts; the
+next Lenia idea has to be a different subject, not a different camera.
+
+### Biomorph — [`README`](on-growth-and-form/biomorph-editions/README.md)
+
+| Piece | Shape | State | Hook |
+| --- | --- | --- | --- |
+| `cosine-creature` | field | **posted** — inspired by **yuruyurau**, credited | — |
+| `medusa` | field + hook, 12 s | **posted** (8th) | *Nothing here swims. / One sine wave, fourteen phase delays.* |
+| `quorum` | field + hook | **parked** — a sketch, not a cut | — |
+
+The series tells one trick three times and **the escalation is the point**: the
+cosine creature is a wave pretending to be a body, the medusa the same wave
+pretending to swim, `quorum` the same wave pretending to be a society. Keep
+that order in the copy if `quorum` is ever finished.
+
+**`quorum` is parked as a sketch.** The idea and `fish.py` are sound and the
+depth trick works, but what exists is a first pass, not a cut. It is also the
+one piece in the account that would be a deliberate fake of a real result —
+`affinity` next door is a true interaction and neither is distinguishable from
+the other by looking. That argument is worth making, which is why the sketch is
+kept rather than rejected; it just needs the work.
+
+### Learned — **parked** · [`README`](on-growth-and-form/learned-editions/README.md)
+
+One piece, `regrowth`, and it failed T3/T4. **Do not propose into this
+edition.** The code and both weight files stay on disk (232 KB); the render is
+deleted like any other rejected cut.
+
+Two findings are worth keeping. First, the premise the edition was queued under
+— *regeneration falls out of learning to grow* — is **false**: trained with no
+injury ever, the rule grows a correct animal and holds it, then beheaded seals
+the stump into a smooth eyeless lens and stays there. **Wound healing, not
+regeneration**, which is a distinction animals make too. Both weight files are
+kept so that comparison stays reproducible.
+
+Second, and the reason the edition is parked rather than continued: **fitting a
+rule to a target picture cannot show the viewer anything**. You hand the
+network the answer and it reproduces the answer, so the fitting buys a sentence
+in the caption and no pixel. That is now part of T4 in `BRIEF.md` and it
+applies well beyond neural CAs.
+
+`pelt` — fitting to a *statistic* instead of a picture — is the one proposal
+that escapes the objection structurally, and it is kept below rather than in
+the queue. It is not next: `turing` already puts healing Turing patterns on the
+grid for two constants, the visual gain is subtle, and the cost is a
+`torchvision` dependency and a training run.
 
 ---
 
 ## Queued
 
-**Ready, not posted** — `descent`, `reentry`, `sandpile`, `medusa`, plus the
-Plex re-cut of `cleavage` that should replace the version already on the grid.
+**Ready to post** — cut, measured, and judged worth posting: `sandpile`,
+`phyllotaxis`, `comet`, plus the Plex re-cut of `cleavage` that should replace
+what is on the grid.
 
-**Needs a re-cut before it could go out** — `turing` and `folding` still run
-the pre-hook, symmetric-margin, DejaVu-era layout in the same renderer that
+`phyllotaxis` and `comet` were measured on the finished cut 2026-08-30: **0.0%
+still frames** each, profiles 29/23% and 12/48% across the quarters. `comet`
+puts its biggest change in the last quarter, which is what it was picked for.
+
+This is a publication queue, not an inventory. A piece being rendered does not
+put it here — `condensate`, `descent` and `cohort` were all cut and are all in
+[`REJECTED.md`](REJECTED.md). Anything on this list that has not actually been
+looked at cold still owes **T4**.
+
+**Needs a re-cut before it could go out** — `turing` and `folding`, both still
+on the pre-hook, symmetric-margin, DejaVu-era layout in the same renderer
 `physarum` has already been moved off.
-
-**Open questions**
-
-- `sandpile`'s `LATTICE` palette is four flat stops (one per state, or the only
-  fact the picture carries gets muddied) and comes out acid green across most
-  of the disc. Worth deciding *once* whether that much green belongs on the
-  grid next to the mycelium and the phosphor.
-- Whether the low-bloom look is a per-edition option or something to offer
-  everywhere.
-
-**Stretch — Neural CA.** A cellular automaton whose rule is a small learned
-network: grows a shape from one cell and **regrows after being cut**.
-Regeneration is never programmed — it falls out of learning to grow. Feasible
-now that torch is installed. Wants its own edition rather than a slot in
-Artificial Life.
 
 ---
 
-## Rejected, and why
+## Proposed
 
-- **Spirographs / harmonic roulettes.** Beautiful, but nothing *emerges* — a
-  parametric equation, fully understood, with no surprise about the world in
-  it. Every other edition carries a true surprise; this would be the only one
-  that does not. A version pointing the geometry at real phenomena (Venus
-  resonance, Fourier epicycles, phyllotaxis) was drafted and set aside as too
-  astronomical and too backward-looking for an account that should feel
-  contemporary.
-- **Classic Conway's Life as the visual.** Right idea historically, wrong
-  material for this style: sparse binary cells have no mass and no density
-  gradient, and the pipeline lives on accumulated density. Its continuous
-  descendants (Lenia) do the same job and actually look alive.
-- **Segment edition** (`segment-editions/`). Ugly — dropped entirely.
-- **Attractors and proteins.** Posted early, since taken down. Mathematics and
-  structural biology rather than biology-as-algorithm, and the whole account
-  now reads better without them.
+Candidates put through **T1** and **T2** and still standing. `comet` was first
+on this list and has since been built — **the first piece chosen by the test
+rather than by taste**, and the test was run before any render code existed.
+Ten minutes of measurement would have saved `trabecula`, `venation` and
+`sorting`.
+
+Run `/pitch` on anything below before building it. Ordered by what would be
+built first.
+
+1. **`spindle`** — microtubules grow from two poles and collapse at random
+   until one is captured by a chromosome. Hundreds of filaments flicker for the
+   whole clip, then the chaos snaps into a bipolar spindle with the chromosomes
+   in a plate. Constant motion **plus a clear event**. Hook draft: *"Your cells
+   find their chromosomes by guessing."* Risk: low.
+2. **`aggregation`** — 150,000 starving *Dictyostelium* becoming one animal.
+   Half built (`morphogens.Aggregation`); waves sweep every ~90 steps and
+   concentration climbs steadily (11 → 28 → 76) rather than front-loading.
+   **Blocked on grid anisotropy**: a five-point laplacian propagates faster
+   along the axes and the aggregates come out as four-pointed stars. Needs a
+   nine-point laplacian or an off-lattice signal. Hook draft: *"Every wave
+   would carry them back. So they only listen to half of it."* Risk: medium.
+3. **`chirality`** — tilted cilia in the embryonic node spin one way, the tilt
+   turns rotation into a leftward flow, and that is why the heart ends up on
+   the left. Rotation constant by construction. **Best hook of the set**, and a
+   subject nobody is doing. Risk: medium — Stokes flow, and handedness is
+   subtle to read in a frame.
+4. **`ripple`** — *Myxococcus* reverse on contact, filling the frame with
+   counter-propagating bands that **pass through each other**. Oscillatory, so
+   it runs forever. Hook draft: *"Nothing is travelling. Only the agreement
+   is."* Risk: medium-low.
+5. **`stripe`** — zebrafish pigment cells: short-range activation, long-range
+   inhibition, but the morphogens are *cells*. Stripes assemble from a scatter
+   and, cut half way through, **heal back into stripes**. Hook draft: *"Turing
+   was right. The morphogens are cells."* Risk: medium — the regeneration has
+   to actually work, not just the pattern.
+6. **`metachrony`** — a carpet of cilia coupled only through the fluid, falling
+   out of random phase into travelling waves. Would be the **true version of
+   what `medusa` and `quorum` fake parametrically**, which closes that series
+   properly. Hook draft: *"None of them can see the others. The water is
+   enough."* Risk: medium.
+7. **`vortex`** — a dense suspension of flagellated swimmers, hydrodynamically
+   coupled, self-organising into a drifting lattice of vortices. Active matter:
+   a steady state that never stops moving. Risk: medium-high.
+8. **`epithelium`** — a proliferating sheet where every division hands edges to
+   its neighbours, and the polygon-class distribution converges to the same one
+   in a fly, a frog and a hydra. Dozens of division events per second. Hook
+   draft: *"Six is not a plan. Six is an average."* Risk: medium — real chance
+   it reads as slow refinement, which is the `venation` failure.
+
+### `pelt` — the one Learned candidate, and not next
+
+Written specifically against what `regrowth` got wrong. **The edition is parked
+and this does not change that** — it is recorded so the reasoning is not
+re-derived, and it goes behind `spindle`, which is cheaper and surer.
+
+`regrowth` is fitted to **one picture**, so it converges. Fit a neural CA to a
+**texture** instead — an animal's skin — and the loss becomes "have the same
+*statistics* as this picture" (Niklasson, Mordvintsev, Randazzo & Levin,
+*Self-Organising Textures*, Distill 2021, the direct sequel to the paper
+`regrowth` is built on). **One change to the loss and every failure inverts:**
+any arrangement with the right statistics is correct, so it **never settles**;
+it fills the frame edge to edge; structure is spots inside spots rather than a
+flat silhouette. Frame one is a finished pelt — the T4 problem solved, because
+everyone knows a leopard at 200 px. Tear a hole in it two thirds through and
+the pattern knits back across the seam.
+
+It argues something worth arguing next to `turing`: the same class of pattern
+as Gray-Scott, from **8,000 numbers nobody wrote**, with nobody mentioning
+chemistry, diffusion, an activator or an inhibitor. Hook draft, to be run
+through `/hook`: *"Turing wrote his in two constants. Nobody wrote this one."*
+
+Decided already: **`field`**, colour is the rule's own output (intrinsic, so
+house rule 2 holds), a warm skin so it does not break rule 8, and **train at
+128 × 128, render at 1080 × 1920 directly** — a texture CA is
+translation-invariant, so no tiling and no upsampling. **The one real risk** is
+the feature extractor: the paper uses VGG16 Gram matrices, i.e. a `torchvision`
+download. Establish before committing a training run whether that is available;
+the documented fallback is Gram matrices over a **fixed random** filter bank.
+The loop will not close by itself — bank the states and search for the best
+matching pair, or let it cut like `affinity` does. Decide by measuring.
+
+**After that: `consensus`** — self-classifying cells (Randazzo et al., Distill
+2020), where colour is what each cell currently believes and what you see is
+opinion spreading in waves. Strong story, but a single shape on black, so it
+needs the `pelt` treatment of many — or a shape that fills the frame — before
+it is worth building.
+
+---
+
+## Open questions
+
+- **Should the grid as a whole move to `sharp`?** The two looks are settled as
+  a per-piece choice and documented in the `reel` skill; what is not settled is
+  the balance across the feed. The one published example is `affinity`'s
+  `_neon`, so the grid currently reads as a `bloom` account with one exception.
+- **`sandpile`'s `LATTICE` palette** is four flat stops and comes out acid
+  green across most of the disc. Does that much green belong on the grid next
+  to the mycelium and the phosphor?
+- **Is soft the house rule for anything with a surface?** `quorum` uses a
+  smooth accent band where the two shipped biomorphs threshold theirs hard.
+  Decide if a fourth biomorph comes up.
+- **`trabecula`'s open ends** — the greater trochanter comes out empty and the
+  struts are softer than real trabeculae. Both point at the sensing distance,
+  the one length in the rule. Unverified, and only worth doing if the piece is
+  revived.
 
 ---
 
 ## Copy for the feed
 
-Written per reel: what it is, what the surprise is, and why it is true. Light
-cynicism is welcome **only where it does not shade the science** — if it would
-come out limp, neutral is better. Two versions when it is a close call.
+Written per reel by the `hook` skill: what it is, what the surprise is, why it
+is true — in that order, in English and Polish. Light cynicism **only where it
+does not shade the science**; if it would come out limp, neutral is better. Two
+versions when it is a close call.

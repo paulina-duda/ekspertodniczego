@@ -46,6 +46,32 @@ def bump(x: np.ndarray) -> np.ndarray:
     return np.where(inside, np.exp(4.0 - 1.0 / (safe * (1.0 - safe))), 0.0)
 
 
+def ring_kernel(
+    height: int, width: int, radius: float, beta: tuple[float, ...] = (1.0,)
+) -> np.ndarray:
+    """The neighbourhood: concentric smooth rings, normalised to sum to one.
+
+    The radial coordinate is cut into `len(beta)` bands and the same bump is put
+    into each, scaled by its weight. `beta = (1,)` is a single ring, which is the
+    neighbourhood Orbium lives in; two or three of different weights give the
+    field more to say and tend to hold more elaborate creatures.
+
+    Laid out for the whole field rather than for a patch, because the step is a
+    convolution done in Fourier space and the kernel has to be the same shape as
+    the thing it multiplies.
+    """
+    rows = np.fft.fftfreq(height, d=1.0 / height)
+    columns = np.fft.fftfreq(width, d=1.0 / width)
+    distance = np.hypot(*np.meshgrid(rows, columns, indexing="ij")) / radius
+
+    rings = len(beta)
+    band = np.minimum((distance * rings).astype(int), rings - 1)
+    weights = np.asarray(beta, dtype=np.float64)[band]
+    kernel = weights * bump((distance * rings) % 1.0)
+    kernel[distance >= 1.0] = 0.0
+    return kernel / kernel.sum()
+
+
 class Lenia:
     """A continuous automaton: one ring kernel, one growth curve, divided time.
 
@@ -81,19 +107,7 @@ class Lenia:
             device = "cuda" if torch is not None and torch.cuda.is_available() else "cpu"
         self.device = device if torch is not None else "cpu"
 
-        rows = np.fft.fftfreq(height, d=1.0 / height)
-        columns = np.fft.fftfreq(width, d=1.0 / width)
-        distance = np.hypot(*np.meshgrid(rows, columns, indexing="ij")) / radius
-
-        # Rings: the radial coordinate is cut into len(beta) bands and the same
-        # bump is put into each, scaled by its weight. `beta = (1,)` is one ring,
-        # which is the neighbourhood Orbium lives in.
-        rings = len(beta)
-        band = np.minimum((distance * rings).astype(int), rings - 1)
-        weights = np.asarray(beta, dtype=np.float64)[band]
-        kernel = weights * bump((distance * rings) % 1.0)
-        kernel[distance >= 1.0] = 0.0
-        kernel /= kernel.sum()
+        kernel = ring_kernel(height, width, radius, beta)
 
         self.field = np.zeros((height, width), dtype=np.float32)
         self.growth = np.zeros((height, width), dtype=np.float32)
@@ -209,6 +223,139 @@ class Lenia:
         density = self.field.astype(np.float32)
         shade = np.clip(0.5 + 0.5 * self.growth, 0.0, 1.0).astype(np.float32)
         return density, shade
+
+
+class Cohort:
+    """A population: one world each, one genome each, all stepped together.
+
+    A generation of a genetic algorithm is not several creatures in one world.
+    Every individual carries its own growth curve and its own kernel, and two of
+    them in one field would raise a question the model has no answer to -- whose
+    rule does the overlap obey. So each gets a world of its own, run alone,
+    exactly as it was run when it was scored.
+
+    They are all the same size, which means the whole cohort is one array with a
+    leading axis and a step is a single batched pair of transforms rather than N
+    sequential ones. Twenty worlds cost very nearly what one costs, so the piece
+    can film a population at the size its fitness was measured at rather than
+    shrinking anything to afford it.
+    """
+
+    def __init__(
+        self,
+        recipes: list[dict],
+        size: int = 128,
+        radius: float = 13.0,
+        steps_per_time: float = 10.0,
+        device: str | None = None,
+        shape: tuple[int, int] | None = None,
+    ) -> None:
+        self.count, self.radius = len(recipes), radius
+        self.height, self.width = (size, size) if shape is None else shape
+        self.size = self.height  # square worlds, where the two are the same thing
+        self.dt = 1.0 / steps_per_time
+        if device is None:
+            device = "cuda" if torch is not None and torch.cuda.is_available() else "cpu"
+        self.device = device if torch is not None else "cpu"
+
+        kernels = np.stack(
+            [
+                ring_kernel(self.height, self.width, radius, tuple(recipe["beta"]))
+                for recipe in recipes
+            ]
+        )
+        mu = np.asarray([recipe["mu"] for recipe in recipes], dtype=np.float32)[:, None, None]
+        sigma = np.asarray([recipe["sigma"] for recipe in recipes], dtype=np.float32)[:, None, None]
+
+        self.field = np.zeros((self.count, self.height, self.width), dtype=np.float32)
+        self.growth = np.zeros((self.count, self.height, self.width), dtype=np.float32)
+        self.step_index = 0
+        if self.device != "cpu":
+            self._kernel = torch.fft.rfft2(
+                torch.tensor(kernels, dtype=torch.float32, device=self.device)
+            )
+            self._field = torch.zeros(
+                (self.count, self.height, self.width), dtype=torch.float32, device=self.device
+            )
+            self._mu = torch.tensor(mu, device=self.device)
+            self._sigma = torch.tensor(sigma, device=self.device)
+        else:
+            self._kernel = np.fft.rfft2(kernels)
+            self._mu, self._sigma = mu, sigma
+
+    def seed(self, patches: list[np.ndarray], shifts: np.ndarray | None = None) -> None:
+        """Drop each world's own arc into it, centred, or moved by `shifts`.
+
+        Where a seed goes is not a physical choice. The world is a torus and the
+        rule is a convolution, so a run started one place is exactly the same run
+        started another, carried along -- which makes the offset a decision about
+        which cut of the torus the panel shows, and the only thing it can affect
+        is where the creature happens to be at a given moment.
+        """
+        for index, patch in enumerate(patches):
+            shift = (0, 0) if shifts is None else shifts[index]
+            top = self.height // 2 - patch.shape[0] // 2 + int(shift[0])
+            left = self.width // 2 - patch.shape[1] // 2 + int(shift[1])
+            rows = (np.arange(patch.shape[0]) + top) % self.height
+            columns = (np.arange(patch.shape[1]) + left) % self.width
+            self.field[index][np.ix_(rows, columns)] = np.maximum(
+                self.field[index][np.ix_(rows, columns)], patch.astype(np.float32)
+            )
+        self._upload()
+
+    def place(self, index: int, patch: np.ndarray, row: int, column: int) -> None:
+        """Drop one arc into one world, at an absolute position, wrapping.
+
+        For a world holding several copies of the same genome. They can share a
+        field precisely because they *are* the same genome: one growth curve and
+        one kernel over the whole world, so there is no question about which rule
+        an overlap obeys -- which is the question that keeps two different
+        genomes in two different worlds.
+        """
+        rows = (np.arange(patch.shape[0]) + row) % self.height
+        columns = (np.arange(patch.shape[1]) + column) % self.width
+        self.field[index][np.ix_(rows, columns)] = np.maximum(
+            self.field[index][np.ix_(rows, columns)], patch.astype(np.float32)
+        )
+        self._upload()
+
+    def _upload(self) -> None:
+        if self.device != "cpu":
+            self._field = torch.tensor(self.field, dtype=torch.float32, device=self.device)
+
+    def step(self, count: int = 1) -> None:
+        # A cohort is stepped to a schedule -- so many steps by this frame -- and
+        # a schedule that rounds to the same step twice asks for none at all.
+        # Nothing has changed, so the last growth field still stands.
+        if count <= 0:
+            return
+        for _ in range(count):
+            self.step_index += 1
+            if self.device != "cpu":
+                potential = torch.fft.irfft2(
+                    torch.fft.rfft2(self._field) * self._kernel, s=(self.height, self.width)
+                )
+                growth = 2.0 * torch.exp(
+                    -(((potential - self._mu) / self._sigma) ** 2) / 2.0
+                ) - 1.0
+                self._field = torch.clamp(self._field + self.dt * growth, 0.0, 1.0)
+            else:
+                potential = np.fft.irfft2(
+                    np.fft.rfft2(self.field) * self._kernel, s=(self.height, self.width)
+                )
+                growth = (
+                    2.0 * np.exp(-(((potential - self._mu) / self._sigma) ** 2) / 2.0) - 1.0
+                ).astype(np.float32)
+                self.field = np.clip(self.field + self.dt * growth, 0.0, 1.0)
+        if self.device != "cpu":
+            self.field = self._field.detach().cpu().numpy()
+            self.growth = growth.detach().cpu().numpy()
+        else:
+            self.growth = np.asarray(growth, dtype=np.float32)
+
+    def mass(self) -> np.ndarray:
+        """How much field each world is holding, one number per world."""
+        return self.field.sum(axis=(1, 2))
 
 
 # ----------------------------------------------------------------------

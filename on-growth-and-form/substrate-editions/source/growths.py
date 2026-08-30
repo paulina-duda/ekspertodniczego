@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Four processes on a substrate: three taken from biology, one from arithmetic.
+"""Five processes on a substrate: four taken from biology, one from arithmetic.
 
 The companion set in `../source/` runs two mathematical processes and one
-biological one. This one inverts that. `Hyphae`, `Cleavage` and `Excitable` are
-things a microscope can be pointed at; `Sandpile` is a rule about integers that
-has no business producing an organism and does anyway.
+biological one. This one inverts that. `Hyphae`, `Cleavage`, `Excitable` and
+`Condensate` are things a microscope can be pointed at; `Sandpile` is a rule
+about integers that has no business producing an organism and does anyway.
+
+Four of them make something out of nothing -- a colony, a partition, a heap, a
+wave. `Condensate` is the odd one: it adds no material at all after the first
+step, and only rearranges what is already in the dish.
 
 Every model exposes the same three things -- `step`, `metric` and whatever the
 renderer needs to draw -- so the renderer can measure a process it knows nothing
@@ -16,7 +20,13 @@ from __future__ import annotations
 import math
 
 import numpy as np
+from scipy import ndimage
 from scipy.spatial import cKDTree
+
+try:  # optional: Cahn-Hilliard wants a small timestep and many of them
+    import torch
+except ImportError:  # pragma: no cover
+    torch = None
 
 
 class Hyphae:
@@ -526,4 +536,169 @@ class Excitable:
         wake = state[1].astype(np.float32) / 255.0
         density = u + 0.75 * wake
         shade = np.maximum(u, wake * 0.92)
+        return density, shade
+
+
+class Condensate:
+    """Liquid-liquid phase separation: compartments with no wall around them.
+
+    A cell keeps dozens of distinct chemical workshops going at once -- nucleoli,
+    stress granules, P granules -- and for a century the assumption was that
+    anything that stayed separate had to be wrapped in a membrane. Most of them
+    are not. They are droplets: the same physics that pulls oil out of water,
+    running on proteins and RNA, and it builds a compartment out of nothing but
+    a preference for its own company.
+
+    The model is Cahn and Hilliard's, which is the textbook statement of that
+    preference. One field, `phi`, says which mixture is here. Its free energy has
+    two wells, so any value in between is unstable and slides towards one or the
+    other; and because `phi` is *conserved* -- material moves, it is not created
+    -- what starts as noise cannot simply fade. It has to separate.
+
+    What follows is not a pattern being drawn but a population of droplets
+    negotiating: they round themselves off, and then the big ones eat the small
+    ones, because a big drop has less surface per unit volume and surface is
+    what costs. Nothing is added to the dish after the first step. Every later
+    frame is the same material, arranged more cheaply.
+    """
+
+    def __init__(
+        self,
+        height: int,
+        width: int,
+        radius: float | None = None,
+        epsilon: float = 1.0,
+        mobility: float = 1.0,
+        dt: float = 0.01,
+        mixture: float = -0.35,
+        noise: float = 0.05,
+        reference_radius: float = 9.0,
+        seed: int = 20260825,
+        device: str | None = None,
+    ) -> None:
+        self.height, self.width = height, width
+        self.epsilon, self.mobility, self.dt = epsilon, mobility, dt
+        self.reference_radius = reference_radius
+
+        rows, columns = np.mgrid[0:height, 0:width].astype(np.float32)
+        radius = float(min(height, width) * 0.44 if radius is None else radius)
+        # The disc is the cell, not a crop: no flux crosses it, so the material
+        # inside is all the material there will ever be.
+        self.dish = np.hypot(rows - height / 2.0, columns - width / 2.0) < radius
+
+        generator = np.random.default_rng(seed)
+        # `mixture` is how much of the dish ends up as droplets. At 0 the two
+        # phases are equal and separate into interpenetrating worms; pushed
+        # negative, the dense phase is the minority and rounds into drops, which
+        # is both what a condensate looks like and the more legible picture.
+        field = mixture + generator.normal(0.0, noise, (height, width))
+        self.phi = (field * self.dish).astype(np.float32)
+        self.age = np.where(self.phi > 0.0, 0.0, -1.0).astype(np.float32)
+        self.step_index = 0
+
+        if device is None:
+            device = "cuda" if torch is not None and torch.cuda.is_available() else "cpu"
+        self.device = device if torch is not None else "cpu"
+        if self.device != "cpu":
+            self._phi = torch.tensor(self.phi, device=self.device)
+            self._dish = torch.tensor(self.dish, device=self.device)
+
+    # ------------------------------------------------------------------
+
+    def _laplacian_numpy(self, field: np.ndarray) -> np.ndarray:
+        total = np.zeros_like(field)
+        for shift, axis in ((1, 0), (-1, 0), (1, 1), (-1, 1)):
+            neighbour = np.roll(field, shift, axis)
+            inside = np.roll(self.dish, shift, axis)
+            # A neighbour outside the dish is replaced by the cell itself, which
+            # is what zero gradient means: nothing leaks out of the drop.
+            total += np.where(inside, neighbour, field)
+        return (total - 4.0 * field) * self.dish
+
+    def _laplacian_torch(self, field):
+        total = torch.zeros_like(field)
+        for shift, axis in ((1, 0), (-1, 0), (1, 1), (-1, 1)):
+            neighbour = torch.roll(field, shift, axis)
+            inside = torch.roll(self._dish, shift, axis)
+            total += torch.where(inside, neighbour, field)
+        return (total - 4.0 * field) * self._dish
+
+    def step(self, count: int = 1) -> None:
+        """Explicit Euler, and the step size is not a free choice.
+
+        The fourth-order term sets the stability limit: with `dx = 1` the
+        largest eigenvalue of the five-point laplacian is 8, so the scheme needs
+        `dt < 2 / (8 · (8·epsilon² - 1))`, which is about 0.017 at epsilon 1.4.
+        Overrun it and the field does not drift or wobble -- it saturates
+        everywhere on the first few steps and freezes into a frozen speckle that
+        never coarsens again, while conserving mass perfectly and so looking
+        entirely plausible in every summary statistic.
+        """
+        eps2 = self.epsilon * self.epsilon
+        if self.device != "cpu":
+            for _ in range(count):
+                mu = self._phi**3 - self._phi - eps2 * self._laplacian_torch(self._phi)
+                self._phi = (self._phi + self.dt * self.mobility * self._laplacian_torch(mu)) * self._dish
+            self.phi = self._phi.detach().cpu().numpy()
+        else:
+            for _ in range(count):
+                mu = self.phi**3 - self.phi - eps2 * self._laplacian_numpy(self.phi)
+                self.phi = (self.phi + self.dt * self.mobility * self._laplacian_numpy(mu)) * self.dish
+        self.step_index += count
+        fresh = (self.phi > 0.0) & (self.age < 0.0)
+        self.age[fresh] = float(self.step_index)
+
+    # ------------------------------------------------------------------
+
+    def metric(self) -> float:
+        """Coarsening, measured as interface that has gone away.
+
+        Total interface length only falls, from the moment the mixture first
+        separates -- it is the thing the whole process is trying to get rid of.
+        Negated, it rises monotonically, which is what the frame scheduler
+        wants: equal steps of *coarsening* rather than equal steps of the clock,
+        or the last six seconds are one still frame of nothing happening.
+        """
+        dense = self.phi > 0.0
+        edges = 0
+        for shift, axis in ((1, 0), (1, 1)):
+            edges += int((dense != np.roll(dense, shift, axis))[self.dish].sum())
+        # Area over perimeter, which is a length: how fat the droplets are. It
+        # rises through both halves of the process -- while the mixture is still
+        # separating and again while the drops eat each other -- where bare
+        # interface length falls only in the second half and *rises* in the
+        # first, which inverts the schedule exactly where the picture is
+        # changing fastest.
+        area = int(dense[self.dish].sum())
+        return float(area) / max(float(edges), 1.0)
+
+    def fields(self) -> tuple[np.ndarray, np.ndarray]:
+        """Brightness from which phase, colour from how big a drop this is part of.
+
+        Which is the process itself, not a summary of it. Ostwald ripening is
+        the big drops eating the small ones -- a large drop carries less surface
+        per unit volume, and surface is the whole cost -- so radius climbing
+        across the dish *is* the coarsening, made visible without a caption
+        explaining it.
+
+        Measured against a fixed radius rather than ranked within the frame. A
+        per-frame ranking would spread the palette across whatever is present at
+        that moment and hide the one thing worth seeing: at the end every drop
+        is bright because every drop is genuinely bigger, not because it happens
+        to be the biggest one left.
+
+        Age was tried first and reads worse. It records where a drop has
+        drifted, so each one ends up with a hard bright crescent on whichever
+        side it grew into -- true, but it looks like a rendering fault rather
+        than like a droplet.
+        """
+        density = np.clip((self.phi + 0.35) / 1.1, 0.0, 1.0).astype(np.float32) * self.dish
+        dense = (self.phi > 0.0) & self.dish
+        shade = np.zeros_like(density)
+        if dense.any():
+            labelled, count = ndimage.label(dense)
+            if count:
+                areas = np.bincount(labelled.ravel())
+                radius = np.sqrt(areas / np.pi) / self.reference_radius
+                shade = np.clip(radius, 0.0, 1.0)[labelled].astype(np.float32) * dense
         return density, shade

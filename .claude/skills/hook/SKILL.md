@@ -74,7 +74,20 @@ were written in Polish, with the same rhythm and the same restraint. Keep
 technical terms that a Polish reader in the field would use (`anastomoza`,
 `soliton`), and do not soften a mechanism into a metaphor to make it flow.
 
+## What you hand back
+
+**Print all three in the reply, ready to paste** — the caption especially. It
+is the thing that goes under the post, so it must be copyable straight out of
+the conversation without opening a file. English first, then Polish, each as
+one block with no commentary inside it.
+
 ## Where things get filed
 
-The hook goes into the edition's renderer, in the piece's `EDITIONS` entry.
-Published hooks and captions are logged in `INSTAGRAM.md`.
+- **The hook** goes into the edition's renderer, in the piece's `EDITIONS`
+  entry, so the render carries it.
+- **The caption** goes in the edition's own `CAPTION.md`, one section per
+  piece — `learned-editions/CAPTION.md` is the format: hook in frame, data
+  block in frame, then English and Polish. Create the file if the edition has
+  none yet.
+- **`INSTAGRAM.md` records only the hook and the format**, once the piece is
+  actually posted. The caption is not copied there.

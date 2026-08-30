@@ -366,3 +366,1496 @@ class DifferentialGrowth:
         outgoing /= np.maximum(np.linalg.norm(outgoing, axis=1, keepdims=True), 1e-9)
         cosine = np.clip((incoming * outgoing).sum(axis=1), -1.0, 1.0)
         return np.arccos(cosine).astype(np.float32)
+
+
+class SegmentationClock:
+    """The vertebrate segmentation clock: an oscillator and a receding front.
+
+    Every cell in the presomitic mesoderm runs the same oscillator, and its
+    period lengthens with distance from the tail. Nothing travels, but the
+    phase lag between neighbours draws a band that sweeps forward anyway --
+    the trick a row of blinking lights plays, or a stadium wave. A
+    determination front sits a fixed distance ahead of the tail and recedes
+    with it as the body elongates; the moment it passes a cell, that cell
+    stops oscillating and keeps whatever phase it was holding.
+
+    One turn of the clock at the tail is one segment, because the front covers
+    exactly one segment's worth of tissue in one period. The body is therefore
+    counted rather than measured, and a snake gets its several hundred
+    vertebrae from a faster clock rather than from a longer body (Gomez 2008).
+
+    Frame coordinates throughout: the axis runs down the frame, anterior at the
+    top, the tail advancing towards the bottom. `steps` is the length of the
+    run, not of the clip -- it fixes how far the tail gets, and everything else
+    is derived from it, so a longer clip plays the same process more slowly
+    rather than a different process.
+    """
+
+    def __init__(
+        self,
+        height: int,
+        width: int,
+        steps: int,
+        somite: float = 135.0,
+        psm_ratio: float = 4.5,
+        band: float = 135.0,
+        gap: float = 46.0,
+        tail_start: float = 520.0,
+        tail_end: float = 1400.0,
+        spacing: float = 5.0,
+        decay: float = 2.4,
+        coupling: float = 0.08,
+        wander: float = 0.26,
+        phase_noise: float = 0.0025,
+        densify: float = 1.50,
+        cohesion: float = 0.09,
+        tension: float = 0.006,
+        pressure: float = 0.35,
+        wall: float = 0.05,
+        tip: float = 110.0,
+        grow_zone: float = 170.0,
+        seed: int = 20260829,
+    ) -> None:
+        self.height, self.width = height, width
+        self.centre = width * 0.5
+        self.somite = somite
+        self.psm = somite * psm_ratio
+        self.band, self.gap = band, gap
+        self.tip, self.grow_zone = tip, grow_zone
+        self.tail_start, self.tail_end = tail_start, tail_end
+        self.speed = (tail_end - tail_start) / max(steps, 1)
+        self.period = somite / self.speed
+        self.omega = 2.0 * math.pi / self.period
+        self.decay = decay
+        self.coupling = coupling
+        self.wander = wander
+        self.phase_noise = phase_noise
+        self.densify = densify
+        self.cohesion = cohesion
+        self.tension = tension
+        self.pressure = pressure
+        self.wall = wall
+        self.density = 1.0 / (spacing * spacing)
+        self.generator = np.random.default_rng(seed)
+        self.step_index = 0
+
+        # Grid for the density and phase averages. It has to reach above the
+        # frame: the front starts off the top edge, so the first segments are
+        # made out of sight and would otherwise pile into row zero.
+        self.cell_size = 7.0
+        self.grid_top = -320.0
+        self.grid_rows = int(math.ceil((height - self.grid_top) / self.cell_size)) + 1
+        self.grid_columns = int(math.ceil(width / self.cell_size)) + 1
+
+        capacity = 4096
+        self.x = np.zeros(capacity, dtype=np.float32)
+        self.y = np.zeros(capacity, dtype=np.float32)
+        self.phase = np.zeros(capacity, dtype=np.float32)
+        self.side = np.zeros(capacity, dtype=np.int8)
+        self.frozen = np.zeros(capacity, dtype=bool)
+        self.segment = np.zeros(capacity, dtype=np.int64)
+        self.slot = np.full(capacity, -1, dtype=np.int32)
+        self.count = 0
+
+        self.slot_x: list[float] = []
+        self.slot_y: list[float] = []
+        self.slot_r: list[float] = []
+        self.slot_key: dict[tuple[int, int], int] = {}
+        self.closed: set[int] = set()
+
+        self._seed_tissue()
+
+    # -- geometry ---------------------------------------------------------
+
+    def tail(self) -> float:
+        return self.tail_start + self.speed * self.step_index
+
+    def front(self) -> float:
+        return self.tail() - self.psm
+
+    def outline(self, u):
+        """Inner and outer half-width of the tissue `u` ahead of the tail.
+
+        The two bands of mesoderm are separated by the neural tube everywhere
+        except at the tail, where they are still one mass -- so the gap closes
+        and the whole thing rounds off into the bud rather than ending on a
+        straight cut.
+        """
+        t = np.clip(u / self.tip, 0.0, 1.0)
+        outer = (self.gap + self.band) * np.sqrt(t)
+        inner = self.gap * np.clip(u / (self.tip * 0.75), 0.0, 1.0)
+        return inner, outer
+
+    def initial_phase(self, u):
+        """Steady-state phase profile, so the clip opens mid-process.
+
+        Integrating the frequency gradient along a cell's trip from the tail:
+        the lag grows almost linearly once the frequency has dropped, and is
+        flat at the tail itself, which is why the bud pulses as one piece.
+        """
+        span = np.clip(u / self.psm, 0.0, 1.0)
+        return (
+            -2.0 * math.pi * u / self.somite
+            + 2.0 * math.pi * self.psm / (self.decay * self.somite)
+            * (1.0 - np.exp(-self.decay * span))
+        ).astype(np.float32)
+
+    # -- population -------------------------------------------------------
+
+    def _grow_arrays(self, extra: int) -> None:
+        if self.count + extra <= len(self.x):
+            return
+        size = len(self.x)
+        while size < self.count + extra:
+            size *= 2
+        for name, fill in (
+            ("x", 0.0), ("y", 0.0), ("phase", 0.0), ("side", 0),
+            ("frozen", False), ("segment", 0), ("slot", -1),
+        ):
+            old = getattr(self, name)
+            new = np.full(size, fill, dtype=old.dtype)
+            new[: self.count] = old[: self.count]
+            setattr(self, name, new)
+
+    def _spawn(self, low: float, high: float, number: int, phase=None) -> None:
+        if number <= 0:
+            return
+        self._grow_arrays(number)
+        tail = self.tail()
+        u = self.generator.uniform(low, high, number)
+        inner, outer = self.outline(u)
+        radius = self.generator.uniform(inner, outer)
+        side = np.where(self.generator.random(number) < 0.5, -1, 1)
+        start, end = self.count, self.count + number
+        self.x[start:end] = (self.centre + side * radius).astype(np.float32)
+        self.y[start:end] = (tail - u).astype(np.float32)
+        self.side[start:end] = side.astype(np.int8)
+        self.frozen[start:end] = False
+        self.slot[start:end] = -1
+        if phase is None:
+            # A new cell is a daughter of the ones already there, so it starts
+            # on their phase, not on a fresh one. Where there is nothing yet --
+            # the very tip -- it takes the tail's.
+            local, known = self._local_phase(self.x[start:end], self.y[start:end])
+            phase = np.where(known, local, self.omega * self.step_index)
+        self.phase[start:end] = phase
+        self.count = end
+
+    def _seed_tissue(self) -> None:
+        """One presomitic mesoderm, no segments yet, already oscillating."""
+        area = 2.0 * self.band * self.psm
+        number = int(area * self.density)
+        self._spawn(0.0, self.psm, number, phase=None)
+        u = self.tail() - self.y[: self.count]
+        self.phase[: self.count] = self.initial_phase(u)
+
+    def _replenish(self) -> None:
+        """Top the growth zone back up to density as the tail runs away.
+
+        Cells are added where the tissue is short of what its own outline
+        allows, which is both how a tail bud works and the only way to keep the
+        density constant while the bands widen out behind the tip.
+        """
+        tail = self.tail()
+        edges = np.linspace(0.0, self.grow_zone, 18)
+        u = tail - self.y[: self.count]
+        counts, _ = np.histogram(u, bins=edges)
+        for index in range(len(edges) - 1):
+            low, high = float(edges[index]), float(edges[index + 1])
+            inner, outer = self.outline(0.5 * (low + high))
+            area = 2.0 * max(float(outer) - float(inner), 0.0) * (high - low)
+            missing = int(round(area * self.density)) - int(counts[index])
+            if missing > 0:
+                self._spawn(low, high, missing)
+
+    # -- fields -----------------------------------------------------------
+
+    def _bins(self, x: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        column = np.clip((x / self.cell_size).astype(np.int64), 0, self.grid_columns - 1)
+        row = np.clip(((y - self.grid_top) / self.cell_size).astype(np.int64), 0, self.grid_rows - 1)
+        return row, column
+
+    def _local_phase(self, x: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Mean phase of the oscillating cells around each position."""
+        live = ~self.frozen[: self.count]
+        row, column = self._bins(self.x[: self.count][live], self.y[: self.count][live])
+        flat = row * self.grid_columns + column
+        size = self.grid_rows * self.grid_columns
+        total = np.bincount(flat, weights=self.phase[: self.count][live], minlength=size)
+        weight = np.bincount(flat, minlength=size)
+        total = _blur3(total.reshape(self.grid_rows, self.grid_columns).astype(np.float32))
+        weight = _blur3(weight.reshape(self.grid_rows, self.grid_columns).astype(np.float32))
+        row, column = self._bins(x, y)
+        near = weight[row, column]
+        return total[row, column] / np.maximum(near, 1e-6), near > 0.05
+
+    def _crowding_gradient(self) -> tuple[np.ndarray, np.ndarray]:
+        """Downhill push out of crowding -- and only out of crowding.
+
+        Taking the gradient of the density itself puts an outward force on
+        every edge in the picture, which walks the population into the walls
+        and lights a rim along them. What a packed tissue actually resists is
+        being *over*filled, so the field is the excess over the resting density
+        and is flat everywhere the tissue is merely full.
+        """
+        row, column = self._bins(self.x[: self.count], self.y[: self.count])
+        flat = row * self.grid_columns + column
+        field = np.bincount(flat, minlength=self.grid_rows * self.grid_columns)
+        field = field.reshape(self.grid_rows, self.grid_columns).astype(np.float32)
+        for _ in range(3):
+            field = _blur3(field)
+        field = np.clip(field - self.density * self.cell_size ** 2, 0.0, None)
+        gradient_x = 0.5 * (np.roll(field, -1, 1) - np.roll(field, 1, 1))
+        gradient_y = 0.5 * (np.roll(field, -1, 0) - np.roll(field, 1, 0))
+        return -gradient_x[row, column], -gradient_y[row, column]
+
+    # -- the rule ---------------------------------------------------------
+
+    def _widen(self) -> None:
+        """Carry the tissue outwards with the outline as the bands open up.
+
+        Every slice of tissue spends its first hundred pixels inside the tail's
+        taper, where the two bands are still separating and the section is
+        still growing. A tissue that widens takes its own cells with it; it
+        does not slide them through itself. Evicting them with a wall instead
+        pushes the entire population past the inner edge on its way out of the
+        bud and lights a rim down the axis that the rule never made.
+        """
+        count = self.count
+        distance = self.tail() - self.y[:count]
+        inside = (~self.frozen[:count]) & (distance < self.tip + self.speed)
+        if not inside.any():
+            return
+        now = np.clip(distance[inside], 0.0, None)
+        before = np.clip(now - self.speed, 0.0, None)
+        inner_before, outer_before = self.outline(before)
+        inner_now, outer_now = self.outline(now)
+        reach = np.abs(self.x[:count][inside] - self.centre)
+        fraction = np.clip(
+            (reach - inner_before) / np.maximum(outer_before - inner_before, 0.5), 0.0, 1.0
+        )
+        direction = np.sign(self.x[:count][inside] - self.centre)
+        direction = np.where(direction == 0.0, 1.0, direction)
+        moved = inner_now + fraction * (outer_now - inner_now)
+        self.x[np.flatnonzero(inside)] = (self.centre + direction * moved).astype(np.float32)
+
+    def _oscillate(self) -> None:
+        count = self.count
+        live = ~self.frozen[:count]
+        if not live.any():
+            return
+        u = np.clip(self.tail() - self.y[:count], 0.0, None)
+        rate = self.omega * np.exp(-self.decay * np.clip(u / self.psm, 0.0, 1.0))
+        noise = self.generator.standard_normal(count).astype(np.float32) * self.phase_noise
+        self.phase[:count] = np.where(live, self.phase[:count] + rate + noise, self.phase[:count])
+        if self.coupling > 0.0:
+            # Neighbours pull each other back into step. Without it the cells
+            # added at the tail drift apart and the bands smear into mush --
+            # which is also what happens to a real embryo that loses its
+            # Delta-Notch coupling: the segments come out ragged.
+            mean, known = self._local_phase(self.x[:count], self.y[:count])
+            adjust = np.where(live & known, self.coupling * (mean - self.phase[:count]), 0.0)
+            self.phase[:count] += adjust.astype(np.float32)
+
+    def _arrest(self) -> None:
+        count = self.count
+        crossed = (~self.frozen[:count]) & (self.y[:count] <= self.front())
+        if not crossed.any():
+            return
+        self.frozen[:count] = self.frozen[:count] | crossed
+        turns = np.floor(self.phase[:count] / (2.0 * math.pi)).astype(np.int64)
+        self.segment[:count] = np.where(crossed, turns, self.segment[:count])
+
+    def _close(self) -> None:
+        """A segment that has stopped accreting rounds up and packs tighter.
+
+        Epithelialisation, and the reason the column reads as beads rather than
+        as a stripe: the block pulls itself in until it is denser than the
+        tissue it came out of, and a fissure opens where it has drawn away from
+        its neighbour.
+        """
+        count = self.count
+        frozen = self.frozen[:count]
+        if not frozen.any():
+            return
+        segments = self.segment[:count][frozen]
+        newest = int(segments.max())
+        homeless = frozen & (self.slot[:count] < 0)
+        if not homeless.any():
+            return
+        for index in np.unique(self.segment[:count][homeless]):
+            index = int(index)
+            if index >= newest:
+                continue
+            for side in (-1, 1):
+                mask = homeless & (self.segment[:count] == index) & (self.side[:count] == side)
+                number = int(mask.sum())
+                if not number:
+                    continue
+                key = (index, side)
+                if key in self.slot_key:
+                    # A cell whose phase lagged crosses the front late and
+                    # arrests into a block that has already closed. It belongs
+                    # to that block; leaving it behind scatters loose cells
+                    # down the fissures that the rule never put there.
+                    self.slot[:count] = np.where(mask, self.slot_key[key], self.slot[:count])
+                    continue
+                if number < 12:
+                    continue
+                self.slot_key[key] = len(self.slot_x)
+                self.slot[:count] = np.where(mask, len(self.slot_x), self.slot[:count])
+                self.slot_x.append(float(self.x[:count][mask].mean()))
+                self.slot_y.append(float(self.y[:count][mask].mean()))
+                self.slot_r.append(math.sqrt(number / (math.pi * self.density * self.densify)))
+            self.closed.add(index)
+
+    def _relax(self) -> None:
+        count = self.count
+        x, y = self.x[:count], self.y[:count]
+        live = ~self.frozen[:count]
+        push_x, push_y = self._crowding_gradient()
+        move_x = self.pressure * push_x
+        move_y = self.pressure * push_y
+
+        held = self.slot[:count] >= 0
+        if held.any():
+            slot = self.slot[:count][held]
+            centre_x = np.asarray(self.slot_x, dtype=np.float32)[slot]
+            centre_y = np.asarray(self.slot_y, dtype=np.float32)[slot]
+            target = np.asarray(self.slot_r, dtype=np.float32)[slot]
+            offset_x = x[held] - centre_x
+            offset_y = y[held] - centre_y
+            square = offset_x * offset_x + offset_y * offset_y
+            # Contract the block as a whole, rather than dragging whatever
+            # lies outside a target circle onto it. The second is what a
+            # surface tension does to a block that is already the right size,
+            # and it empties the middle out into a ring.
+            spread = np.bincount(slot, weights=square, minlength=len(self.slot_r))
+            members = np.bincount(slot, minlength=len(self.slot_r))
+            reached = np.sqrt(2.0 * spread / np.maximum(members, 1))
+            shrink = np.clip(1.0 - target / np.maximum(reached[slot], 1e-3), 0.0, 1.0)
+            corner = np.clip(1.0 - target / np.maximum(np.sqrt(square), 1e-3), 0.0, None)
+            pull = self.cohesion * shrink + self.tension * corner
+            move_x[held] -= pull * offset_x
+            move_y[held] -= pull * offset_y
+
+        if live.any():
+            tail = self.tail()
+            inner, outer = self.outline(np.clip(tail - y, 0.0, None))
+            reach = np.abs(x - self.centre)
+            direction = np.sign(x - self.centre)
+            direction = np.where(direction == 0.0, 1.0, direction)
+            # Only a net for what the wander walks out; the widening is what
+            # actually keeps the section full.
+            over = np.clip(reach - outer, 0.0, None)
+            under = np.clip(inner - reach, 0.0, None)
+            move_x += np.where(live, self.wall * direction * (under - over), 0.0)
+            move_y += np.where(live, -self.wall * np.clip(y - tail, 0.0, None), 0.0)
+            wander = self.generator.standard_normal((2, count)).astype(np.float32) * self.wander
+            move_x += np.where(live, wander[0], 0.0)
+            move_y += np.where(live, wander[1], 0.0)
+
+        self.x[:count] = (x + move_x).astype(np.float32)
+        self.y[:count] = (y + move_y).astype(np.float32)
+
+    def step(self, count: int = 1) -> None:
+        for _ in range(count):
+            self.step_index += 1
+            self._widen()
+            self._replenish()
+            self._oscillate()
+            self._arrest()
+            self._close()
+            self._relax()
+
+    # -- output -----------------------------------------------------------
+
+    def cells(self) -> tuple[np.ndarray, np.ndarray]:
+        """Positions, and the clock phase each cell is holding, wrapped to 0..1."""
+        count = self.count
+        points = np.column_stack((self.x[:count], self.y[:count])).astype(np.float32)
+        shade = np.mod(self.phase[:count] / (2.0 * math.pi), 1.0).astype(np.float32)
+        return points, shade
+
+
+
+def _capsule(x, y, a, b, radius):
+    """Inside test for a thick line segment, used to draw the section."""
+    ax, ay = a
+    dx, dy = b[0] - ax, b[1] - ay
+    length = dx * dx + dy * dy
+    t = np.clip(((x - ax) * dx + (y - ay) * dy) / max(length, 1e-9), 0.0, 1.0)
+    return (x - (ax + t * dx)) ** 2 + (y - (ay + t * dy)) ** 2 <= radius * radius
+
+
+def _element_stiffness(poisson: float = 0.3) -> np.ndarray:
+    """Stiffness of a unit square bilinear element, unit modulus, plane stress."""
+    k = np.array([
+        1 / 2 - poisson / 6, 1 / 8 + poisson / 8, -1 / 4 - poisson / 12, -1 / 8 + 3 * poisson / 8,
+        -1 / 4 + poisson / 12, -1 / 8 - poisson / 8, poisson / 6, 1 / 8 - 3 * poisson / 8,
+    ])
+    order = np.array([
+        [0, 1, 2, 3, 4, 5, 6, 7],
+        [1, 0, 7, 6, 5, 4, 3, 2],
+        [2, 7, 0, 5, 6, 3, 4, 1],
+        [3, 6, 5, 0, 7, 2, 1, 4],
+        [4, 5, 6, 7, 0, 1, 2, 3],
+        [5, 4, 3, 2, 1, 0, 7, 6],
+        [6, 3, 4, 1, 2, 7, 0, 5],
+        [7, 2, 1, 4, 3, 6, 5, 0],
+    ])
+    return (k[order] / (1.0 - poisson * poisson)).astype(np.float64)
+
+
+class Trabecula:
+    """Bone remodelling: every patch of bone thickens if it is worked hard.
+
+    A coronal section of the proximal femur, loaded the three ways one leg is
+    loaded, with one rule running everywhere inside its cortex: measure how
+    much strain energy this patch is storing per unit of its own mass, and
+    move its density towards a set point. Above it, deposit. Below it, resorb.
+    That is Frost's mechanostat, and it is Wolff's law written as something a
+    cell could actually execute -- an osteocyte is walled into the mineral and
+    can feel its own neighbourhood and nothing else. There is no budget, no
+    target shape, and no coordination between two patches that are not
+    touching.
+
+    What comes out is trabecular architecture: a compressive group running
+    from the head down the medial calcar, a tensile group arcing over the neck
+    to the greater trochanter, and the hollow between them that Ward named in
+    1838. Nobody put an arch in the rule.
+
+    The stiffness fed back into the next solve goes as the cube of density,
+    which is not a numerical convenience -- it is the measured relation for
+    trabecular bone (Carter & Hayes 1977), and it is also what makes the rule
+    unstable in the useful direction. A strut that thickens takes a
+    disproportionate share of the load, so a smooth sheet of tissue breaks up
+    into separate struts instead of staying a sheet.
+    """
+
+    # The section, in units of the frame width so a circle stays a circle.
+    # Head up and to the right, which is where the title is not; the shaft is
+    # cut flat below the lesser trochanter, which is where a section of this
+    # bone is actually cut, so the black under it is an anatomical fact rather
+    # than a margin.
+    HEAD = (0.6889, 0.5333)
+    HEAD_RADIUS = 0.1611
+    NECK_JUNCTION = (0.5000, 0.7889)
+    NECK_RADIUS = 0.0889
+    TROCHANTER = (0.2889, 0.6333)
+    TROCHANTER_RADIUS = 0.1500
+    CORTEX = ((0.2778, 0.6667), (0.4667, 0.9556), 0.0889)
+    LESSER = ((0.3889, 0.8667), (0.3222, 0.9333), 0.0444)
+    SHAFT = (0.3667, 0.6000, 0.7556, 1.3000)   # left, right, top, bottom
+
+    # The load history, not a load. Standing on one leg is one of three
+    # postures this bone is asked to survive, and the weights are how often
+    # each is met -- the three-case history bone-remodelling work has used
+    # since Carter, Orr and Fyhrie (1989). Angles are from the vertical in the
+    # frontal plane, positive towards the lateral side; the joint presses down
+    # into the head, the abductors pull the trochanter back up.
+    #
+    # This is the piece. Under a single load case the head comes out hollow
+    # and the answer is a bare truss, because one load has exactly one
+    # cheapest path and nothing has to be spent covering the others. The
+    # arcades only appear once no single path will do.
+    STANCE = (
+        (0.6, 2.317, 24.0, 1.55, 28.0),    # midstance of gait
+        (0.2, 1.548, -15.0, 0.78, -8.0),   # extreme abduction
+        (0.2, 1.548, 56.0, 0.78, 35.0),    # extreme adduction
+    )
+
+    # Trabecular bone's stiffness against its apparent density: E goes as the
+    # cube. Measured, not chosen.
+    EXPONENT = 3.0
+
+    def __init__(
+        self,
+        height: int,
+        width: int,
+        divisor: int = 3,
+        sensing: float = 2.6,
+        setpoint: float = 0.5,
+        rate: float = 0.055,
+        seed_density: float = 0.32,
+        floor_density: float = 0.02,
+        modulus_floor: float = 1e-9,
+    ) -> None:
+        from scipy.ndimage import distance_transform_edt
+        from scipy.sparse import coo_matrix
+        from scipy.sparse.linalg import splu
+
+        self._splu = splu
+        self._coo = coo_matrix
+        self.divisor = divisor
+        self.nelx, self.nely = width // divisor, height // divisor
+        self.rate = rate
+        self.floor_density = floor_density
+        self.floor = modulus_floor
+        self.iteration = 0
+
+        nelx, nely = self.nelx, self.nely
+        columns = (np.arange(nelx) + 0.5) / nelx
+        rows = (np.arange(nely) + 0.5) / nelx
+        grid_x, grid_y = np.meshgrid(columns, rows)
+
+        section = _capsule(grid_x, grid_y, self.HEAD, self.HEAD, self.HEAD_RADIUS)
+        section |= _capsule(grid_x, grid_y, self.HEAD, self.NECK_JUNCTION, self.NECK_RADIUS)
+        section |= _capsule(grid_x, grid_y, self.TROCHANTER, self.TROCHANTER, self.TROCHANTER_RADIUS)
+        section |= _capsule(grid_x, grid_y, *self.CORTEX)
+        left, right, top, bottom = self.SHAFT
+        section |= (grid_x > left) & (grid_x < right) & (grid_y > top) & (grid_y < bottom)
+        section |= _capsule(grid_x, grid_y, *self.LESSER)
+        self.section = section
+
+        # A cortex, held solid, and only what is inside it is remodelled.
+        # Cortical bone is dense lamellar bone turning over on a different
+        # clock from the trabeculae, so holding it fixed is the honest model;
+        # it is also the only reason the frame still reads as a bone rather
+        # than as a diagram of one. Thick down the shaft, thin over the head
+        # and the trochanter, which is how the section is actually built.
+        depth = distance_transform_edt(section)
+        thickness = np.where(grid_y > self.NECK_JUNCTION[1], 5.0, 2.0)
+        shell = section & (depth <= thickness)
+
+        # Element and node bookkeeping in the usual order: element (column,
+        # row) is column*nely + row, node (column, row) is column*(nely+1) +
+        # row, both counting rows from the top of the frame.
+        active = np.nonzero(section.ravel(order="F"))[0]
+        self.active = active
+        self.count = len(active)
+        self.solid = shell.ravel(order="F")[active]
+        self.design = np.nonzero(~self.solid)[0]
+
+        column = active // nely
+        row = active % nely
+        first = (nely + 1) * column + row
+        second = (nely + 1) * (column + 1) + row
+        self.dofs = np.column_stack((
+            2 * first + 2, 2 * first + 3, 2 * second + 2, 2 * second + 3,
+            2 * second, 2 * second + 1, 2 * first, 2 * first + 1,
+        ))
+
+        self.stiffness = _element_stiffness()
+        self._template = self.stiffness.ravel()
+
+        # Only the section is solved. Filling the void with a token modulus is
+        # the textbook trick, but four fifths of this frame is void and the
+        # conditioning it buys is not worth paying for on every frame.
+        touched = np.unique(self.dofs)
+        self.free = np.setdiff1d(touched, self._support(nelx, nely))
+        self._index = np.full(2 * (nelx + 1) * (nely + 1), -1, dtype=np.int64)
+        self._index[self.free] = np.arange(len(self.free))
+        local = self._index[self.dofs]
+        keep = (local[:, :, None] >= 0) & (local[:, None, :] >= 0)
+        self._keep = keep.ravel()
+        self._sparse_rows = np.repeat(local, 8, axis=1).ravel()[self._keep]
+        self._sparse_columns = np.tile(local, 8).ravel()[self._keep]
+        self._load(nelx, nely)
+
+        centres = np.column_stack((column.astype(np.float64), row.astype(np.float64)))
+        # Over the design elements only: smoothing across the cortex would
+        # blur the one edge in the picture that is meant to be sharp.
+        self._sensors(centres[self.design], sensing)
+
+        self.physical = np.ones(self.count)
+        self.physical[self.design] = seed_density
+        self.compression = np.zeros(self.count)
+        self.tension = np.zeros(self.count)
+
+        # The set point is read off the section's own first state rather than
+        # carried in as a number: a body weight and a frame width do not
+        # between them fix what "worked hard" means. Taking a quantile means a
+        # known fraction of the tissue starts above its set point and the rest
+        # below, and the architecture is what that split does over a few
+        # hundred turns.
+        stimulus = self._stimulus(self._measure())
+        self.setpoint = float(np.quantile(stimulus, setpoint))
+        self.scale = 1.0 / max(float(np.abs(stimulus - self.setpoint).mean()), 1e-30)
+
+    # ---- the section's boundary conditions -------------------------------
+
+    def _node(self, x: float, y: float) -> int:
+        return (self.nely + 1) * int(round(x * self.nelx)) + int(round(y * self.nelx))
+
+    def _support(self, nelx: int, nely: int) -> np.ndarray:
+        """The distal cut is held. A section of bone ends where it was sawn."""
+        left, right, _, bottom = self.SHAFT
+        row = int(round(bottom * nelx))
+        columns = np.arange(int(round(left * nelx)), int(round(right * nelx)) + 1)
+        nodes = (nely + 1) * columns + row
+        return np.concatenate((2 * nodes, 2 * nodes + 1))
+
+    def _load(self, nelx: int, nely: int) -> None:
+        self.force = np.zeros((len(self.free), len(self.STANCE)))
+        self.share = np.array([case[0] for case in self.STANCE])
+        for case, (_, joint, joint_angle, pull, pull_angle) in enumerate(self.STANCE):
+            for centre, radius, angle, magnitude, spread, sense in (
+                (self.HEAD, self.HEAD_RADIUS, joint_angle, joint, 26.0, 1.0),
+                (self.TROCHANTER, self.TROCHANTER_RADIUS, pull_angle, pull, 22.0, -1.0),
+            ):
+                theta = math.radians(angle)
+                direction = sense * np.array([-math.sin(theta), math.cos(theta)])
+                # Spread over the contact patch the force comes through. A
+                # point load invents a stress singularity, and the tissue will
+                # happily build a rosette around one.
+                surface = math.atan2(-direction[1], -direction[0])
+                nodes = {
+                    self._node(centre[0] + radius * math.cos(surface + offset),
+                               centre[1] + radius * math.sin(surface + offset))
+                    for offset in np.linspace(-math.radians(spread), math.radians(spread), 9)
+                }
+                portion = magnitude / len(nodes)
+                for node in nodes:
+                    for dof, component in ((2 * node, direction[0]), (2 * node + 1, direction[1])):
+                        slot = self._index[dof]
+                        if slot >= 0:
+                            self.force[slot, case] += portion * component
+
+    def _sensors(self, centres: np.ndarray, distance: float) -> None:
+        """How far a cell can feel, as a weight that falls off with range.
+
+        The influence of an osteocyte decays exponentially with distance,
+        after Mullender and Huiskes. It is the only length in the rule, and it
+        is what decides how thick a trabecula comes out and how far apart they
+        stand -- without it every element would remodel alone and the answer
+        would be noise at the resolution of the grid.
+        """
+        size = len(centres)
+        tree = cKDTree(centres)
+        pairs = tree.query_pairs(4.0 * distance, output_type="ndarray")
+        span = np.linalg.norm(centres[pairs[:, 0]] - centres[pairs[:, 1]], axis=1)
+        weight = np.exp(-span / distance)
+        rows = np.concatenate((pairs[:, 0], pairs[:, 1], np.arange(size)))
+        columns = np.concatenate((pairs[:, 1], pairs[:, 0], np.arange(size)))
+        values = np.concatenate((weight, weight, np.ones(size)))
+        self.weights = self._coo((values, (rows, columns)), shape=(size, size)).tocsr()
+        self.weight_sum = np.asarray(self.weights.sum(axis=1)).ravel()
+
+    # ---- one turn of the rule --------------------------------------------
+
+    def _matrix(self):
+        modulus = self.floor + self.physical ** self.EXPONENT * (1.0 - self.floor)
+        values = (self._template[None, :] * modulus[:, None]).ravel()[self._keep]
+        size = len(self.free)
+        return self._coo(
+            (values, (self._sparse_rows, self._sparse_columns)), shape=(size, size)
+        ).tocsc()
+
+    def _measure(self) -> np.ndarray:
+        """Solve every stance, then read off the rule's number and the eye's.
+
+        The rule needs one number per element -- how much strain energy it
+        stores, over the postures and weighted by how often each is met. The
+        colour needs a second: whether an element spends its working life
+        being pulled or being pushed, which is how an anatomist tells the two
+        trabecular groups apart.
+
+        All three stances share a stiffness matrix, so they share one
+        factorisation and cost little more than a single solve between them.
+        """
+        solution = self._splu(self._matrix()).solve(self.force)
+        full = np.zeros((len(self._index), solution.shape[1]))
+        full[self.free] = solution
+
+        poisson = 0.3
+        energy = np.zeros(self.count)
+        pulled = np.zeros(self.count)
+        pushed = np.zeros(self.count)
+        for case in range(solution.shape[1]):
+            local = full[self.dofs, case]
+            weight = self.share[case]
+            energy += weight * np.einsum("ij,jk,ik->i", local, self.stiffness, local)
+
+            # Strain at the element centre, straight off the corner
+            # displacements. Node order in `dofs` is bottom-left,
+            # bottom-right, top-right, top-left.
+            xx = 0.5 * ((local[:, 4] - local[:, 6]) + (local[:, 2] - local[:, 0]))
+            yy = 0.5 * ((local[:, 1] - local[:, 7]) + (local[:, 3] - local[:, 5]))
+            xy = 0.5 * ((local[:, 0] - local[:, 6]) + (local[:, 2] - local[:, 4])) \
+                + 0.5 * ((local[:, 5] - local[:, 7]) + (local[:, 3] - local[:, 1]))
+            sigma_x = (xx + poisson * yy) / (1.0 - poisson * poisson)
+            sigma_y = (yy + poisson * xx) / (1.0 - poisson * poisson)
+            shear = xy / (2.0 * (1.0 + poisson))
+            mean = 0.5 * (sigma_x + sigma_y)
+            spread = np.sqrt((0.5 * (sigma_x - sigma_y)) ** 2 + shear * shear)
+            pulled += weight * np.maximum(mean + spread, 0.0)
+            pushed += weight * np.maximum(-(mean - spread), 0.0)
+
+        total = pulled + pushed
+        self.tension = np.where(total > 1e-30, pulled / np.maximum(total, 1e-30), 0.5)
+        self.compression = 1.0 - self.tension
+        return energy
+
+    def _stimulus(self, energy: np.ndarray) -> np.ndarray:
+        """Strain energy per unit of mass, as the neighbourhood reports it."""
+        interior = self.physical[self.design]
+        signal = 0.5 * energy[self.design] * interior ** (self.EXPONENT - 1.0)
+        return self.weights.dot(signal) / self.weight_sum
+
+    def step(self, count: int = 1) -> None:
+        """Deposit where the tissue works above its set point, resorb below.
+
+        Local, and only local: an element's next density depends on what its
+        own neighbourhood feels and on nothing else. No total is held fixed,
+        so how much bone ends up in the section is an outcome rather than a
+        constraint -- which is the whole difference between this and the
+        engineering procedure that arrives at the same picture.
+        """
+        for _ in range(count):
+            stimulus = self._stimulus(self._measure())
+            change = self.rate * self.scale * (stimulus - self.setpoint)
+            interior = self.physical[self.design] + np.clip(change, -0.12, 0.12)
+            self.physical[self.design] = np.clip(interior, self.floor_density, 1.0)
+            self.iteration += 1
+
+    # ---- what the renderer sees ------------------------------------------
+
+    def _grid(self, values: np.ndarray) -> np.ndarray:
+        flat = np.zeros(self.nelx * self.nely, dtype=np.float32)
+        flat[self.active] = values
+        return flat.reshape((self.nelx, self.nely)).T
+
+    def field(self) -> tuple[np.ndarray, np.ndarray]:
+        """Material split into what is being pushed and what is being pulled.
+
+        Two channels rather than one palette across a signed scalar, which is
+        the shape the two-species renderer already takes: the two trabecular
+        groups cross each other at right angles, and summing two coloured
+        densities is what lets a crossing read as a crossing.
+
+        Interpolated up to the frame rather than block-repeated. The struts
+        are the picture and their edges are diagonal; repeating cells puts a
+        staircase on every one of them.
+        """
+        from scipy.ndimage import zoom
+
+        density = self.physical.astype(np.float32)
+        return tuple(
+            np.clip(zoom(self._grid(density * share), self.divisor, order=1), 0.0, None)
+            for share in (self.compression, self.tension)
+        )
+
+
+class Phyllotaxis:
+    """A meristem placing organs where the ones already there object least.
+
+    One rule, applied once per plastochrone: look around the rim of the
+    growing tip and start the next primordium at whatever angle is furthest,
+    in the inhibitory sense, from the primordia already placed. Then let the
+    tissue underneath grow, which carries every existing primordium outwards
+    and clears the rim for the next one. Douady and Couder, 1992.
+
+    Nothing in that rule mentions an angle, a spiral or a number. What comes
+    out is the golden angle and two families of counter-rotating spirals whose
+    counts are consecutive Fibonacci numbers -- and, because the rim gets
+    relatively flatter as the head widens, the counts climb the sequence as
+    you read outwards, which is why a real sunflower has few spirals near its
+    centre and many at its edge.
+
+    Growth is r proportional to the square root of age, which is the only
+    choice that keeps the areal density constant: organs are added at a steady
+    rate, so the area they occupy has to grow at a steady rate too. It is also
+    what makes the head fill out rather than thin as it widens.
+
+    The same authors got this pattern out of ferrofluid drops repelling each
+    other in a dish of oil, with no biology in it at all, which is the useful
+    thing to remember about it.
+    """
+
+    def __init__(
+        self,
+        height: int,
+        width: int,
+        radius: float = 500.0,
+        centre: tuple[float, float] | None = None,
+        primordia: int = 1196,
+        apex: float = 0.8,
+        neighbours: int = 60,
+        samples: int = 1440,
+        falloff: float = 2.0,
+        seed: int = 20260829,
+    ) -> None:
+        self.centre = centre if centre is not None else (width * 0.5, height * 0.448)
+        # Area per organ, fixed, so that the oldest organ is at the head's edge
+        # once the run has finished and the density is the same throughout.
+        self.area = math.pi * radius * radius / primordia
+        self.spacing = math.sqrt(self.area)
+        # The apex has a size of its own and keeps it: organs are laid down on
+        # a rim of fixed radius and it is the tissue underneath that expands.
+        #
+        # This is the parameter, and getting it wrong is visible. The rule has
+        # ordered windows separated by disordered ones, and each ordered window
+        # sits on a different angle: at 1.0 the pattern locks near five
+        # thirteenths of a turn and throws the organs into thirteen separate
+        # arms with gaps between them, at 1.2 onto a different fraction again,
+        # and above about 1.4 the placement stops settling at all. At 0.8 the
+        # angle it finds is 137.37 degrees, which is the golden angle to within
+        # a seventh of a degree. **Measured, not assumed** -- nothing in the
+        # rule refers to an angle, so the only way to know which window a
+        # setting is in is to run it and take the median.
+        self.apex = apex * self.spacing
+        self.neighbours = neighbours
+        self.falloff = falloff
+        self.generator = np.random.default_rng(seed)
+        self.grid = np.linspace(0.0, 2.0 * math.pi, samples, endpoint=False)
+        self.angles = np.zeros(0, dtype=np.float64)
+        self.count = 0
+
+    def radii(self) -> np.ndarray:
+        """Oldest first. Age in plastochrones is the only clock here.
+
+        An organ of age a has a - 1 younger organs inside it, each holding the
+        same area, so it has been carried out to wherever the annulus between
+        the apex and itself has exactly that much room. The head therefore
+        widens as the square root of its age -- the only law that adds area at
+        the rate organs are added.
+        """
+        age = np.arange(self.count, 0, -1, dtype=np.float64)
+        return np.sqrt(self.apex * self.apex + (age - 1.0) * self.area / math.pi)
+
+    def step(self, count: int = 1) -> None:
+        for _ in range(count):
+            # The candidate ring is rotated by a fraction of its own spacing
+            # each turn. Without it the answer can only ever be one of a fixed
+            # set of angles, and the pattern locks to the sampling grid rather
+            # than to the rule.
+            offset = self.generator.random() * (self.grid[1] - self.grid[0])
+            candidates = self.grid + offset
+            if self.count == 0:
+                self.angles = np.array([candidates[0]])
+                self.count = 1
+                continue
+
+            # Only the youngest few matter: the inhibition falls off as a
+            # cube, and everything older has been carried out of range by the
+            # growth underneath it.
+            near = min(self.neighbours, self.count)
+            radii = self.radii()[-near:]
+            angles = self.angles[-near:]
+            x, y = radii * np.cos(angles), radii * np.sin(angles)
+            offset_x = self.apex * np.cos(candidates)[:, None] - x[None, :]
+            offset_y = self.apex * np.sin(candidates)[:, None] - y[None, :]
+            square = np.maximum(offset_x * offset_x + offset_y * offset_y, 1e-9)
+            inhibition = (square ** (-0.5 * self.falloff)).sum(axis=1)
+            self.angles = np.append(self.angles, candidates[int(inhibition.argmin())])
+            self.count += 1
+
+    def cells(self) -> tuple[np.ndarray, np.ndarray]:
+        """Positions, and how recently each organ was laid down.
+
+        Same quantity `folding` and `turing` are coloured by -- when it grew --
+        which here runs the other way round: the youngest organ is the one in
+        the middle, and the rim is the oldest thing in the picture.
+        """
+        radii = self.radii()
+        points = np.column_stack((
+            self.centre[0] + radii * np.cos(self.angles),
+            self.centre[1] + radii * np.sin(self.angles),
+        )).astype(np.float32)
+        shade = (np.arange(self.count) / max(self.count - 1, 1)).astype(np.float32)
+        return points, shade
+
+
+class Venation:
+    """A vein network growing towards whatever is not yet drained.
+
+    Auxin is made all over a young leaf and has to leave it. Wherever it
+    flows, the flow makes the cells better at carrying it, so a route that
+    carried a little carries more, and the tissue quietly sorts itself into
+    conduits and lamina. Sachs called it canalisation; the discrete form used
+    here is the space-colonisation rule of Runions and Prusinkiewicz.
+
+    One step: every source of auxin still waiting looks for the nearest vein
+    tip within reach and pulls on it, each tip advances along the sum of the
+    pulls it received, and any source a vein has now arrived at stops
+    existing. Nothing in that says branch, and every branch in the picture is
+    a tip that was pulled two ways at once and had to choose both.
+
+    Where a vein *goes* is therefore not a route between two places. It is
+    wherever the tissue still had something to drain -- which is why a leaf's
+    venation fills the blade rather than taking the short way across it.
+    """
+
+    def __init__(
+        self,
+        height: int,
+        width: int,
+        root: tuple[float, float] | None = None,
+        spacing: float = 15.2,
+        stride: float = 4.0,
+        kill: float = 13.0,
+        influence: float = 130.0,
+        margin: float = 40.0,
+        span: int = 500,
+        blade: float = 0.34,
+        eagerness: float = 0.55,
+        seed: int = 20260829,
+    ) -> None:
+        generator = np.random.default_rng(seed)
+        self.height, self.width = height, width
+        self.stride = stride
+        self.kill = kill
+        self.influence = influence
+
+        # Auxin is made everywhere in the blade, so the sources are scattered
+        # over the whole frame rather than seeded in a shape. A jittered grid
+        # rather than uniform noise: uniform noise clumps, and a clump is
+        # drained by one vein in one step, which puts holes in the network the
+        # rule never made.
+        columns = np.arange(-margin, width + margin, spacing)
+        rows = np.arange(-margin, height + margin, spacing)
+        grid_x, grid_y = np.meshgrid(columns, rows)
+        offsets = generator.uniform(-0.42, 0.42, (2,) + grid_x.shape) * spacing
+        self.sources = np.column_stack((
+            (grid_x + offsets[0]).ravel(), (grid_y + offsets[1]).ravel()
+        )).astype(np.float32)
+
+        # The blade is not a fixed field of auxin waiting to be drained -- it
+        # is a young leaf that widens, and the veins chase its margin. This is
+        # the whole difference between a leaf and a brush: hold the lamina
+        # still and every tip races the same direction at the same speed, and
+        # what comes out is a fan of near-parallel filaments with no midrib,
+        # no secondaries and nothing to branch around. Let it grow and the
+        # veins have to keep reaching sideways into tissue that was not there
+        # a moment ago, which is what puts an order into the network.
+        self.span = span
+        self.blade = blade
+        self.eagerness = eagerness
+        self.length = height * 1.30
+        self.breadth = width * 0.75
+
+        # One vein, entering the blade at the base of the midrib.
+        start = root if root is not None else (width * 0.5, height * 0.995)
+        self.root = start
+        self.points = np.array([start], dtype=np.float32)
+        self.parent = np.array([0], dtype=np.int64)
+        self.age = np.zeros(1, dtype=np.float32)
+        self.step_index = 0
+        self.generator = generator
+
+    # Ovate: widest a little below halfway, tapering to a tip. Normalised so
+    # the widest point of the outline is exactly one breadth across.
+    PEAK = 0.4834
+
+    def _lamina(self) -> np.ndarray:
+        """Which sources are inside the blade at its current size."""
+        # Front-loaded, because a blade expands fast and then slows, and
+        # because a clip that spends its first quarter nearly empty has spent
+        # the part of it anyone actually watches.
+        progress = min(1.0, self.step_index / self.span) ** self.eagerness
+        scale = self.blade + (1.0 - self.blade) * progress
+        along = (self.root[1] - self.sources[:, 1]) / (scale * self.length)
+        inside = (along >= 0.0) & (along <= 1.0)
+        half = np.zeros(len(self.sources), dtype=np.float32)
+        good = np.nonzero(inside)[0]
+        u = along[good]
+        half[good] = np.sqrt(u) * (1.0 - u) ** 0.55 / self.PEAK
+        return inside & (np.abs(self.sources[:, 0] - self.root[0]) <= scale * self.breadth * half)
+
+    def step(self, count: int = 1) -> None:
+        for _ in range(count):
+            self.step_index += 1
+            if not len(self.sources):
+                # Drained. The clock still runs, so a caller stepping towards a
+                # target step does not spin here forever.
+                continue
+            # Only tissue the blade has actually reached is making auxin.
+            live = np.nonzero(self._lamina())[0]
+            if not len(live):
+                continue
+            tree = cKDTree(self.points)
+            distance, nearest = tree.query(self.sources[live])
+
+            reachable = distance < self.influence
+            if not reachable.any():
+                continue
+            pull = self.sources[live][reachable] - self.points[nearest[reachable]]
+            pull /= np.maximum(np.linalg.norm(pull, axis=1, keepdims=True), 1e-6)
+            votes = np.zeros_like(self.points)
+            np.add.at(votes, nearest[reachable], pull)
+
+            length = np.linalg.norm(votes, axis=1)
+            growing = np.nonzero(length > 1e-6)[0]
+            if not len(growing):
+                continue
+            heading = votes[growing] / length[growing][:, None]
+            # A tip pulled equally from two sides gets a null sum and would
+            # stall forever; the nudge is small enough to be invisible and is
+            # the only thing that lets it commit to one side and then branch.
+            heading += 0.06 * self.generator.standard_normal(heading.shape)
+            heading /= np.maximum(np.linalg.norm(heading, axis=1, keepdims=True), 1e-6)
+
+            fresh = (self.points[growing] + self.stride * heading).astype(np.float32)
+            self.points = np.concatenate((self.points, fresh))
+            self.parent = np.concatenate((self.parent, growing))
+            self.age = np.concatenate((
+                self.age, np.full(len(fresh), float(self.step_index), dtype=np.float32)
+            ))
+
+            # A source the veins have reached has been drained and stops
+            # pulling. This is what stops the network doubling back over
+            # tissue it has already served.
+            arrived = cKDTree(fresh).query(self.sources)[0] < self.kill
+            if arrived.any():
+                self.sources = self.sources[~arrived]
+
+    @property
+    def drained(self) -> bool:
+        return not len(self.sources)
+
+    @property
+    def count(self) -> int:
+        return len(self.points)
+
+    def segments(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Every vein as a parent-to-child pair, with the age of the child.
+
+        Ranked rather than scaled: the tip count grows roughly with the front's
+        length, so raw age piles most of the network into the top of the ramp
+        and the whole thing comes out one colour.
+        """
+        rank = (np.argsort(np.argsort(self.age)) / max(len(self.age) - 1, 1)).astype(np.float32)
+        return self.points[self.parent[1:]], self.points[1:], rank[1:]
+
+
+class Sorting:
+    """Two kinds of cell that differ only in how strongly they stick.
+
+    Take an amphibian embryo, dissociate two germ layers into single cells,
+    shake them together and let them settle. They sort themselves back out --
+    and the layer that ends up inside is always the one whose cells stick to
+    each other most strongly. Steinberg's point, in 1963, was that no cell in
+    that dish is following an instruction. The tissue is behaving like two
+    immiscible liquids, and the arrangement it reaches is the one with the
+    least interface, for exactly the reason oil and water reach theirs.
+
+    The rule per cell is only about its own neighbours: hold your distance
+    from everyone, pull a little harder on your own kind, push a little on
+    the other. Nothing is global, nothing counts how well the sorting is
+    going, and no cell can tell where the middle of the dish is.
+
+    What gets drawn is the interface itself -- the wall between two cells,
+    lit where the cells on either side are of different kinds. So the frame
+    opens as a bright mesh of noise, because in a mixed tissue almost every
+    wall is a boundary, and resolves into a few clean curves around dark
+    territories. The picture is the quantity the rule is minimising.
+    """
+
+    def __init__(
+        self,
+        height: int,
+        width: int,
+        cells: int = 2600,
+        spacing_force: float = 0.34,
+        like: float = 0.10,
+        unlike: float = 0.30,
+        motility: float = 0.55,
+        damping: float = 0.72,
+        margin: float = 90.0,
+        seed: int = 20260830,
+    ) -> None:
+        from scipy.spatial import Delaunay, Voronoi
+
+        self._delaunay = Delaunay
+        self._voronoi = Voronoi
+        generator = np.random.default_rng(seed)
+        self.height, self.width = height, width
+        self.margin = margin
+        self.spacing_force = spacing_force
+        self.like = like
+        self.unlike = unlike
+        self.motility = motility
+        self.damping = damping
+        self.generator = generator
+
+        # Seeded past the frame edge on every side. The outermost cells have
+        # no wall on their far side, and a tissue that stops at the frame
+        # would show that as a ragged rim the rule never made.
+        low_x, high_x = -margin, width + margin
+        low_y, high_y = -margin, height + margin
+        area = (high_x - low_x) * (high_y - low_y)
+        total = int(cells * area / (width * height))
+        self.points = np.column_stack((
+            generator.uniform(low_x, high_x, total),
+            generator.uniform(low_y, high_y, total),
+        )).astype(np.float64)
+        self.velocity = np.zeros_like(self.points)
+        # The two layers, in equal number and mixed completely.
+        self.kind = (generator.random(total) < 0.5).astype(np.int8)
+        # Resting separation, from the density they were sown at.
+        self.rest = math.sqrt(area / total) * 1.03
+        self.step_index = 0
+
+    def _pairs(self) -> np.ndarray:
+        """Who is touching whom, as the tessellation sees it."""
+        mesh = self._delaunay(self.points)
+        edges = np.vstack((
+            mesh.simplices[:, [0, 1]], mesh.simplices[:, [1, 2]], mesh.simplices[:, [2, 0]]
+        ))
+        edges.sort(axis=1)
+        return np.unique(edges, axis=0)
+
+    def step(self, count: int = 1) -> None:
+        for _ in range(count):
+            self.step_index += 1
+            pairs = self._pairs()
+            offset = self.points[pairs[:, 1]] - self.points[pairs[:, 0]]
+            distance = np.maximum(np.linalg.norm(offset, axis=1), 1e-9)
+            unit = offset / distance[:, None]
+
+            # Hold the packing: every neighbour pair wants the same gap. This
+            # is the term that keeps cells cells rather than letting the two
+            # kinds collapse into two lumps with nothing between them.
+            strength = self.spacing_force * (distance - self.rest)
+            # Then the only thing that distinguishes the two kinds at all.
+            same = self.kind[pairs[:, 0]] == self.kind[pairs[:, 1]]
+            strength += np.where(same, self.like, -self.unlike) * self.rest
+
+            force = np.zeros_like(self.points)
+            np.add.at(force, pairs[:, 0], strength[:, None] * unit)
+            np.add.at(force, pairs[:, 1], -strength[:, None] * unit)
+
+            # Cells crawl. Without the jostle the tissue freezes into whatever
+            # arrangement it fell into and the sorting stops half done -- the
+            # same reason a real sorting assay needs the cells to be alive.
+            force += self.motility * self.generator.standard_normal(self.points.shape)
+            self.velocity = self.damping * (self.velocity + force)
+            self.points += self.velocity
+
+            low_x, high_x = -self.margin, self.width + self.margin
+            low_y, high_y = -self.margin, self.height + self.margin
+            np.clip(self.points[:, 0], low_x, high_x, out=self.points[:, 0])
+            np.clip(self.points[:, 1], low_y, high_y, out=self.points[:, 1])
+
+    @property
+    def count(self) -> int:
+        return len(self.points)
+
+    def mixing(self) -> float:
+        """Fraction of walls that separate unlike cells. The thing being minimised."""
+        pairs = self._pairs()
+        return float((self.kind[pairs[:, 0]] != self.kind[pairs[:, 1]]).mean())
+
+    def walls(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Every cell wall as a segment, and whether it is an interface.
+
+        The wall between two cells is the Voronoi ridge they share, so the
+        drawing is the tessellation's own edges rather than lines between
+        centres -- which is what makes it read as tissue instead of a graph.
+        """
+        diagram = self._voronoi(self.points)
+        ridges = np.asarray(diagram.ridge_vertices)
+        owners = np.asarray(diagram.ridge_points)
+        finite = (ridges[:, 0] >= 0) & (ridges[:, 1] >= 0)
+        ridges, owners = ridges[finite], owners[finite]
+        start = diagram.vertices[ridges[:, 0]]
+        end = diagram.vertices[ridges[:, 1]]
+
+        # Drop walls that lie wholly outside the frame; they cost samples and
+        # bleed bloom in from the seeded margin.
+        inside = (
+            (np.maximum(start[:, 0], end[:, 0]) > -20) & (np.minimum(start[:, 0], end[:, 0]) < self.width + 20)
+            & (np.maximum(start[:, 1], end[:, 1]) > -20) & (np.minimum(start[:, 1], end[:, 1]) < self.height + 20)
+        )
+        start, end, owners = start[inside], end[inside], owners[inside]
+        interface = (self.kind[owners[:, 0]] != self.kind[owners[:, 1]]).astype(np.float32)
+        return start.astype(np.float32), end.astype(np.float32), interface
+
+
+class Aggregation:
+    """A hundred thousand separate animals deciding to become one.
+
+    A starving Dictyostelium amoeba is a whole organism on its own. Starve a
+    lawn of them and a few begin to pulse cAMP; every cell that smells a pulse
+    relays it and crawls a step towards where it came from. The pulses become
+    waves that sweep the plate, the cells step inwards once per wave, and
+    because a cell is both a receiver and a transmitter, a line of cells
+    carries the signal better than bare agar does -- so the lines recruit more
+    cells and thicken into rivers. The rivers run into a few mounds, and the
+    mounds crawl away as one animal with a front and a back.
+
+    **The cell has to ignore half of every wave.** A pulse arrives, passes and
+    leaves, and its gradient points towards the source on the way in and away
+    from it on the way out; a cell that simply climbed the gradient would be
+    carried back exactly as far as it came. So it responds only while the
+    signal is rising and goes deaf on the falling edge. That adaptation is not
+    a detail -- without it there is no net movement at all, and this is the
+    piece.
+
+    The medium is Barkley's, the same two lines as `reentry`, with one
+    addition: the threshold is lowered where cells are dense. That is the only
+    coupling from the population back to the signal, and it is what makes the
+    streams reinforce themselves rather than dissolving.
+    """
+
+    def __init__(
+        self,
+        height: int,
+        width: int,
+        cells: int = 150_000,
+        divisor: int = 3,
+        a: float = 0.75,
+        b: float = 0.055,
+        epsilon: float = 0.05,
+        diffusion: float = 1.0,
+        dt: float = 0.10,
+        relay: float = 0.035,
+        crowd: float = 3.4,
+        sensitivity: float = 14.0,
+        rising: float = 0.004,
+        wander: float = 0.10,
+        speed_limit: float = 1.2,
+        afterglow: float = 26.0,
+        pacemakers: int = 7,
+        period: int = 86,
+        seed: int = 20260830,
+    ) -> None:
+        from scipy.ndimage import gaussian_filter
+
+        self._gaussian = gaussian_filter
+        generator = np.random.default_rng(seed)
+        self.height, self.width = height, width
+        self.divisor = divisor
+        self.rows, self.columns = height // divisor, width // divisor
+        self.a, self.epsilon, self.diffusion, self.dt = a, epsilon, diffusion, dt
+        self.base = b
+        self.relay, self.crowd = relay, crowd
+        self.sensitivity, self.rising = sensitivity, rising
+        self.wander, self.speed_limit = wander, speed_limit
+        self.decay = float(0.5 ** (1.0 / max(afterglow, 1.0)))
+        self.period = period
+        self.generator = generator
+
+        # A lawn of separate cells over the whole plate. This is not a colony
+        # spreading from a point; every one of them was already an animal.
+        self.x = generator.uniform(0.0, width, cells).astype(np.float32)
+        self.y = generator.uniform(0.0, height, cells).astype(np.float32)
+        # How recently this cell last took a step, as a decaying memory. The
+        # excited state passes in a moment, and without a phosphor the wave is
+        # a two-pixel thread with no record of where it has been.
+        self.lit = np.zeros(cells, dtype=np.float32)
+
+        self.u = np.zeros((self.rows, self.columns), dtype=np.float32)
+        self.v = np.zeros((self.rows, self.columns), dtype=np.float32)
+        # A handful of cells start pulsing on their own. Real plates have
+        # pacemakers too, and an excitable medium left alone does nothing.
+        self.pacemakers = np.column_stack((
+            generator.integers(self.rows // 8, self.rows - self.rows // 8, pacemakers),
+            generator.integers(self.columns // 8, self.columns - self.columns // 8, pacemakers),
+        ))
+        self.offsets = generator.integers(0, period, pacemakers)
+        self.step_index = 0
+
+    @staticmethod
+    def _laplacian(field: np.ndarray) -> np.ndarray:
+        return (
+            np.roll(field, 1, 0) + np.roll(field, -1, 0)
+            + np.roll(field, 1, 1) + np.roll(field, -1, 1) - 4.0 * field
+        )
+
+    def _bins(self) -> tuple[np.ndarray, np.ndarray]:
+        row = np.clip((self.y / self.divisor).astype(np.int32), 0, self.rows - 1)
+        column = np.clip((self.x / self.divisor).astype(np.int32), 0, self.columns - 1)
+        return row, column
+
+    def density(self) -> np.ndarray:
+        row, column = self._bins()
+        grid = np.zeros((self.rows, self.columns), dtype=np.float32)
+        np.add.at(grid, (row, column), 1.0)
+        return self._gaussian(grid, 1.6, mode="nearest")
+
+    def step(self, count: int = 1) -> None:
+        for _ in range(count):
+            self.step_index += 1
+            row, column = self._bins()
+
+            # Dense ground relays better, so it is easier to excite. The only
+            # way the population talks back to the signal it is following.
+            crowding = self.density()
+            crowding /= max(float(crowding.mean()), 1e-6)
+            threshold = np.maximum(self.base - self.relay * np.minimum(crowding, self.crowd), 0.004)
+
+            for site, offset in zip(self.pacemakers, self.offsets):
+                if (self.step_index + int(offset)) % self.period == 0:
+                    self.u[site[0] - 2 : site[0] + 3, site[1] - 2 : site[1] + 3] = 1.0
+
+            previous = self.u.copy()
+            self.u += self.dt * (
+                self.diffusion * self._laplacian(self.u)
+                + self.u * (1.0 - self.u) * (self.u - (self.v + threshold) / self.a) / self.epsilon
+            )
+            self.v += self.dt * (self.u - self.v)
+            np.clip(self.u, 0.0, 1.0, out=self.u)
+            np.clip(self.v, 0.0, 1.0, out=self.v)
+
+            # Smoothed before differencing. A five-point laplacian on a square
+            # grid has the grid's own symmetry, and cells reading its raw
+            # gradient walk along the axes and the diagonals: the aggregates
+            # come out as four-pointed stars, which is the mesh showing
+            # through and not anything the biology does.
+            smooth = self._gaussian(self.u, 1.2, mode="nearest")
+            gradient_x = 0.5 * (np.roll(smooth, -1, 1) - np.roll(smooth, 1, 1))
+            gradient_y = 0.5 * (np.roll(smooth, -1, 0) - np.roll(smooth, 1, 0))
+            change = self.u - previous
+
+            # Only while the signal is rising. On the falling edge the cell is
+            # deaf, which is the entire reason the population goes anywhere.
+            moving = change[row, column] > self.rising
+            step_x = np.where(moving, self.sensitivity * gradient_x[row, column], 0.0)
+            step_y = np.where(moving, self.sensitivity * gradient_y[row, column], 0.0)
+            speed = np.sqrt(step_x * step_x + step_y * step_y)
+            fast = speed > self.speed_limit
+            if fast.any():
+                scale = self.speed_limit / np.maximum(speed[fast], 1e-9)
+                step_x[fast] *= scale
+                step_y[fast] *= scale
+
+            self.lit *= self.decay
+            np.maximum(self.lit, np.minimum(speed / self.speed_limit, 1.0), out=self.lit)
+
+            jitter = self.wander * self.generator.standard_normal((2, len(self.x))).astype(np.float32)
+            self.x = np.clip(self.x + step_x + jitter[0], 0.0, self.width - 1e-3).astype(np.float32)
+            self.y = np.clip(self.y + step_y + jitter[1], 0.0, self.height - 1e-3).astype(np.float32)
+
+    @property
+    def count(self) -> int:
+        return len(self.x)
+
+    def cells(self) -> tuple[np.ndarray, np.ndarray]:
+        """Positions, and how recently each cell last stepped."""
+        points = np.column_stack((self.x, self.y)).astype(np.float32)
+        return points, np.clip(self.lit, 0.0, 1.0).astype(np.float32)
+
+
+class Comet:
+    """A bacterium that does not swim. It builds ground and falls off it.
+
+    Listeria escapes into a host cell's cytoplasm and hijacks the machinery
+    that cell uses to build its own skeleton. On one face of the bacterium it
+    nucleates a branched actin network; the network grows against that face,
+    and growing is all it does. There is no motor, no flagellum, nothing that
+    pulls. The bacterium is pushed away from the thing it is making, and what
+    it leaves behind -- the comet tail -- is the network it has already
+    outrun, depolymerising from the far end at the same rate the near end is
+    built.
+
+    So the tail is not an exhaust and not a wake. It is the ground the
+    bacterium is standing on, and the reason it moves is that the ground keeps
+    being built underneath it in one direction only.
+
+    Each cell divides on its own clock, and both daughters keep pushing, so a
+    single bacterium becomes a cytoplasm full of them. That is also how the
+    infection spreads: at the far wall a comet drives the bacterium into a
+    finger of membrane that the neighbouring cell then swallows, and it never
+    once touches the outside of a cell.
+    """
+
+    def __init__(
+        self,
+        height: int,
+        width: int,
+        founders: int = 10,
+        capacity: int = 320,
+        speed: float = 6.4,
+        trail: int = 52,
+        doubling: int = 170,
+        curvature: float = 0.013,
+        wobble: float = 0.010,
+        spread: float = 0.42,
+        seed: int = 20260830,
+    ) -> None:
+        generator = np.random.default_rng(seed)
+        self.height, self.width = height, width
+        self.speed = speed
+        self.length = trail
+        self.doubling = doubling
+        self.wobble = wobble
+        self.spread = spread
+        self.generator = generator
+
+        self.x = np.zeros(capacity, dtype=np.float32)
+        self.y = np.zeros(capacity, dtype=np.float32)
+        self.heading = np.zeros(capacity, dtype=np.float32)
+        # Every comet has a persistent turn of its own. A real one travels in
+        # an arc or a helix rather than a straight line, because the network
+        # is never quite symmetrical about the face it is built on -- and a
+        # frame of straight lines reads as a screensaver.
+        self.turn = np.zeros(capacity, dtype=np.float32)
+        self.age = np.zeros(capacity, dtype=np.int32)
+        self.count = founders
+
+        self.x[:founders] = generator.uniform(0.0, width, founders)
+        self.y[:founders] = generator.uniform(0.0, height, founders)
+        self.heading[:founders] = generator.uniform(0.0, 2.0 * math.pi, founders)
+        self.turn[:founders] = curvature * generator.standard_normal(founders)
+
+        # The tail, newest first. Held as positions rather than splatted into
+        # a field so it can be drawn as the curve it is, and so the far end can
+        # simply stop existing -- which is what depolymerisation does.
+        self.trail = np.zeros((capacity, trail, 2), dtype=np.float32)
+        self.trail[:founders, :, 0] = self.x[:founders, None]
+        self.trail[:founders, :, 1] = self.y[:founders, None]
+        self.step_index = 0
+
+    def _divide(self) -> None:
+        """Both daughters keep pushing, and each takes its own line."""
+        room = len(self.x) - self.count
+        if room <= 0:
+            return
+        parents = np.arange(min(self.count, room))
+        daughters = self.count + np.arange(len(parents))
+        self.x[daughters] = self.x[parents]
+        self.y[daughters] = self.y[parents]
+        self.heading[daughters] = self.heading[parents] + self.spread * self.generator.standard_normal(len(parents))
+        self.heading[parents] -= self.spread * self.generator.standard_normal(len(parents))
+        self.turn[daughters] = -self.turn[parents] + 0.004 * self.generator.standard_normal(len(parents))
+        self.age[daughters] = 0
+        # A daughter has no tail yet. Starting it stacked on its own position
+        # means its first frames draw nothing, which is right: it has not
+        # built any ground.
+        self.trail[daughters] = np.stack((self.x[daughters], self.y[daughters]), axis=1)[:, None, :]
+        self.count += len(parents)
+
+    def step(self, count: int = 1) -> None:
+        for _ in range(count):
+            self.step_index += 1
+            if self.step_index % self.doubling == 0:
+                self._divide()
+
+            live = slice(0, self.count)
+            self.heading[live] += self.turn[live] + self.wobble * self.generator.standard_normal(self.count)
+            self.x[live] = np.mod(self.x[live] + self.speed * np.cos(self.heading[live]), self.width)
+            self.y[live] = np.mod(self.y[live] + self.speed * np.sin(self.heading[live]), self.height)
+            self.age[live] += 1
+
+            self.trail[live] = np.roll(self.trail[live], 1, axis=1)
+            self.trail[live, 0, 0] = self.x[live]
+            self.trail[live, 0, 1] = self.y[live]
+
+    def heads(self) -> np.ndarray:
+        """The bacteria themselves.
+
+        Drawn separately and brighter than any tail. Without them the frame is
+        a tangle of arcs and reads as light-painting; with them every arc has
+        an object at one end and the picture is a hundred things travelling.
+        """
+        return np.column_stack((self.x[:self.count], self.y[:self.count])).astype(np.float32)
+
+    def segments(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Every stretch of tail as a pair, with how new the actin in it is.
+
+        Segments older than the cell are dropped rather than drawn, and so are
+        the ones that straddle the wrap: a comet leaving the right edge and
+        arriving at the left is one bacterium, but the line between those two
+        positions is a stripe across the frame that nothing ever travelled.
+        """
+        live = self.count
+        head = self.trail[:live, :-1]
+        tail = self.trail[:live, 1:]
+        rung = np.arange(self.length - 1, dtype=np.float32)
+        real = rung[None, :] < (self.age[:live, None] - 1)
+        jump = np.abs(head - tail).max(axis=2) < 3.0 * self.speed
+        keep = real & jump
+        shade = np.repeat(1.0 - rung / max(self.length - 2, 1), live).reshape(self.length - 1, live).T
+        return head[keep], tail[keep], shade[keep].astype(np.float32)
