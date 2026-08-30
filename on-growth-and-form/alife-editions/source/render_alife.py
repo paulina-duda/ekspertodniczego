@@ -131,6 +131,12 @@ LINEAGE = [
     (214, 240, 255),
 ]
 
+# Fitness, ranked: the score that decided which of these had descendants. It
+# runs violet through magenta to amber and white, and unlike PLASMA it never
+# reaches black -- a genome that scored nothing is not a wake to be swallowed by
+# the background, it is one of the two ways of failing and has to be visible.
+LADDER = [(96, 44, 208), (176, 40, 200), (255, 62, 138), (255, 150, 62), (255, 242, 214)]
+
 EDITIONS: dict[str, dict] = {
     "affinity": {
         "title": "Affinity",
@@ -159,6 +165,40 @@ EDITIONS: dict[str, dict] = {
             "twelve creatures, found by search",
         ),
         "hook": ("Every one of these was stable on its own.",),
+    },
+    "cohort": {
+        "title": "Cohort",
+        "slug": "cohort_genetic-algorithm_alife",
+        "palette": LADDER,
+        "exposure": 0.98,
+        "boost": 1.10,
+        "caption": (
+            "genetic algorithm · 64 genomes, 40 generations",
+            "copy with mistakes · compare · keep the winner",
+            "a row is one generation · its four fittest",
+            "colour is the fitness that decided them",
+        ),
+        "hook": (
+            "Not one of the first sixty-four was alive.",
+            "Everything alive here is a copy of one.",
+        ),
+    },
+    "shoal": {
+        "title": "Shoal",
+        "slug": "shoal_genetic-algorithm_alife",
+        "palette": LADDER,
+        "exposure": 0.98,
+        "boost": 1.10,
+        "caption": (
+            "genetic algorithm · 64 genomes, 40 generations",
+            "a lane is one generation's best, five copies of it",
+            "fitness rewarded travel · so the lanes are a race",
+            "colour is the fitness that decided them",
+        ),
+        "hook": (
+            "Generation zero could only fill its world.",
+            "Forty generations later it crosses it.",
+        ),
     },
     "descent": {
         "title": "Descent",
@@ -490,6 +530,515 @@ def soliton_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], n
     return draw, draw(1.0)
 
 
+def cohort_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], np.ndarray]:
+    """The same run `descent` draws as a pedigree, filmed as the animals it made.
+
+    A row is a generation and a panel is one individual of it, run alone in its
+    own world -- which is how it was scored, and the only way it can be run,
+    because every genome carries its own kernel and its own growth curve and two
+    of them in one field would have no rule for the overlap.
+
+    What separates the rows is not decoration: generation 0 is sixty-four
+    independent random draws and not one of them scored, so its row is the two
+    ways a Lenia genome fails -- the field collapses, or it never stops growing.
+    Every row below it is descended from that, and the bottom row is four
+    animals.
+    """
+    height, width = args.height, args.width
+    history = evolution.evolve(
+        population=args.population,
+        generations=args.generations,
+        seed=args.ga_seed,
+        report=print,
+    )
+
+    rows = [int(value) for value in args.cohort_rows.split(",")]
+    recipes: list[dict] = []
+    for generation in rows:
+        # The fittest of each generation, which in generation 0 is a tie between
+        # sixty-four scores of zero: nothing is being flattered, there is simply
+        # nothing there to rank.
+        chosen = sorted(history[generation], key=lambda genome: -genome["fitness"])
+        for genome in chosen[: args.cohort_columns]:
+            recipes.append(dict(genome, beta=evolution.RINGS[genome["rings"]]))
+    print(
+        "  cohort: generations " + ", ".join(str(value) for value in rows) + " · "
+        + " ".join(f"{recipe['fitness']:.2f}" for recipe in recipes),
+        flush=True,
+    )
+
+    radius = args.cohort_radius
+    patches = [
+        lenia.crescent(
+            radius,
+            recipe["ring"],
+            recipe["thickness"],
+            recipe["lobe"],
+            recipe["phase"],
+            recipe["amplitude"],
+        )
+        for recipe in recipes
+    ]
+
+    # The run is done twice, and the first time is only a survey.
+    #
+    # Three things have to be true at once and they pull against each other: a
+    # creature has to be large enough on screen to have a shape, its panel has
+    # to be small enough that twenty of them fit, and nothing may be cut in half
+    # by the edge of its own world -- which is the one thing that reads as a
+    # broken render rather than as a small round world. Pinning the camera to
+    # each creature solves the last two and kills the piece: a soliton is a
+    # steady travelling wave, so filmed in its own moving frame it is a
+    # photograph. It has to swim across something.
+    #
+    # So the survey runs every genome in a world far too big to wrap, keeps the
+    # highest value each cell ever held, and reads off the box each creature
+    # actually used. That box is the answer to all three: the world is made just
+    # big enough to hold the largest of them, which is as much magnification as
+    # can be had; and every seed is placed so that its own box is centred, which
+    # is why nothing ever reaches an edge. It also makes the fitness visible --
+    # the box *is* the travel that was selected for, so a poor genome sits in a
+    # corner of its world and a good one crosses it.
+    survey = lenia.Cohort(recipes, size=args.cohort_survey, radius=radius)
+    survey.seed(patches)
+    peak = np.zeros_like(survey.field)
+    for _ in range(args.cohort_total):
+        survey.step(1)
+        np.maximum(peak, survey.field, out=peak)
+
+    origin = args.cohort_survey // 2
+    used = np.zeros((len(recipes), 2), dtype=np.float64)
+    shifts = np.zeros((len(recipes), 2), dtype=int)
+    individual = (survey.mass() > 20.0) & (survey.mass() < 0.12 * args.cohort_survey ** 2)
+    for index in range(len(recipes)):
+        rows_used, columns_used = np.nonzero(peak[index] > 0.06)
+        if not len(rows_used):
+            continue
+        for axis, seen in enumerate((rows_used, columns_used)):
+            used[index, axis] = seen.max() - seen.min() + 1
+            shifts[index, axis] = int(round(origin - (seen.max() + seen.min()) / 2.0))
+
+    domain = args.cohort_domain or int(
+        np.ceil((used[individual].max() + 2 * args.cohort_clearance) / 2.0) * 2
+    )
+    ceiling = 0.12 * domain * domain
+    print(
+        f"  cohort: the widest track an individual left is {used[individual].max():.0f} cells; "
+        f"world set to {domain}",
+        flush=True,
+    )
+    if used[individual].max() + 2 > domain:
+        raise ValueError("a creature would touch the edge of its world; raise --cohort-domain")
+
+    world = lenia.Cohort(recipes, size=domain, radius=radius)
+    world.seed(patches, shifts)
+
+    # Grid geometry. The box is what is left between the title's ink and the
+    # hook's, and the panels are square and as large as fit in it -- the same
+    # magnification everywhere, or a small creature and a large one would look
+    # alike and the picture would be lying about the only thing it compares.
+    top = args.title_top + args.grid_top
+    bottom = height - args.caption_bottom - args.grid_bottom
+    columns = args.cohort_columns
+    tile = min(
+        (width - 2 * args.margin - (columns - 1) * args.gutter) // columns,
+        (bottom - top - (len(rows) - 1) * args.gutter) // len(rows),
+    )
+    grid_width = columns * tile + (columns - 1) * args.gutter
+    grid_height = len(rows) * tile + (len(rows) - 1) * args.gutter
+    left = (width - grid_width) // 2
+    top += (bottom - top - grid_height) // 2
+    print(
+        f"  cohort: {len(recipes)} worlds of {domain}² at radius {radius:g}, "
+        f"{tile} px panels at {tile / domain:.2f}×",
+        flush=True,
+    )
+
+    # Colour is fitness, ranked rather than scaled. The scores in a converged
+    # run are hopelessly bunched -- four zeros at one end and 5.39, 5.39, 5.38,
+    # 5.38 at the other -- so dividing by the best would put three of the five
+    # rows inside a fifth of the ramp and the picture would say the run stopped
+    # improving after generation four. Ranking spends the whole ramp on the
+    # order, which is the only part of a fitness anyone selects on anyway: a
+    # tournament compares, it never asks by how much.
+    scores = np.asarray([recipe["fitness"] for recipe in recipes], dtype=np.float64)
+    order = np.argsort(np.argsort(scores)).astype(np.float64)
+    for value in np.unique(scores):  # ties share a rank, or a row of four equals
+        tied = scores == value       # would be dealt four different colours
+        order[tied] = order[tied].mean()
+    rank = (order / max(len(scores) - 1, 1)).astype(np.float32)
+
+    # At least one step per frame, or the schedule rounds two frames onto the
+    # same state and the clip carries exact repeats -- which is not slow motion,
+    # it is a stutter, and it is visible.
+    states: list[tuple[np.ndarray, np.ndarray]] = []
+    rate = args.cohort_total / args.duration_frames
+    if rate < 1.0:
+        raise ValueError(
+            f"--cohort-total {args.cohort_total} is fewer steps than the "
+            f"{args.duration_frames} frames it has to fill."
+        )
+    advanced = 0
+    for frame in range(args.duration_frames):
+        target = int(round(rate * (frame + 1)))
+        world.step(target - advanced)
+        advanced = target
+        states.append(
+            (
+                (np.clip(world.field, 0.0, 1.0) * 255.0).astype(np.uint8),
+                (np.clip(0.5 + 0.5 * args.growth_gain * world.growth, 0.0, 1.0) * 255.0).astype(
+                    np.uint8
+                ),
+            )
+        )
+    # A runaway is told from an individual by how much of its world it is
+    # holding, not by raw mass: a creature's mass is its own and does not change
+    # with the size of the world, while a flood's is a fixed fraction of it.
+    mass = world.mass()
+    flooded = int((mass > ceiling).sum())
+    alive = int(((mass > 20.0) & (mass <= ceiling)).sum())
+    print(
+        f"  cohort: {advanced:,} steps at {rate:.2f} per frame · "
+        f"{alive} individuals, {flooded} runaway, {len(recipes) - alive - flooded} empty",
+        flush=True,
+    )
+
+    palette = glow.build_palette(spec["palette"])
+    caption = build_overlay(width, height, spec, args)
+    reference = 1.0
+
+    def fields_at(index: int) -> tuple[np.ndarray, np.ndarray]:
+        field, shade = states[index]
+        density_frame = np.zeros((height, width), dtype=np.float32)
+        shade_frame = np.zeros((height, width), dtype=np.float32)
+        for panel in range(len(recipes)):
+            row, column = divmod(panel, columns)
+            y = top + row * (tile + args.gutter)
+            x = left + column * (tile + args.gutter)
+            sources = [(field[panel], density_frame)]
+            if args.cohort_colour == "growth":
+                sources.append((shade[panel], shade_frame))
+            else:
+                shade_frame[y : y + tile, x : x + tile] = rank[panel]
+            for source, target in sources:
+                target[y : y + tile, x : x + tile] = np.asarray(
+                    Image.fromarray(source.astype(np.float32) / 255.0, mode="F").resize(
+                        (tile, tile), Image.BILINEAR
+                    ),
+                    dtype=np.float32,
+                )
+        return density_frame, shade_frame
+
+    def draw(u: float) -> np.ndarray:
+        density, shade = fields_at(min(int(u * (len(states) - 1)), len(states) - 1))
+        colour_sum = glow.sample_palette(palette, shade) * density[:, :, None]
+        return glow.compose(tone(colour_sum, density, reference, spec, args), caption)
+
+    final_density, _ = fields_at(len(states) - 1)
+    reference = float(np.percentile(final_density[final_density > 0], 92.0))
+    return draw, draw(1.0)
+
+
+def shoal_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], np.ndarray]:
+    """The same run again, as a race: one lane per generation, six copies abreast.
+
+    `cohort` puts every individual in a panel of its own and is the stillest cut
+    in the account, because a panel caps how far anything can travel and these
+    creatures move a fifth of a cell per step. A lane lifts the cap in one
+    direction: it runs the full width of the frame and wraps there, the way
+    `soliton` wraps, so a creature can swim as far as the clip is long.
+
+    Copies of one genome can share a field -- they are the same rule, so there is
+    no question about what an overlap obeys, which is the question that keeps two
+    *different* genomes apart. They are seeded abreast and, being identical, hold
+    formation: no collisions, and the lane reads as a shoal.
+
+    What the lanes then show is the thing the fitness actually rewarded. Travel
+    is two thirds of the score, and it separates: generation 0's best is a
+    runaway that only fills its world, generation 5's champion crosses at 0.073
+    cells a step, generation 8's at 0.170 and generation 39's at 0.203.
+
+    **The lane follows them across, and never along.** These creatures do not
+    swim along an axis -- every fast one goes off at 27 to 44 degrees, and over a
+    clip that is 130 cells of wander sideways for a body 16 cells across. A lane
+    tall enough to contain that leaves the creature a third the size it could be.
+    So the lane is a window that slides sideways with the shoal, which on a torus
+    is a change of origin and nothing else, and cancels exactly the component of
+    the motion that is not the race. The component along the lane -- the one
+    being compared, the one the fitness paid for -- is untouched.
+    """
+    height, width = args.height, args.width
+    history = evolution.evolve(
+        population=args.population,
+        generations=args.generations,
+        seed=args.ga_seed,
+        report=print,
+    )
+
+    lanes = [int(value) for value in args.shoal_rows.split(",")]
+    recipes = []
+    for generation in lanes:
+        genome = sorted(history[generation], key=lambda entry: -entry["fitness"])[0]
+        recipes.append(dict(genome, beta=evolution.RINGS[genome["rings"]]))
+    print(
+        "  shoal: generations " + ", ".join(str(value) for value in lanes) + " · fitness "
+        + " ".join(f"{recipe['fitness']:.2f}" for recipe in recipes),
+        flush=True,
+    )
+
+    radius = args.cohort_radius
+    # Every copy keeps its genome's own phase. It is a gene, not a free
+    # parameter: swept through 24 orientations in a world too big to wrap, the
+    # generation 12 champion survives all of them, the generation 1 champion 19,
+    # and the generation 39 champion **none** -- it holds together at the
+    # orientation it was selected at and at no other. So the direction each lane
+    # swims is whatever its genome does, and the lane is built around that rather
+    # than the creature being turned to suit the lane.
+    patches = [
+        lenia.crescent(
+            radius,
+            recipe["ring"],
+            recipe["thickness"],
+            recipe["lobe"],
+            recipe["phase"],
+            recipe["amplitude"],
+        )
+        for recipe in recipes
+    ]
+
+    top = args.title_top + args.shoal_top
+    bottom = height - args.caption_bottom - args.shoal_bottom
+    lane_height = (bottom - top - (len(lanes) - 1) * args.gutter) // len(lanes)
+    top += (bottom - top - (lane_height * len(lanes) + (len(lanes) - 1) * args.gutter)) // 2
+
+    # The lane wraps left to right and must not wrap top to bottom, so the run
+    # is surveyed first and the world is made exactly tall enough for the widest
+    # track across it. These creatures swim diagonally -- 27 to 44 degrees off
+    # the axis, every one of the fast ones -- so this is the measurement the
+    # whole layout hangs on.
+    def band_of(peak: np.ndarray, size: int) -> tuple[float, float]:
+        """The rows a creature used, measured on the torus, and their middle.
+
+        A track long enough to wrap leaves ink near row 0 and near the last row,
+        and a plain max-minus-min then reports the whole world -- which sizes the
+        lane to the survey instead of to the creature. The widest empty gap is
+        the honest complement of the band.
+        """
+        rows_used = np.nonzero(peak.any(axis=1))[0]
+        gaps = np.diff(np.r_[rows_used, rows_used[0] + size])
+        widest = int(np.argmax(gaps))
+        span = size - gaps[widest]
+        return float(span), float((rows_used[(widest + 1) % len(rows_used)] + span / 2.0) % size)
+
+    def survey_at(tall: int, wide: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        probe = lenia.Cohort(recipes, shape=(tall, wide), radius=radius)
+        probe.seed(patches)
+        peak = np.zeros_like(probe.field)
+        for _ in range(args.shoal_total):
+            probe.step(1)
+            np.maximum(peak, probe.field, out=peak)
+        # A runaway fills whatever world it is put in, so its track means
+        # nothing -- and it needs nothing, since it will fill its lane whatever
+        # the lane is. Only the individuals get a say in the scale.
+        keeps = probe.mass() < 0.12 * tall * wide
+        across = np.zeros(len(recipes))
+        centre = np.full(len(recipes), tall / 2.0)
+        for index in range(len(recipes)):
+            if keeps[index]:
+                across[index], centre[index] = band_of(peak[index] > 0.06, tall)
+        return keeps, across, centre, probe.mass()
+
+    # The lane has to be sized in the lane, not in some larger stand-in. These
+    # creatures are chaotic enough that the same genome run in a different world
+    # takes a slightly different path, so a band measured in a square survey
+    # does not transfer -- the first cut of this piece sized the lane from a
+    # 192² probe and the shoal came out straddling the lane's own edge, drawn
+    # twice, once along each margin. So the survey is re-run in the geometry it
+    # is sizing until the answer stops changing.
+    tall = args.cohort_survey
+    for attempt in range(5):
+        wide = int(round(width / (lane_height / args.shoal_window)))
+        individual, across, centre, alone = survey_at(tall, wide)
+        if not individual.any():
+            raise ValueError("every lane ran away; there is nothing to set the scale by")
+        needed = int(np.ceil(across.max()) + 2 * args.shoal_clearance)
+        print(
+            f"  shoal: pass {attempt + 1} · world {tall}×{wide} · "
+            f"widest track {across.max():.0f} cells · wants {needed}",
+            flush=True,
+        )
+        if needed <= tall and tall - needed < 2 * args.shoal_clearance:
+            break
+        tall = needed
+    else:
+        raise ValueError("the lane height would not settle; raise --cohort-clearance")
+
+    # The world holds the whole wander; the lane only shows a window of it, and
+    # the window is what sets the magnification.
+    tall += args.shoal_window
+    scale = lane_height / args.shoal_window
+    wide = int(round(width / scale))
+    print(
+        f"  shoal: worlds {tall}×{wide}, showing {args.shoal_window} cells at "
+        f"{scale:.2f}× · creature ≈ {16 * scale:.0f} px",
+        flush=True,
+    )
+
+    world = lenia.Cohort(recipes, shape=(tall, wide), radius=radius)
+    for index, patch in enumerate(patches):
+        # Abreast, evenly along the lane, and far enough apart that no two are
+        # inside each other's kernel. They are identical and hold formation, so
+        # the gap set here is the gap for the whole clip.
+        gap = wide / args.shoal_copies
+        if gap - patch.shape[1] < radius:
+            raise ValueError(f"--shoal-copies {args.shoal_copies} packs them within a kernel")
+        for copy in range(args.shoal_copies):
+            world.place(
+                index,
+                patch,
+                int(round(tall - centre[index])) - patch.shape[0] // 2,
+                int(round(copy * gap)) - patch.shape[1] // 2,
+            )
+
+    rate = args.shoal_total / args.duration_frames
+    if rate < 1.0:
+        raise ValueError(f"--shoal-total {args.shoal_total} is fewer steps than frames")
+    states: list[tuple[np.ndarray, np.ndarray, np.ndarray]] = []
+    advanced = 0
+    for frame in range(args.duration_frames):
+        target = int(round(rate * (frame + 1)))
+        world.step(target - advanced)
+        advanced = target
+        # Where the shoal is across its lane. They are identical copies in
+        # formation, so one number does for the whole lane; a runaway has no
+        # such number and does not need one, since it fills the lane anyway.
+        tracked = np.full(len(recipes), tall / 2.0, dtype=np.float32)
+        for index in range(len(recipes)):
+            if individual[index] and world.field[index].sum() > 20.0:
+                tracked[index] = _centre_of_mass(world.field[index])[0]
+        states.append(
+            (
+                (np.clip(world.field, 0.0, 1.0) * 255.0).astype(np.uint8),
+                (np.clip(0.5 + 0.5 * args.growth_gain * world.growth, 0.0, 1.0) * 255.0).astype(
+                    np.uint8
+                ),
+                tracked,
+            )
+        )
+    # Every copy has to still be there at the end, and that is not a formality.
+    # The champions of the early generations are *metastable*: generation 1's
+    # best passes the 500-step audition and then, run on, either grows or dies
+    # depending on nothing that can be pointed at -- seeded at seven different
+    # heights in the same lane it ends up with anywhere between 1.1 and 6.3
+    # copies' worth of mass. Generation 5 onwards holds five copies at every one
+    # of those placements. So the lanes are picked from the genomes that are
+    # stably alive, and the count is checked against the survey's single copy.
+    survivors = world.mass() / np.where(individual, alone, np.inf)
+    print(
+        f"  shoal: {advanced:,} steps at {rate:.2f} per frame · "
+        + " · ".join(
+            f"gen {lane}: " + ("runaway" if not keep else f"{count:.1f}/{args.shoal_copies} copies")
+            for lane, keep, count in zip(lanes, individual, survivors)
+        ),
+        flush=True,
+    )
+    lost = individual & (survivors < 0.85 * args.shoal_copies)
+    if lost.any():
+        raise ValueError(
+            f"lanes {[lanes[i] for i in np.nonzero(lost)[0]]} lost copies over the run; "
+            "pick generations whose champion is stably alive"
+        )
+
+    # And nothing may have touched the top or bottom of its lane at any point in
+    # the clip -- a creature drawn half along one margin and half along the other
+    # is the one thing here that reads as a broken render.
+    for index in range(len(recipes)):
+        if not individual[index]:
+            continue
+        for field, _, tracked in states:
+            rows = np.nonzero((field[index] > 15).any(axis=1))[0]
+            if not len(rows):
+                continue
+            offset = rows - tracked[index]
+            offset = np.where(offset > tall / 2, offset - tall, offset)
+            offset = np.where(offset < -tall / 2, offset + tall, offset)
+            if np.abs(offset).max() > args.shoal_window / 2 - 2:
+                raise ValueError(
+                    f"lane {lanes[index]} overflows the window it is shown in; "
+                    "raise --shoal-window"
+                )
+
+    scores = np.asarray([recipe["fitness"] for recipe in recipes], dtype=np.float64)
+    order = np.argsort(np.argsort(scores)).astype(np.float64)
+    for value in np.unique(scores):
+        tied = scores == value
+        order[tied] = order[tied].mean()
+    rank = (order / max(len(scores) - 1, 1)).astype(np.float32)
+
+    palette = glow.build_palette(spec["palette"])
+    caption = build_overlay(width, height, spec, args)
+    reference = 1.0
+
+    def fields_at(index: int) -> tuple[np.ndarray, np.ndarray]:
+        field, shade, tracked = states[index]
+        density_frame = np.zeros((height, width), dtype=np.float32)
+        shade_frame = np.zeros((height, width), dtype=np.float32)
+        for lane in range(len(recipes)):
+            y = top + lane * (lane_height + args.gutter)
+            # Roll the shoal to the middle of its world in whole cells, then take
+            # the remainder out in pixels after the resize: a lane that is only
+            # ever centred to the nearest cell twitches by six pixels every few
+            # frames, on creatures that are otherwise gliding.
+            shift = int(round(tall / 2.0 - tracked[lane]))
+            residual = (tall / 2.0 - tracked[lane]) - shift
+            start = int(round((tall / 2.0 - residual) * scale - lane_height / 2.0))
+            start = int(np.clip(start, 0, int(round(tall * scale)) - lane_height))
+            sources = [(field[lane], density_frame)]
+            if args.cohort_colour == "growth":
+                sources.append((shade[lane], shade_frame))
+            else:
+                shade_frame[y : y + lane_height, :] = rank[lane]
+            for source, target in sources:
+                rolled = np.roll(source.astype(np.float32) / 255.0, shift, axis=0)
+                grown = np.asarray(
+                    Image.fromarray(rolled, mode="F").resize(
+                        (width, int(round(tall * scale))), Image.BILINEAR
+                    ),
+                    dtype=np.float32,
+                )
+                target[y : y + lane_height, :] = grown[start : start + lane_height, :]
+        return density_frame, shade_frame
+
+    def draw(u: float) -> np.ndarray:
+        density, shade = fields_at(min(int(u * (len(states) - 1)), len(states) - 1))
+        colour_sum = glow.sample_palette(palette, shade) * density[:, :, None]
+        return glow.compose(tone(colour_sum, density, reference, spec, args), caption)
+
+    final_density, _ = fields_at(len(states) - 1)
+    reference = float(np.percentile(final_density[final_density > 0], 92.0))
+    return draw, draw(1.0)
+
+
+def _centre_of_mass(field: np.ndarray) -> np.ndarray:
+    """Where the creature is, on a torus, by the circular mean of each axis.
+
+    An animal sitting on the seam has half its mass at row 2 and half at row
+    126, and an arithmetic mean puts its centre in the middle of a world where
+    there is nothing at all.
+    """
+    total = max(float(field.sum()), 1e-9)
+    centres = []
+    for axis, length in ((1, field.shape[0]), (0, field.shape[1])):
+        profile = field.sum(axis=axis)
+        angle = np.arange(length) * (2.0 * np.pi / length)
+        mean = np.arctan2(
+            float((profile * np.sin(angle)).sum() / total),
+            float((profile * np.cos(angle)).sum() / total),
+        )
+        centres.append(float(mean % (2.0 * np.pi)) * length / (2.0 * np.pi))
+    return np.asarray(centres, dtype=np.float32)
+
+
 def descent_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], np.ndarray]:
     height, width = args.height, args.width
     history = evolution.evolve(
@@ -654,6 +1203,8 @@ def descent_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], n
 TIMELINES = {
     "affinity": affinity_timeline,
     "soliton": soliton_timeline,
+    "cohort": cohort_timeline,
+    "shoal": shoal_timeline,
     "descent": descent_timeline,
 }
 
@@ -760,6 +1311,53 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--population", type=int, default=64)
     parser.add_argument("--generations", type=int, default=40)
     parser.add_argument("--ga-seed", type=int, default=11)
+    # The cohort is filmed at the size it was selected at: `evolution.fitness`
+    # scores every genome at radius 13 in a world 128 across, and Lenia is only
+    # approximately scale-invariant, so re-running one of these any larger would
+    # be running a different equation and could quietly lose the creature.
+    parser.add_argument("--cohort-rows", default="0,1,4,12,39", help="which generations, as rows")
+    parser.add_argument("--cohort-columns", type=int, default=4)
+    # Scored at 128, filmed at 64. The domain is not the discretisation -- the
+    # radius is -- so halving it is not the change Lenia is fragile about; it
+    # only brings the far side of the torus nearer, and at 64 the creatures are
+    # still 40 cells clear of their own image. Checked rather than assumed: the
+    # twelve genomes come out with the same fates and the same masses at 128, 96
+    # and 64, and only break at 48. What it buys is magnification -- a creature
+    # is a quarter of its world instead of an eighth.
+    parser.add_argument(
+        "--cohort-domain", type=int, default=0,
+        help="cells per world; 0 measures it from the survey run",
+    )
+    parser.add_argument(
+        "--cohort-survey", type=int, default=192,
+        help="world for the survey run: any size too big for a track to wrap in",
+    )
+    parser.add_argument("--cohort-clearance", type=int, default=4, help="cells of black to keep")
+    parser.add_argument("--cohort-radius", type=float, default=13.0)
+    parser.add_argument(
+        "--cohort-total", type=int, default=240,
+        help="steps in the whole run; at or above the frame count, or frames repeat",
+    )
+    parser.add_argument(
+        "--cohort-colour", choices=("fitness", "growth"), default="fitness",
+        help="the ranked score that decided the run, or the front-and-wake field",
+    )
+    parser.add_argument("--gutter", type=int, default=10, help="black between panels")
+    parser.add_argument("--shoal-rows", default="0,5,8,39", help="which generations, as lanes")
+    parser.add_argument("--shoal-copies", type=int, default=5, help="copies of the genome per lane")
+    parser.add_argument(
+        "--shoal-window", type=int, default=56,
+        help="cells of the lane's world shown; the window slides with the shoal",
+    )
+    parser.add_argument("--shoal-top", type=int, default=150, help="gap under the title")
+    parser.add_argument("--shoal-bottom", type=int, default=350, help="gap over the hook")
+    parser.add_argument("--shoal-clearance", type=int, default=10, help="cells of margin")
+    parser.add_argument(
+        "--shoal-total", type=int, default=720,
+        help="steps in the whole run; more travel, but a taller world to hold the drift",
+    )
+    parser.add_argument("--grid-top", type=int, default=90, help="gap under the title")
+    parser.add_argument("--grid-bottom", type=int, default=320, help="gap over the hook")
     parser.add_argument("--tree-top", type=int, default=90, help="gap under the title")
     parser.add_argument("--tree-bottom", type=int, default=250, help="gap over the data block")
     parser.add_argument("--tree-inset", type=int, default=20)

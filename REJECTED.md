@@ -1,0 +1,67 @@
+# Rejected, and which test it failed
+
+Tests are the four in [`BRIEF.md`](BRIEF.md), applied by `/pitch`: **T1**
+change profile · **T2** something to watch · **T3** density · **T4**
+legibility. `subject` means it failed the account's premise rather than a test.
+
+**This is a record, not a brief.** `/pitch` does not read it up front — the
+failure patterns live in BRIEF's tests and the standing bans in BRIEF's
+editions section, so a growing file is not paid for on every pitch. It is
+grepped when a surviving candidate looks like a relative of something here.
+
+### How it stays small — capped at 80 lines
+
+- **One table row per rejection**, and that row is permanent. It is cheap.
+- **Prose only for a lesson that changed a rule**, and once the rule is written
+  into `BRIEF.md` or a skill, cut the prose here down to a sentence.
+- **Never restate a test.** The tests live in `BRIEF.md`.
+
+| Name | What it was | Failed | Why, in one clause |
+| --- | --- | --- | --- |
+| `regrowth` | neural CA fitted to a planarian, beheaded and rebuilt | **T3, T4** | converges to one clean object; cold viewers see three purple shapes |
+| `trabecula` | bone remodelling under three load cases | **T1, T4** | silhouette fixed from frame one — it refines an interior rather than growing |
+| `somite` | the vertebrate segmentation clock, 16,500 cells | **T4** | the beat is real and the clip still reads as a weak stripe pattern; judged on the cut, not the model |
+| `venation` | space-colonisation leaf veins | **T1** | a reveal: branches uncover and nothing moves — **44.4% still frames**, 29 of the first 30 |
+| `sorting` | differential adhesion, domains coarsening | **T1** | sorted by step 8, then four identical frames |
+| `condensate` | Cahn-Hilliard phase separation, droplets coarsening | **T1, T2** | droplets get fatter and nothing else happens; blobs are off-register for the account's look |
+| `descent` | the pedigree of a 40-generation genetic algorithm | **T2, T4** | a reveal — the tree uncovers and nothing moves; a phylogeny diagram does not sit on Instagram |
+| `cohort` | 20 Lenia genomes, one per panel | **T2, T3** | a panel caps travel — 78% still frames against a house norm of 4% |
+| `shoal` | the same Lenia run as four lanes racing | **T1, T2** | flat profile 683 / 683 / 678 / 682 / 683 — the creatures swim and the piece has no arc |
+| `liesegang` | periodic precipitation rings | **build** | eight parameter sweeps never separated into bands; first precipitate drains the dish |
+| Spirographs / harmonic roulettes | parametric curves, incl. a Venus-resonance and phyllotaxis draft | **subject** | nothing emerges — the only edition with no surprise about the world in it |
+| Conway's Life | the classic binary automaton | **T3** | sparse binary cells have no mass and no density gradient; Lenia does the job |
+| Segment edition | `segment-editions/` | **subject** | ugly; dropped entirely |
+| Attractors, proteins | posted early, since taken down | **subject** | mathematics and structural biology, not biology-as-algorithm |
+
+A dozen further candidates were dropped on **T1** alone in the 2026-08
+shortlist and are not listed: the pattern is always coarsening, filling,
+settling or remodelling.
+
+**`condensate` is the one worth remembering.** It was pushed from 146k steps to
+1.2M and given three pacing schemes; the stutter went 29% → 5% and the droplets
+really do end up fat. All of that engineering was correct and none of it changed
+what the clip is. **A T1 failure is not a bug to be fixed by working harder on
+the render** — the process is the problem.
+
+---
+
+## Kept as groundwork rather than deleted
+
+A rejection is about the grid, not the code. What survived, and why:
+
+| From | What is reusable |
+| --- | --- |
+| `regrowth` | trainer, renderer, and both weight files (64 KB). The grow-only vs damage-in-the-loop comparison is the parked edition's one real finding and stays reproducible |
+| `venation` | the space-colonisation model and `tree_samples` — `comet` reuses the segment splat wholesale, which is most of what the piece was worth |
+| `trabecula` | the FE solve and the two-channel warm/cool render path |
+| `somite` | the oscillator and determination-front model, the cyclic `PULSE` palette, and the per-edition `scrim` override it forced. **The beat is the axis worth reusing** |
+| `condensate` | `growths.Condensate`, the cube-root state banking that is now the house answer to scheduler stutter, and the timestep bound `dt < 2/(8·(8ε²−1))` |
+| `shoal` | the sliding-lane camera and the trajectory survey. The **lane** shape stays in the `reel` skill and may yet carry a different subject |
+| `cohort` | the arithmetic: moving pixels are *creatures × body area × body-lengths travelled*, and isolated panels make that product flat |
+| `descent` | the genetic algorithm itself. The search was worth running; none of its three tellings became a reel |
+
+## Delete the render, keep the code
+
+A rejected cut does not stay on disk. The mp4 and its cover come off; the
+model, the renderer and any weights stay, and the row above is the record. Disk
+is not an archive — `REJECTED.md` is.

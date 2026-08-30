@@ -9,7 +9,8 @@ Profile bio, as it reads on the account:
 > wetware in motion · artificial life
 
 What has gone out, in order, and in which format. Nothing else lives here —
-the rules, the formats and the work still queued are in [`PLAN.md`](PLAN.md).
+the rules and the acceptance tests are in [`BRIEF.md`](BRIEF.md), the queue and
+what is built in [`PLAN.md`](PLAN.md).
 
 The profile begins with `folding`. Earlier attractor and protein pieces were
 posted and have since been taken down, so they are deliberately not logged: the
@@ -27,34 +28,46 @@ account starts where the biology starts.
 | 4 | `hyphae_mycelial-network_substrate` | Substrate | dish | *A tree branches. A fungus branches back.* | — |
 | 5 | `soliton_lenia_alife` **10 s cut** | Artificial Life | field | *Every one of these was stable on its own.* | Lenia — Chan 2019, cited in-frame |
 | 6 | `affinity_particle-life_alife` **`_neon` cut** | Artificial Life | slide | *Being alive is a matter of organization, so it can be built from numbers* | — |
+| 7 | `turing_gray-scott_synapse` | Wetware | field | — | — |
+| 8 | `growth-form_medusa-metachronal` **12 s cut** | Biomorph | field | *Nothing here swims. / One sine wave, fourteen phase delays.* | — |
+| 9 | `reentry_excitable-medium_substrate` | Substrate | dish | *Nothing in the rule says spiral.* | Barkley's model, cited in-frame |
 
-All 1080 × 1920, 30 fps, H.264, no audio. 8 s except `soliton` at 10 s.
+All 1080 × 1920, 30 fps, H.264, no audio. 8 s except `soliton` at 10 s and
+`medusa` at 12 s — the two pieces that needed the extra time, and the reason
+length is a per-reel decision rather than a house default.
 
-Two of these went out as variants rather than the default cut, so the exact
-file matters: `soliton` is `..._10s_30fps_hook_plex.mp4` (the 8 s cut is also
-in the folder), and `affinity` is `..._hook_plex_neon.mp4` — the low-bloom
-pipeline with four fully saturated hues, not the softer default.
+Three of these went out as variants rather than the default cut, so the exact
+file matters: `soliton` is `..._10s_30fps_hook_plex.mp4` — the 8 s cut was made
+and then deleted, as a losing variant should be — `medusa` is
+`..._hook_1080x1920_12s_30fps.mp4`, the long cut with the hook and *not* the
+`_titlecard_plex` version, and `affinity` is `..._hook_plex_neon.mp4`, the
+**sharp** look with four fully saturated hues rather than the softer `bloom`
+default.
 
-**Posts 1–3 predate the current layout.** They were rendered before the hook,
-before the 240/190 margins and before the DejaVu → Plex fix, so they carry a
-symmetric 64 px inset and the old typeface. Everything from `hyphae` on is in
-the current house layout. Re-cuts of `cleavage` (and of `physarum` and
-`turing`, never posted) exist and are listed as queued in `PLAN.md`.
+**Posts 1–3 predate the current layout**, and so does **post 7**. They were
+rendered before the hook, before the 240/190 margins and before the DejaVu →
+Plex fix, so they carry a symmetric 64 px inset and the old typeface. Posts
+4–6, 8 and 9 are in the current house layout. `turing` went out in the old one
+despite being posted after them, so the grid is not chronological in style — a
+Plex re-cut of it, and of `cleavage`, is listed as queued in `PLAN.md`.
+
+`medusa`'s data block carries Greek (ξ, φ), so the title and hook are Plex and
+the block itself is DejaVu via `equation_face` — the split, not a fallback for
+the whole layer.
 
 ---
 
 ## Formats used above
 
-Named in full in [`PLAN.md`](PLAN.md); the one-line version:
-
-- **field** — the process fills the frame edge to edge.
-- **dish** — the process is confined to a disc, black all around it.
-- **slide** — the process is confined to a horizontal band, black above and
-  below, so the title and the hook sit on black rather than on texture.
+Defined in the `reel` skill, which is the single source for the geometry. The
+one-line version: **field** fills the frame edge to edge, **dish** confines the
+process to a disc, **slide** to a horizontal band so text sits on black, and
+**lane** stacks several worlds as bands that wrap at the frame edge.
 
 ---
 
 ## Copy that went out with each post
 
-Written per reel: what it is, what the surprise is, why it is true. Kept with
-the reel rather than here — see the edition's own README.
+Written per reel by the `hook` skill: what it is, what the surprise is, why it
+is true, in English and Polish. **Kept in the edition's own `CAPTION.md`**, one
+section per piece, not here — this file records the hook and the format only.
