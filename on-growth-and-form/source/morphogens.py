@@ -1600,8 +1600,8 @@ class Aggregation:
         epsilon: float = 0.05,
         diffusion: float = 1.0,
         dt: float = 0.10,
-        relay: float = 0.035,
-        crowd: float = 3.4,
+        relay: float = 0.045,
+        crowd: float = 4.5,
         sensitivity: float = 14.0,
         rising: float = 0.004,
         wander: float = 0.10,
@@ -1609,6 +1609,8 @@ class Aggregation:
         afterglow: float = 26.0,
         pacemakers: int = 7,
         period: int = 86,
+        trail_stride: int = 16,
+        trail_points: int = 6,
         seed: int = 20260830,
     ) -> None:
         from scipy.ndimage import gaussian_filter
@@ -1631,6 +1633,32 @@ class Aggregation:
         # spreading from a point; every one of them was already an animal.
         self.x = generator.uniform(0.0, width, cells).astype(np.float32)
         self.y = generator.uniform(0.0, height, cells).astype(np.float32)
+        # How far the signal has carried each cell, summed as a vector so it
+        # is net movement rather than path length. This is the piece's argument
+        # in one number: a wave passes over every cell in both directions, and
+        # a cell ends up somewhere only because it answers half of one. The
+        # wander is deliberately left out -- it is noise, every cell has the
+        # same amount of it, and including it floods the measurement.
+        self.drift = np.zeros((cells, 2), dtype=np.float32)
+        # The last stretch of each cell's actual path, kept as a handful of
+        # positions rather than one lagging point. Drawing that instead of a
+        # dot is what turns a stream into a filament instead of a heap of
+        # grain, and a cell that is not going anywhere collapses to the point
+        # it always was -- which is the honest difference between a recruited
+        # amoeba and one still sitting where it starved.
+        #
+        # It has to be a real path and not a chord. These cells move on the
+        # rising edge of a wave and stop in between, so over 96 steps a cell
+        # walks in a series of pulls and a straight line between the endpoints
+        # would draw a journey nobody took. Sized by measurement: at a lag of
+        # 8 steps the median trail is 0.36 px and invisible; at 96 it is
+        # 2.78 px with a 90th percentile of 12.2, and half the lawn has a
+        # streak over 3 px.
+        self.trail_stride = trail_stride
+        self.trail_points = trail_points
+        here = np.column_stack((self.x, self.y)).astype(np.float32)
+        self.history = np.repeat(here[None, :, :], trail_points, axis=0)
+        self.trail_phase = 0.0
         # How recently this cell last took a step, as a decaying memory. The
         # excited state passes in a moment, and without a phosphor the wave is
         # a two-pixel thread with no record of where it has been.
@@ -1649,10 +1677,24 @@ class Aggregation:
 
     @staticmethod
     def _laplacian(field: np.ndarray) -> np.ndarray:
-        return (
+        """The isotropic nine-point stencil, (1/6)[[1,4,1],[4,-20,4],[1,4,1]].
+
+        Not a refinement. A five-point laplacian carries the square grid's own
+        symmetry into the wave front, the front runs faster on the diagonals
+        than along the axes, and every aggregate comes out as a four-armed X --
+        the mesh showing through, not anything an amoeba does. It is visible at
+        a glance and it does not show up in a four-fold FFT statistic, which
+        reads 0.039 on the broken version. Look at the picture.
+        """
+        orthogonal = (
             np.roll(field, 1, 0) + np.roll(field, -1, 0)
-            + np.roll(field, 1, 1) + np.roll(field, -1, 1) - 4.0 * field
+            + np.roll(field, 1, 1) + np.roll(field, -1, 1)
         )
+        diagonal = (
+            np.roll(np.roll(field, 1, 0), 1, 1) + np.roll(np.roll(field, 1, 0), -1, 1)
+            + np.roll(np.roll(field, -1, 0), 1, 1) + np.roll(np.roll(field, -1, 0), -1, 1)
+        )
+        return (4.0 * orthogonal + diagonal - 20.0 * field) / 6.0
 
     def _bins(self) -> tuple[np.ndarray, np.ndarray]:
         row = np.clip((self.y / self.divisor).astype(np.int32), 0, self.rows - 1)
@@ -1715,8 +1757,22 @@ class Aggregation:
             np.maximum(self.lit, np.minimum(speed / self.speed_limit, 1.0), out=self.lit)
 
             jitter = self.wander * self.generator.standard_normal((2, len(self.x))).astype(np.float32)
-            self.x = np.clip(self.x + step_x + jitter[0], 0.0, self.width - 1e-3).astype(np.float32)
-            self.y = np.clip(self.y + step_y + jitter[1], 0.0, self.height - 1e-3).astype(np.float32)
+            # The medium is periodic -- the laplacian rolls -- so the lawn has
+            # to be periodic too. Clamping instead stacks cells against the
+            # frame edge and draws a bright rim there, a structure the rule
+            # never made. Clamped after the modulus because float32 `np.mod`
+            # can return exactly the modulus for a value a hair below zero.
+            self.drift[:, 0] += step_x
+            self.drift[:, 1] += step_y
+            x = np.mod(self.x + step_x + jitter[0], self.width)
+            y = np.mod(self.y + step_y + jitter[1], self.height)
+            self.x = np.clip(x, 0.0, self.width - 1e-3).astype(np.float32)
+            self.y = np.clip(y, 0.0, self.height - 1e-3).astype(np.float32)
+
+            if self.step_index % self.trail_stride == 0:
+                self.history[:-1] = self.history[1:]
+                self.history[-1] = np.column_stack((self.x, self.y))
+            self.trail_phase = (self.step_index % self.trail_stride) / self.trail_stride
 
     @property
     def count(self) -> int:
@@ -1726,6 +1782,46 @@ class Aggregation:
         """Positions, and how recently each cell last stepped."""
         points = np.column_stack((self.x, self.y)).astype(np.float32)
         return points, np.clip(self.lit, 0.0, 1.0).astype(np.float32)
+
+    def trails(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Each cell's recent path, plus its colour and its phosphor.
+
+        Returns the path as `(points + 1, cells, 2)` -- oldest first, the cell's
+        current position last -- then how far the signal has carried it and how
+        recently it stepped. Segments crossing the frame edge come back the
+        width of the plate and are the caller's to drop: the cell is one cell,
+        but the line between its two sides is a stripe nothing walked.
+        """
+        here = np.column_stack((self.x, self.y)).astype(np.float32)
+
+        # The buffer only takes a sample every `trail_stride` steps, so read
+        # straight out it is a polyline that jumps once every stride and holds
+        # still in between -- which the render shows as a stutter, 15.1% frozen
+        # with every one of those frames in the opening two seconds. Resampling
+        # the stored path at a continuously advancing offset makes the whole
+        # trail slide along itself instead, one frame at a time.
+        size = np.array([self.width, self.height], dtype=np.float32)
+        older, newer = self.history[:-1], self.history[1:]
+        step = newer - older
+        step -= np.round(step / size) * size          # shortest way round the torus
+        slid = np.mod(older + self.trail_phase * step, size).astype(np.float32)
+        path = np.concatenate((slid, here[None, :, :]), axis=0).astype(np.float32)
+
+        travel = np.linalg.norm(self.drift, axis=1).astype(np.float32)
+        return path, travel, np.clip(self.lit, 0.0, 1.0).astype(np.float32)
+
+    def swarm(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Positions, how far the signal has carried each cell, and its phosphor.
+
+        Three separate quantities because they do three separate jobs in the
+        render: where, what colour, how bright. Brightness is the phosphor, so
+        a wave sweeping the plate is a wave sweeping the plate; hue is the
+        distance travelled, so a cell that has been recruited into a stream
+        looks different from one still sitting where it starved.
+        """
+        points = np.column_stack((self.x, self.y)).astype(np.float32)
+        travel = np.linalg.norm(self.drift, axis=1).astype(np.float32)
+        return points, travel, np.clip(self.lit, 0.0, 1.0).astype(np.float32)
 
 
 class Comet:

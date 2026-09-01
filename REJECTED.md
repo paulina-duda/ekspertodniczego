@@ -30,6 +30,12 @@ grepped when a surviving candidate looks like a relative of something here.
 | `liesegang` | periodic precipitation rings | **build** | eight parameter sweeps never separated into bands; first precipitate drains the dish |
 | Spirographs / harmonic roulettes | parametric curves, incl. a Venus-resonance and phyllotaxis draft | **subject** | nothing emerges — the only edition with no surprise about the world in it |
 | Conway's Life | the classic binary automaton | **T3** | sparse binary cells have no mass and no density gradient; Lenia does the job |
+| `kaleidoscope` | Nowak & May's spatial prisoner's dilemma, cooperators against defectors | **T3, T4** | two states and no gradient — the churn field is a flat grey square, the state field is static in a box |
+| `aggregation` | *Dictyostelium* cAMP relay, T1–T3 all measured clean | **T4** | first cut clashed house rule 6 (magenta vs lime); re-cut fixed the palette and it still reads as flowers, not cells — `cell_radius` too small for the strokes to fuse into mass under either look. The blocked-anisotropy fix and the model are real; the picture never was |
+| `sector` | microbial range expansion, sector boundary competition, T1 measured flat and clean | **T2** | 25/25/25/25% profile and 5.4% frozen, and it still reads as one colour wedge disc inflating — the wedge layout is set almost at once and the real competition (boundaries wandering, lineages going extinct) is a front too thin to see at video scale. Numbers passed; the shape never changed, only its radius |
+| `ripple` | *Myxococcus* counter-propagating wave trains | **T1** | ordered by step 60 of 1200 and only decays after — 0.082 / 0.734 / 0.520 / 0.424 / 0.388 |
+| `nematic` | a rod-shaped bacterial monolayer ordering itself as it grows | **T4** | coloured confetti at full size, grey-green speckle at 200 px — `aggregation`'s failure, strokes too small to fuse |
+| `stripe` | zebrafish pigment cells, Turing with cells as the morphogens | **T1, T4** | 88.1% of the change in the first quarter, 0.8% in the last; the still is a labyrinth of filaments, not stripes |
 | Segment edition | `segment-editions/` | **subject** | ugly; dropped entirely |
 | Attractors, proteins | posted early, since taken down | **subject** | mathematics and structural biology, not biology-as-algorithm |
 
@@ -59,6 +65,8 @@ A rejection is about the grid, not the code. What survived, and why:
 | `shoal` | the sliding-lane camera and the trajectory survey. The **lane** shape stays in the `reel` skill and may yet carry a different subject |
 | `cohort` | the arithmetic: moving pixels are *creatures × body area × body-lengths travelled*, and isolated panels make that product flat |
 | `descent` | the genetic algorithm itself. The search was worth running; none of its three tellings became a reel |
+| `aggregation` | the isotropic nine-point laplacian, now in `on-growth-and-form/source/CLAUDE.md` — it fixed a real grid artefact and outlives this piece |
+| `sector` | the Gaussian-neighbourhood isotropic growth rule and the O(1) frame recovery by arrival-step (one `int32` array for the whole clip, no per-state banking) |
 
 ## Delete the render, keep the code
 

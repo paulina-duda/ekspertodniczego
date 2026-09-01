@@ -17,6 +17,8 @@ it is the only place the account has an opinion.
 | --- | --- | --- |
 | `affinity_particle-life_alife` | particle life | four species, sixteen numbers, and nothing else |
 | `soliton_lenia_alife` | Lenia | twelve copies of one creature, and what one collision does |
+| `highway_langtons-ant_alife` | Langton's ant | nine words of rule, twenty-four ants, and the road none of them was told to build |
+| `protocell_particle-motion_alife` | primordial particle system | one turning rule, and bodies with skins condensing out of a soup |
 | `descent_genetic-algorithm_alife` | genetic algorithm | the pedigree of a real run: 64 founders, 40 generations, one ancestor |
 | `cohort_genetic-algorithm_alife` | genetic algorithm | the same run, seen as the animals it made rather than as a tree |
 | `shoal_genetic-algorithm_alife` | genetic algorithm | the same run as a race: four generations, four lanes, one winner |
@@ -146,6 +148,185 @@ Colour is the growth term — near-black through the wake a creature is leaving,
 deep magenta through the body that is holding steady, amber to white along the
 edge it is advancing into. It is the one field in the model that says which way
 the thing is going, and without it a still frame of a soliton is a doughnut.
+
+## Highway
+
+The whole rule is: **right on white, left on black, flip, step forward.** Nine
+words. An ant on a grid of two-coloured cells reads the cell underneath it,
+turns one way or the other, flips that cell and moves on. No memory beyond its
+heading, no randomness anywhere, nothing to tune. Chris Langton wrote it down
+in 1986 and it is the smallest thing in this account by a wide margin — Lenia
+has seven parameters, particle life has sixteen numbers, this has none.
+
+For about ten thousand steps the ant makes a small symmetric mess. Then it
+starts building a **highway**: a 104-step cycle that translates the pattern two
+cells diagonally and repeats without end. Nothing about the rule changes at
+that moment and nothing is added to the grid. That the trail can never stay
+bounded is a theorem; that the highway always appears is not — it has only ever
+been observed, in every starting configuration anyone has tried, and that gap
+between what is proved and what is seen is the reason the piece exists.
+
+### What the gate measured
+
+The scalar is cells ever stepped on, over the 229 growing frames at 260 steps
+each:
+
+```
+0 / 52,208 / 94,116 / 117,740 / 144,574     first quarter 36%, last 19%
+```
+
+Comparable to `phyllotaxis` (29% / 23%) and nothing like a relaxation. Two
+other candidates went through the same gate on the same day and neither
+survived: the primordial particle system passes T1 and T4 at scales that
+exclude each other, and Nowak and May's spatial prisoner's dilemma has the best
+profile of the three (5% / 45%) and is still television static in a box. That
+one is in `REJECTED.md`; it is Conway's row restated.
+
+**Conway's row is the objection this piece had to answer too**, since this is
+also a two-state automaton. It answers it with the field it renders. The state
+of a cell is a bit, but *how many times it has been stepped on* is not: median
+8, ninety-second percentile 23, maximum 87 in the shipped cut. That is a range
+the log-density map was built for, and it is why a highway — one visit per cell
+— reads as a thin dim line against cores that have been trampled eighty times.
+
+### Colour is recency, and it is what rescued the cut
+
+Rendered as pure accumulation — every cell that has ever been touched, lit
+forever — the clip measures **43.9% frozen frames**. `venation` was rejected at
+44.4%. It is the same failure exactly: a structure uncovering while nothing
+moves, because a cumulative field can only ever add a rim.
+
+So the model also carries `last_seen`, the step at which each cell was last
+stepped on, and the palette runs on the age of that: violet for everything
+already built, white for where an ant is standing now, fading over about eight
+thousand steps. This is not a second decoration on top of the first. It is the
+only quantity in the model that separates a road being laid right now from one
+abandoned four seconds ago, which on the cumulative field are the same picture.
+With it, the same clip measures **0.0% frozen after the opening hold**, with
+per-frame change between 0.38 and 0.92 against a threshold of 0.15.
+
+### Twenty-four, on one grid
+
+One ant is a demonstration. A population is the piece, and the number was
+measured rather than picked: at 60 ants the chaotic cores merge into a single
+grey mass well before the clip ends and the roads have nothing to be seen
+against; at 24 they stay separable for all eight seconds, and 7 of them are
+already travelling in the first second against 18.5 in the last.
+
+**The ants never touch each other.** The only thing an ant can read is the cell
+under it and the only thing it can change is that same cell, so everything they
+do to each other goes through the floor — a road driven into another ant's
+rubbish reads the wrong colours and collapses back into chaos, and a patch
+another ant has tidied can launch a road early. That is the whole interaction
+and there is no term for it anywhere in the rule.
+
+### Three decisions, and why
+
+**field, not slide.** A highway is a straight line that never stops, so on a
+finite grid it either wraps or it hits a wall the rule knows nothing about.
+Confining the ants would mean bouncing roads off a boundary that is not part of
+the model. The cost is the text sitting on texture: measured over the whole
+clip, the worst coverage under the title is 23.2% of cells touched and under
+the hook 15.4%, against 27.9% for the grid as a whole. The scrim and the
+stroked type carry it, and the top-left corner where the title sits stays black
+because the ants start in a central band.
+
+**`sharp`, not `bloom`, and it is in the filename.** A highway is one cell
+wide. Under the default bloom every road becomes a glowing tube and the frame
+turns into haze; at `--bloom-threshold 0.55 --bloom-strength 0.25` the roads
+stay lines and the black stays black.
+
+**Paced by the clock**, like `soliton` and for a plainer reason: an ant takes
+one step per step. There is no scalar that accelerates or stalls, so equal
+counts of steps already are equal amounts of process. The states are banked one
+per played frame and played straight through — no scheduler, and none of the
+stutter a scheduler is there to cause.
+
+## Protocell
+
+Schmickl, Stefanec and Crailsheim, 2016: *How a life-like system emerges from a
+simple particle motion law*. A particle counts the neighbours inside its radius,
+splits them left and right of where it is pointed, turns by 180° plus 17° for
+every neighbour it can see — towards the emptier side — and steps forward. No
+force, no attraction, no species, no chemistry, and nothing that says the word
+cell. What comes out are cells: bounded bodies with a dense core, a ring holding
+them closed, and free particles drifting between them.
+
+### It was rejected at the gate first, and why
+
+The pitch verdict was **REWORK**, and the finding is worth keeping because it is
+about scale rather than about the model. A cell is about four interaction radii
+across, so the radius alone decides how large it is on screen — and the two
+tests pull that number in opposite directions:
+
+```
+world 360x640, 8,324 particles     cells 1 / 20 / 37 / 53 / 60     T1 passes
+                                   a cell is a 12 px speck         T4 fails
+world 90x160, 704 particles        a cell is 240 px, legible       T4 passes
+                                   cells 3 / 2 / 3 / 1             T1 fails
+```
+
+The second line is `shoal`: things moving and nothing accumulating. There is no
+radius that satisfies both, because the quantity T1 measures — how many cells
+there are — is the quantity T4 wants fewer of.
+
+**The drive is what breaks the tie**, and `BRIEF.md` allows exactly this against
+a T1 failure: something that keeps injecting material. Three new particles every
+ten steps, dropped in at random, at a radius of 30 px where a cell is about
+120 px:
+
+```
+cells 3 / 8 / 13 / 15 / 22          first quarter 26%, last 37%
+```
+
+Which is `comet`'s shape. Without the drive at that same scale the count stalls
+— 13 at the halfway point and 13 at the end. At three times the drive the world
+floods and the cells merge back into mush: 3 / 17 / 11 / 5. The rate is not a
+taste decision; it is the only one of the three that keeps cells condensing for
+the whole clip.
+
+### They do not divide
+
+The pitch line for T2 said "the cells split", and that claim did not survive
+being measured. Every new cell was matched against the cells that existed a
+hundred steps earlier:
+
+```
+median distance from a new cell to the nearest existing one   42.6 units
+cell diameter                                                 ~20 units
+new cells appearing within one diameter of an existing cell   3%
+the same measurement at the paper's own density (0.08)        0%
+```
+
+New cells condense out of the soup on their own account. They are not children
+of the ones beside them, and neither the caption nor the hook says they are.
+This matters more than it looks: the whole literature around this system invites
+the reader to see reproduction in it, so a piece that stays quiet on the point
+would be letting the viewer assume something the measurement refuses.
+
+What is left for T2 is a transition rather than a beat — loose dust curling up
+into a body, one after another, all the way through the clip. That is weaker
+than `soliton`'s collision and it is honest about what is on screen.
+
+### Colour is the only thing the rule reads
+
+A particle senses one number: how many others are inside its radius. That number
+is also the entire anatomy of a cell — free in the soup, in the wall, in the
+core — so the palette runs on it and on nothing else. Ranked rather than scaled:
+the count runs 0 to 75 with a median of 12, and scaled, everything but a few
+cores would be one flat violet. The rank is built once from the final frame and
+applied to every frame, so a particle's colour changes when its own
+neighbourhood does and not because the rest of the world moved.
+
+### The numbers the cut shipped with
+
+3,515 particles by the end, 3,000 steps at 13.1 a frame, 22 cells, neighbour
+count median 12 and maximum 75. Loop seam 1.13. Frozen frames 4.2% — ten of
+them, all inside the opening hold, which is the house norm exactly. Per-frame
+change after the hold runs 1.87 to 7.75 with a median of 5.60: this is a busy
+picture, in the same range `quorum` measured at 6.24, and nothing like a still.
+Text sits on cleaner black than `highway` does — worst mean 22.5/255 under the
+title and 20.8/255 under the hook.
 
 ## Descent
 

@@ -33,14 +33,15 @@ edition's README.
 
 | Piece | Shape | State | Hook |
 | --- | --- | --- | --- |
-| `folding` | field | **posted** — DejaVu-era layout, needs a re-cut | — |
-| `turing` | field | **posted** — DejaVu-era layout, needs a re-cut | — |
+| `folding` | field | **posted** (1st) — DejaVu-era, staying that way by decision | — |
+| `turing` | field | **posted** (7th) — DejaVu-era, staying that way by decision | — |
 | `physarum` | slide + hook | reworked 2026-08-25 | *No brain. One cell. Still finds a way.* |
 | `somite` | field + hook | built, **rejected** — fails T4 | *Your spine was counted, not measured.* |
-| `phyllotaxis` | field + hook | built 2026-08-29 | *The plant is not counting. You are.* |
+| `phyllotaxis` | field + hook | built, `APEX` palette shipped 2026-08-31 | *The plant is not counting. You are.* |
 | `comet` | field + hook | built 2026-08-30 | *No motor. It is pushed by what it builds.* |
 | `trabecula` | field + hook | built, **rejected** — fails T1/T4 | *No one drew this. The load did.* |
 | `venation` | field | built, **rejected** — T1 confirmed on the cut, 44.4% still | *The vein is not a route. It is a leftover.* |
+| `aggregation` | field + hook | built, **rejected** — fails T4 (reads as flowers) | *Every wave would carry them back. / So they only answer half of it.* |
 
 Neither `somite` nor `trabecula` is going out, and both leave an axis behind:
 `somite` is the first piece in the account **with a beat** and `trabecula` the
@@ -50,11 +51,12 @@ first **subtractive** one. Reuse the axes, not the cuts.
 
 | Piece | Shape | State | Hook |
 | --- | --- | --- | --- |
-| `cleavage` | dish | **posted** — DejaVu-era; the Plex re-cut exists and should replace it | — |
+| `cleavage` | field + hook | **posted** (2nd), current layout | *The only kind of growth that does not grow* |
 | `hyphae` | dish + hook | **posted** | *A tree branches. A fungus branches back.* |
 | `reentry` | dish + hook | **posted** (9th) | *Nothing in the rule says spiral.* |
 | `condensate` | dish + hook | built, **rejected** — fails T1/T2 | *Nothing was built. It only stopped mixing.* |
-| `sandpile` | dish + hook | built | *One rule about integers. No biology at all.* |
+| `sandpile` | dish + hook | built, **parked** — Paulina will call when scheduling | *One rule about integers. No biology at all.* |
+| `sector` | field, `sharp` | built, **rejected** — fails T2 | *Not one cell moved. Every border did.* |
 
 ### Artificial Life — [`README`](on-growth-and-form/alife-editions/README.md)
 
@@ -62,6 +64,8 @@ first **subtractive** one. Reuse the axes, not the cuts.
 | --- | --- | --- | --- |
 | `affinity` | slide + hook | **posted** — the `_neon` cut, not the default | *Being alive is a matter of organization, / so it can be built from numbers* |
 | `soliton` | field + hook, 10 s | **posted** | *Every one of these was stable on its own.* |
+| `highway` | field + hook, `sharp` | built 2026-08-31, **parked** — Paulina will call when scheduling | *Every one of them builds the same road. / Nobody has proved why.* |
+| `protocell` | field + hook | built 2026-08-31 — reworked past a T1/T4 conflict | *The rule has no membrane in it. / Everything on screen has one.* |
 | `shoal` | lane + hook | built, **rejected** — fails T1/T2 | *Generation zero could only fill its world. / Forty generations later it crosses it.* |
 | `descent` | — | built, **rejected** — fails T2/T4 | *Everything at the top has one ancestor.* |
 | `cohort` | grid of panels | built, **rejected** — fails T2/T3 | *Not one of the first sixty-four was alive. / Everything alive here is a copy of one.* |
@@ -125,22 +129,27 @@ grid for two constants, the visual gain is subtle, and the cost is a
 
 ## Queued
 
-**Ready to post** — cut, measured, and judged worth posting: `sandpile`,
-`phyllotaxis`, `comet`, plus the Plex re-cut of `cleavage` that should replace
-what is on the grid.
+**Ready to post** — cut, measured, and judged worth posting: `phyllotaxis`,
+`comet`. Paulina posts `comet` herself and will say when.
 
 `phyllotaxis` and `comet` were measured on the finished cut 2026-08-30: **0.0%
 still frames** each, profiles 29/23% and 12/48% across the quarters. `comet`
 puts its biggest change in the last quarter, which is what it was picked for.
+`phyllotaxis` was re-cut 2026-08-31 with a new palette (`APEX`, replacing
+`MERISTEM`) — measured clean again, 0.0% still.
+
+**Parked, not queued** — `highway` and `sandpile`. Built and passing, waiting
+on Paulina to call them for scheduling rather than sitting in "ready to post".
 
 This is a publication queue, not an inventory. A piece being rendered does not
-put it here — `condensate`, `descent` and `cohort` were all cut and are all in
-[`REJECTED.md`](REJECTED.md). Anything on this list that has not actually been
-looked at cold still owes **T4**.
+put it here — `condensate`, `descent`, `cohort`, `aggregation` and `sector`
+were all cut and are all in [`REJECTED.md`](REJECTED.md). Anything on this list
+that has not actually been looked at cold still owes **T4**.
 
-**Needs a re-cut before it could go out** — `turing` and `folding`, both still
-on the pre-hook, symmetric-margin, DejaVu-era layout in the same renderer
-`physarum` has already been moved off.
+**`folding` and `turing` are not queued for a re-cut.** Both posted (1st, 7th)
+in the pre-hook, DejaVu-era layout, and Paulina has decided that stands: the
+two typefaces do not read as different at a glance, so a re-cut is not worth
+the render.
 
 ---
 
@@ -160,36 +169,29 @@ built first.
    whole clip, then the chaos snaps into a bipolar spindle with the chromosomes
    in a plate. Constant motion **plus a clear event**. Hook draft: *"Your cells
    find their chromosomes by guessing."* Risk: low.
-2. **`aggregation`** — 150,000 starving *Dictyostelium* becoming one animal.
-   Half built (`morphogens.Aggregation`); waves sweep every ~90 steps and
-   concentration climbs steadily (11 → 28 → 76) rather than front-loading.
-   **Blocked on grid anisotropy**: a five-point laplacian propagates faster
-   along the axes and the aggregates come out as four-pointed stars. Needs a
-   nine-point laplacian or an off-lattice signal. Hook draft: *"Every wave
-   would carry them back. So they only listen to half of it."* Risk: medium.
-3. **`chirality`** — tilted cilia in the embryonic node spin one way, the tilt
+2. **`chirality`** — tilted cilia in the embryonic node spin one way, the tilt
    turns rotation into a leftward flow, and that is why the heart ends up on
    the left. Rotation constant by construction. **Best hook of the set**, and a
    subject nobody is doing. Risk: medium — Stokes flow, and handedness is
    subtle to read in a frame.
-4. **`ripple`** — *Myxococcus* reverse on contact, filling the frame with
+3. **`ripple`** — *Myxococcus* reverse on contact, filling the frame with
    counter-propagating bands that **pass through each other**. Oscillatory, so
    it runs forever. Hook draft: *"Nothing is travelling. Only the agreement
    is."* Risk: medium-low.
-5. **`stripe`** — zebrafish pigment cells: short-range activation, long-range
+4. **`stripe`** — zebrafish pigment cells: short-range activation, long-range
    inhibition, but the morphogens are *cells*. Stripes assemble from a scatter
    and, cut half way through, **heal back into stripes**. Hook draft: *"Turing
    was right. The morphogens are cells."* Risk: medium — the regeneration has
    to actually work, not just the pattern.
-6. **`metachrony`** — a carpet of cilia coupled only through the fluid, falling
+5. **`metachrony`** — a carpet of cilia coupled only through the fluid, falling
    out of random phase into travelling waves. Would be the **true version of
    what `medusa` and `quorum` fake parametrically**, which closes that series
    properly. Hook draft: *"None of them can see the others. The water is
    enough."* Risk: medium.
-7. **`vortex`** — a dense suspension of flagellated swimmers, hydrodynamically
+6. **`vortex`** — a dense suspension of flagellated swimmers, hydrodynamically
    coupled, self-organising into a drifting lattice of vortices. Active matter:
    a steady state that never stops moving. Risk: medium-high.
-8. **`epithelium`** — a proliferating sheet where every division hands edges to
+7. **`epithelium`** — a proliferating sheet where every division hands edges to
    its neighbours, and the polygon-class distribution converges to the same one
    in a fly, a frog and a hydra. Dozens of division events per second. Hook
    draft: *"Six is not a plan. Six is an average."* Risk: medium — real chance

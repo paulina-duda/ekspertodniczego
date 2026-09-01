@@ -65,6 +65,14 @@ PHOSPHOR = [(2, 10, 7), (0, 62, 44), (0, 150, 96), (60, 226, 150), (175, 250, 20
 # the ones that grew last come out nearly white.
 CYTOSOL = [(8, 2, 14), (58, 6, 52), (140, 14, 88), (222, 52, 96), (255, 138, 122), (255, 232, 214)]
 
+# Hue is a lineage here, not an amount, so this ramp is the one in the set that
+# does *not* darken towards its low end: a wedge landing on the first stop is
+# not less of anything, and dimming it would say it was. Brightness is carried
+# by the density channel instead, which is why the plate is still black where
+# nothing has grown. The arc runs violet to gold and deliberately never reaches
+# cyan or green -- CLEAVAGE owns the cold end of this edition.
+LINEAGE = [(120, 20, 255), (200, 0, 230), (255, 0, 130), (255, 24, 40), (255, 100, 0), (255, 200, 20)]
+
 EDITIONS: dict[str, dict] = {
     "hyphae": {
         "kind": "points",
@@ -121,6 +129,30 @@ EDITIONS: dict[str, dict] = {
             "nucleolus · stress granule · P granule",
         ),
         "hook": ("Nothing was built. It only stopped mixing.",),
+    },
+    "sector": {
+        "kind": "field",
+        "title": "Sector",
+        "slug": "sector_range-expansion_substrate",
+        "palette": LINEAGE,
+        # The sharp look, and named here rather than left to the command line.
+        # The default bloom turned a solid plate into a pastel disc inside a
+        # mid-tone veil: every wedge bleached towards white and the halo lifted
+        # the black the whole account is composed on. venation shipped on sharp
+        # without recording it anywhere and re-rendering changed the cut; this
+        # does not repeat that.
+        "look": "sharp",
+        "exposure": 1.00,
+        "boost": 1.05,
+        "bloom_threshold": 0.55,
+        "bloom_strength": 0.25,
+        "caption": (
+            "microbial range expansion · Hallatschek & Nelson 2007",
+            "divide at the edge · drift · mutate · sweep",
+            "colour is descent · hue drifts with each mutation",
+            "48 founders · 8 of them still on the rim",
+        ),
+        "hook": ("Not one cell moved. Every border did.",),
     },
     "reentry": {
         "kind": "field",
@@ -266,7 +298,11 @@ def place_square(field: np.ndarray, height: int, width: int, factor: int) -> np.
 
 def tone(colour_sum: np.ndarray, density: np.ndarray, reference: float, spec: dict, args) -> np.ndarray:
     linear = glow.flame_map(colour_sum, density, reference, boost=spec["boost"])
-    linear = glow.bloom(linear, threshold=args.bloom_threshold, strength=args.bloom_strength)
+    linear = glow.bloom(
+        linear,
+        threshold=spec.get("bloom_threshold", args.bloom_threshold),
+        strength=spec.get("bloom_strength", args.bloom_strength),
+    )
     return glow.to_bytes(glow.tone_map(linear, exposure=spec["exposure"]))
 
 
@@ -528,12 +564,70 @@ def condensate_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray]
     return draw, draw(1.0)
 
 
+def sector_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], np.ndarray]:
+    height, width = args.height, args.width
+    # Simulated at half the frame and block-upsampled twofold. The lattice is
+    # the model -- one cell is one cell -- so this is the one edition where the
+    # simulation size is not a speed compromise but the answer to how coarse the
+    # colony should look. At 474 px of radius the dish lands on the house
+    # figure, 0.44 of the short side.
+    model = growths.Sector(
+        args.sector_size,
+        radius=args.sector_size * 0.494,
+        founders=args.founders,
+        mutation=args.mutation,
+        beneficial=args.beneficial,
+        advantage=args.advantage,
+        hue_step=args.hue_step,
+        inoculum=args.inoculum,
+        pacing=args.pacing,
+    )
+    progress = [model.metric()]
+    fronts = [model.front_lineages()]
+    while model.step_index < args.sector_steps:
+        before = int((model.label > 0).sum())
+        model.step(1)
+        if int((model.label > 0).sum()) == before:
+            break
+        progress.append(model.metric())
+        fronts.append(model.front_lineages())
+    print(
+        f"  sector: {model.step_index} steps, {int((model.label > 0).sum()):,} cells, "
+        f"radius {math.sqrt(int((model.label > 0).sum()) / math.pi):.0f} lattice cells, "
+        f"{model.count} lineages founded, "
+        f"{max(fronts[len(fronts)//4:])} holding the front at the quarter mark",
+        flush=True,
+    )
+
+    schedule = even_schedule(np.asarray(progress), args.duration_frames)
+    palette = glow.build_palette(spec["palette"])
+    caption = build_overlay(width, height, spec, args)
+    reference = 1.0
+
+    def fields_at(index: int) -> tuple[np.ndarray, np.ndarray]:
+        density, shade = model.fields(int(index), tip_boost=args.tip_boost_front, tip_decay=args.tip_decay_front)
+        return (
+            place_square(density, height, width, args.sector_factor),
+            place_square(shade, height, width, args.sector_factor),
+        )
+
+    def draw(u: float) -> np.ndarray:
+        density, shade = fields_at(schedule[min(int(u * (len(schedule) - 1)), len(schedule) - 1)])
+        colour_sum = glow.sample_palette(palette, shade) * density[:, :, None]
+        return glow.compose(tone(colour_sum, density, reference, spec, args), caption)
+
+    final_density, _ = fields_at(schedule[-1])
+    reference = float(np.percentile(final_density[final_density > 0], 92.0))
+    return draw, draw(1.0)
+
+
 TIMELINES = {
     "hyphae": hyphae_timeline,
     "cleavage": cleavage_timeline,
     "sandpile": sandpile_timeline,
     "reentry": reentry_timeline,
     "condensate": condensate_timeline,
+    "sector": sector_timeline,
 }
 
 
@@ -542,6 +636,8 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
     draw, finished = TIMELINES[name](spec, args)
 
     stem = f"{spec['slug']}_{args.width}x{args.height}_{args.duration:g}s_{args.fps}fps"
+    if spec.get("look"):
+        stem += f"_{spec['look']}"
     if args.hook and spec.get("hook"):
         # Same suffix the cleavage re-render carries, so the hooked Plex cut and
         # the older DejaVu one sit side by side in the folder without ambiguity.
@@ -609,6 +705,28 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epsilon", type=float, default=0.05, help="how brief the excited state is")
     parser.add_argument("--roughness", type=float, default=0.016, help="spread of the excitability field")
     parser.add_argument("--afterglow", type=float, default=45.0, help="half-life of the phosphor, in steps")
+    parser.add_argument("--sector-size", type=int, default=480)
+    parser.add_argument("--sector-factor", type=int, default=2)
+    parser.add_argument("--sector-steps", type=int, default=900, help="cap; the colony stops at the dish wall")
+    parser.add_argument("--founders", type=int, default=48, help="labelled strains in the inoculum")
+    parser.add_argument("--mutation", type=float, default=0.0022, help="chance a division founds a lineage")
+    parser.add_argument("--beneficial", type=float, default=0.16, help="fraction of those that divide faster")
+    parser.add_argument("--advantage", type=float, default=0.10, help="how much faster")
+    # Area, not radius, and this was decided by measurement rather than taste.
+    # Paced by radius the front advances at a steady speed and the change
+    # profile comes out comet-shaped -- 9.5% of the growth in the first quarter
+    # and 40.4% in the last -- but the colony spends the opening two seconds as
+    # a dot, and a dot advancing one cell of radius per frame changes almost no
+    # pixels. That cut measured 22.6% frozen frames with 52 of the 54 inside the
+    # first two seconds, which is the worst place a freeze can land. Equal area
+    # per frame is equal newly-lit pixels per frame, which is the thing the
+    # frozen-frame test actually measures: 5.4%, and 1.3% once the cover hold is
+    # discounted. The intermediate, area^0.75, splits the difference at 7.9%.
+    parser.add_argument("--pacing", type=float, default=1.0, help="0.5 paces by radius, 1.0 by area")
+    parser.add_argument("--inoculum", type=float, default=22.0, help="radius of the drop, in lattice cells")
+    parser.add_argument("--hue-step", type=float, default=0.26, help="how far a mutation moves along the ramp")
+    parser.add_argument("--tip-boost-front", type=float, default=1.35)
+    parser.add_argument("--tip-decay-front", type=float, default=26.0)
     parser.add_argument("--condensate-states", type=int, default=240)
     # Ripening is slow by nature: 199 droplets at 20k steps, 22 at 1.2M. Stopping
     # early is what made the first cut look like almost nothing was happening.

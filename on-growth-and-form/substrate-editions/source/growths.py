@@ -702,3 +702,227 @@ class Condensate:
                 radius = np.sqrt(areas / np.pi) / self.reference_radius
                 shade = np.clip(radius, 0.0, 1.0)[labelled].astype(np.float32) * dense
         return density, shade
+
+
+class Sector:
+    """A colony spreading on a plate, and the genealogy it leaves behind it.
+
+    Only cells at the edge of a colony have anywhere to divide into. Everything
+    inland is jammed against its neighbours and stops, so the interior is not a
+    population at all -- it is a frozen record of who happened to be at the
+    front when that ring was laid down. Label the founders and the plate turns
+    into a picture of its own descent: wedges radiating from the inoculum, each
+    one a clone, their boundaries wandering as the lineage on either side gains
+    or loses a few cells of frontage. A boundary that wanders into another
+    annihilates, and the lineage between them is gone from the front forever
+    even though its cells are all still alive inland. That is genetic drift,
+    with no selection in it and nothing deciding anything.
+
+    Drift alone would be over in a second. Boundaries diffuse as sqrt(t) while
+    the circumference grows as t, so after the first coarsening they never meet
+    again and the picture stops developing. Mutation is what keeps it running:
+    every division has a small chance of founding a new lineage, and a fraction
+    of those divide fractionally faster. A faster lineage pushes its arc of the
+    front out ahead of its neighbours, and a front that bulges captures more of
+    the circumference as it goes, so the advantage compounds into a wedge.
+    Nothing about the wedge is drawn. It is the growth rate.
+
+    Colour is hue as accumulated descent: each mutation displaces its lineage a
+    short way along the ramp from its parent, so a wedge's colour measures how
+    far it has drifted from the founder it came from, and a nested sub-wedge is
+    a mutation that happened inside a clone that was already winning.
+
+    Two things make the front honest. Cells only ever appear one lattice cell
+    outside the colony, so a lineage boundary stays pixel-sharp; but *whether*
+    one appears is weighted by a Gaussian measure of how much colony surrounds
+    the site, which has no preferred direction. Asking instead the obvious
+    question -- is any of my eight neighbours occupied -- lets the diagonals
+    grow sqrt(2) too fast and the plate comes out as a diamond. Measured as the
+    cos(4*theta) component of the front radius: 7.4% of the mean radius on the
+    eight-neighbour rule, 1.0% here.
+    """
+
+    NEIGHBOURS = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+
+    def __init__(
+        self,
+        size: int,
+        radius: float | None = None,
+        founders: int = 16,
+        sigma: float = 2.0,
+        rate: float = 0.45,
+        mutation: float = 0.0022,
+        beneficial: float = 0.16,
+        advantage: float = 0.10,
+        hue_step: float = 0.075,
+        inoculum: float = 4.0,
+        pacing: float = 0.5,
+        seed: int = 20260901,
+    ) -> None:
+        self.size = size
+        self.radius = float(radius if radius is not None else size * 0.49)
+        self.sigma = sigma
+        self.rate = rate
+        self.mutation = mutation
+        self.beneficial = beneficial
+        self.advantage = advantage
+        self.hue_step = hue_step
+        self.pacing = pacing
+        self.rng = np.random.default_rng(seed)
+
+        self.label = np.zeros((size, size), dtype=np.int32)
+        self.arrival = np.full((size, size), -1, dtype=np.int32)
+        self.step_index = 0
+
+        middle = size // 2
+        grid_y, grid_x = np.mgrid[0:size, 0:size]
+        self.offset = np.hypot(grid_y - middle, grid_x - middle)
+        self.dish = self.offset <= self.radius
+
+        # The inoculum: a drop of mixed culture, cut into equal wedges so the
+        # founders start with equal frontage and nothing is favoured by where it
+        # was put down. Hue is shuffled across them on purpose -- founders sit in
+        # angular order, and giving neighbours neighbouring hues would draw a
+        # tidy colour wheel that says nothing, where the drift boundaries are the
+        # only thing worth looking at.
+        angle = np.arctan2(grid_y - middle, grid_x - middle)
+        seed_spot = self.offset < inoculum
+        wedge = (((angle + math.pi) / (2 * math.pi)) * founders).astype(np.int32) % founders
+        self.label[seed_spot] = wedge[seed_spot] + 1
+        self.arrival[seed_spot] = 0
+
+        capacity = 4096
+        self.hue = np.zeros(capacity, dtype=np.float32)
+        self.fitness = np.ones(capacity, dtype=np.float32)
+        self.founded = np.zeros(capacity, dtype=np.int32)
+        self.parent = np.zeros(capacity, dtype=np.int32)
+        order = self.rng.permutation(founders)
+        self.hue[1 : founders + 1] = (order + 0.5) / founders
+        self.count = founders
+
+    # -- growth ----------------------------------------------------------
+
+    def step(self, times: int = 1) -> None:
+        for _ in range(times):
+            self.step_index += 1
+            occupied = self.label > 0
+            # A Gaussian measure of surrounding colony. At a flat front it sits
+            # at one half, which is what the acceptance is normalised against.
+            potential = ndimage.gaussian_filter(
+                occupied.astype(np.float32), self.sigma, mode="constant"
+            )
+            candidates = ndimage.binary_dilation(occupied) & ~occupied & self.dish
+            rows, columns = np.nonzero(candidates)
+            if rows.size == 0:
+                return
+
+            parent = self._pick_parent(rows, columns)
+            alive = parent > 0
+            rows, columns, parent = rows[alive], columns[alive], parent[alive]
+            if rows.size == 0:
+                return
+
+            crowding = np.clip(potential[rows, columns] / 0.5, 0.0, 1.0)
+            chance = self.rate * crowding * self.fitness[parent]
+            taken = self.rng.random(rows.size) < chance
+            rows, columns, parent = rows[taken], columns[taken], parent[taken]
+            if rows.size == 0:
+                continue
+
+            parent = self._mutate(parent)
+            self.label[rows, columns] = parent
+            self.arrival[rows, columns] = self.step_index
+
+    def _pick_parent(self, rows: np.ndarray, columns: np.ndarray) -> np.ndarray:
+        """One occupied neighbour, drawn with weight 1/distance.
+
+        Weighting by distance matters for the same reason the Gaussian above
+        does: treat a diagonal neighbour as being as close as an axial one and
+        the lineage boundaries acquire the lattice's diagonals.
+        """
+        weights = np.zeros((rows.size, len(self.NEIGHBOURS)), dtype=np.float32)
+        labels = np.zeros((rows.size, len(self.NEIGHBOURS)), dtype=np.int32)
+        limit = self.size - 1
+        for index, (dy, dx) in enumerate(self.NEIGHBOURS):
+            value = self.label[np.clip(rows + dy, 0, limit), np.clip(columns + dx, 0, limit)]
+            labels[:, index] = value
+            weights[:, index] = (value > 0) / math.hypot(dy, dx)
+        total = weights.sum(axis=1)
+        cumulative = np.cumsum(weights, axis=1)
+        draw = self.rng.random(rows.size).astype(np.float32) * total
+        choice = (cumulative < draw[:, None]).sum(axis=1).clip(0, len(self.NEIGHBOURS) - 1)
+        picked = labels[np.arange(rows.size), choice]
+        return np.where(total > 0, picked, 0)
+
+    def _mutate(self, parent: np.ndarray) -> np.ndarray:
+        """Found new lineages, some of them fitter, on a fraction of divisions."""
+        mutated = self.rng.random(parent.size) < self.mutation
+        number = int(mutated.sum())
+        if number == 0 or self.count + number >= len(self.hue):
+            return parent
+        new = np.arange(self.count + 1, self.count + 1 + number, dtype=np.int32)
+        ancestor = parent[mutated]
+        # Reflected at the ends rather than wrapped: the ramp is a line, not a
+        # circle, and wrapping would jump violet to gold in one mutation.
+        drifted = self.hue[ancestor] + self.rng.normal(0.0, self.hue_step, number).astype(np.float32)
+        drifted = np.abs(drifted)
+        drifted = np.where(drifted > 1.0, 2.0 - drifted, drifted)
+        self.hue[new] = np.clip(drifted, 0.0, 1.0)
+        lucky = self.rng.random(number) < self.beneficial
+        self.fitness[new] = self.fitness[ancestor] * np.where(lucky, 1.0 + self.advantage, 1.0)
+        self.founded[new] = self.step_index
+        self.parent[new] = ancestor
+        self.count += number
+        parent = parent.copy()
+        parent[mutated] = new
+        return parent
+
+    # -- what the renderer asks for ---------------------------------------
+
+    def metric(self) -> float:
+        """Colonised area raised to `pacing`, which decides what runs evenly.
+
+        At 0.5 this is the front's distance from the inoculum, and the front
+        advances at a steady speed. At 1.0 it is the area, and the number of
+        newly lit pixels per frame is constant instead. The two are not
+        interchangeable and the difference is measurable: see the edition's
+        README for what each one did to the frozen-frame count.
+        """
+        return float((self.label > 0).sum()) ** self.pacing
+
+    def front_lineages(self, share: float = 0.005) -> int:
+        """Lineages holding more than `share` of the growing edge."""
+        occupied = self.label > 0
+        front = ndimage.binary_dilation(occupied) & ~occupied & self.dish
+        rows, columns = np.nonzero(front)
+        if rows.size == 0:
+            return 0
+        limit = self.size - 1
+        values = []
+        for dy, dx in self.NEIGHBOURS:
+            value = self.label[np.clip(rows + dy, 0, limit), np.clip(columns + dx, 0, limit)]
+            values.append(value[value > 0])
+        values = np.concatenate(values)
+        _, counts = np.unique(values, return_counts=True)
+        return int((counts / counts.sum() > share).sum())
+
+    def fields(self, upto: int, base: float = 0.45, tip_boost: float = 2.2, tip_decay: float = 120.0):
+        """Density and hue for the colony as it stood at simulation step `upto`.
+
+        The lattice is written once and never rewritten, so a state is not
+        banked -- it is recovered exactly by taking the cells that had arrived
+        by then. One array holds the whole clip.
+
+        Brightness falls off inland from the edge, over a decay long enough to
+        reach most of the way back to the inoculum. That is the same argument
+        the mycelium's tips are lit on, and it is what a growing colony looks
+        like: the rim is the only part of the plate still dividing, and a flat
+        fill reads as a printed disc rather than as something alive. It also
+        keeps the apex of every wedge dark, which is where they are narrowest
+        and would otherwise smear into one bright spot.
+        """
+        here = (self.arrival >= 0) & (self.arrival <= upto)
+        age = np.where(here, upto - self.arrival, 0).astype(np.float32)
+        density = here * (base + tip_boost * np.exp(-age / tip_decay))
+        shade = self.hue[self.label] * here
+        return density.astype(np.float32), shade.astype(np.float32)

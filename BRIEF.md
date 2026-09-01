@@ -51,10 +51,9 @@ Three ways to fail, and each has caught a different piece:
 - **front-loaded** — two thirds of the change is done by the first quarter.
 - **it stops** — the last quarter adds under ~10%. `venation` passes the first
   check at 32% and dies here: 508 at ¾ and 509 at the end.
-- **flat** — total change is near zero. Things move and nothing develops.
-  `shoal` reads 683 / 683 / 678 / 682 / 683 and still measures only 4.2% still
-  frames, because swimming is motion without an arc. **A motion measurement
-  cannot see this; only the profile can.**
+- **flat** — total change is near zero. `shoal` reads 683/683/678/682/683 at
+  a comfortable 4.2% still frames, because swimming is motion without an arc.
+  **A motion measurement cannot see this; only the profile can.**
 
 Pass looks like `comet` — 12% of the change in the first quarter, **48% in the
 last** — or `phyllotaxis`, 29% and 23%, growing evenly throughout. Corollary: a
@@ -67,6 +66,13 @@ beat — or nothing rescues it.
 boring. The piece needs **a rhythm, an event or a transition** — a segment
 stamped every 1.1 s, a collision, a tear that heals, chaos snapping into order.
 **Fail if the honest one-line description is "it gets bigger".**
+
+**Self-similar growth passes T1's numbers and is still "it gets bigger".**
+`sector` grows at a flat, honest rate (25/25/25/25%, 5.4% frozen) and still
+reads as one disc inflating, because the wedge pattern is set almost at once
+and everything after is the same shape at a larger radius — the real
+competition is a front too thin to see at video scale. Check the *shape*
+across the quarters, not only the pixel count.
 
 ### 3. Density — is it many interacting parts?
 
@@ -88,30 +94,26 @@ sound, finding real, three purple shapes on screen.
 **A wetware piece additionally has to change shape, not just contents** —
 `trabecula` refines a fixed silhouette, which reads as the wrong kind of motion.
 
-**And the method has to be visible in the output.** If a viewer cannot tell
-expensive machinery from a rule written by hand, it bought a sentence in the
-caption and nothing on screen — which is what this test says does not rescue a
-piece. `regrowth` is the case: fit a network to a target picture and it
-reproduces the picture you already had. **Anything fitted, trained or searched
-must produce something you did not specify** — `affinity`'s table was found by
-search and passes, because nobody chose what the animals would look like.
+**The method has to be visible in the output.** If a viewer cannot tell
+expensive machinery from a hand-written rule, it bought a sentence in the
+caption and nothing on screen. `regrowth` fit a network to a target picture and
+it reproduces the picture you already had. **Anything fitted, trained or
+searched must produce something you did not specify** — `affinity`'s table was
+found by search and passes, because nobody chose the animals' look.
 
 ### Reusing an engine — a `2.0`
 
-**An engine that has already shipped may carry a second reel.** This is
-generative art: the same rule under a different palette, shape and hook is a
-different visual experience, and that is enough to make it a new piece.
+**An engine that has already shipped may carry a second reel** — the same rule
+under a different palette, shape and hook is a different visual experience.
+**Only on Paulina's explicit instruction** — she names it, *"I want `reentry`
+2.0"*; never propose one unprompted or to dodge a new subject's work. **At
+least two must change**: shape, palette family, look, what the colour *means*,
+scale, the hook. A hue rotation is not one.
 
-Two hard conditions. **Only on Paulina's explicit instruction** — she names it,
-*"I want `reentry` 2.0"*; never propose one unprompted, and never reach for an
-existing engine because a new subject is turning out to be work. And **at least
-two of these must change**: shape, palette family, look (`bloom` ↔ `sharp`),
-what the colour *means*, scale or density, the hook. A hue rotation is not one.
+Skips **T1**/**T3** — the engine proved both — but passes **T2**/**T4** afresh,
+and answers: *what does someone who saw the first one get from this one?* "It
+is prettier" is not an answer. Output is suffixed `_v2`, never on top.
 
-It skips **T1** and **T3** — the engine proved both — but passes **T2** and
-**T4** afresh, and answers one extra question: *what does someone who saw the
-first one get out of this one?* "It is prettier" is not an answer. Output is
-suffixed `_v2`, never on top of the original.
 ---
 
 ## House rules

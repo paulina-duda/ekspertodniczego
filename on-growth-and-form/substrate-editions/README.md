@@ -1,17 +1,17 @@
 # Substrate Editions
 
-Five processes on a medium, four of them alive.
+Six processes on a medium, five of them alive.
 
 `substrate-editions/` is about *where* a process happens. The sibling set in
 [`../source/`](../source/) runs two mathematical processes against one
 biological one — Gray-Scott and differential growth against a slime mould. This
-set inverts the ratio: four of these are things a microscope can be pointed at,
+set inverts the ratio: five of these are things a microscope can be pointed at,
 and **Sandpile** is a rule about integers that has no business producing an
 organism and produces one anyway. That contrast is the edition's whole
 argument — the substrate does the computing, and it need not be alive to look
 like it.
 
-Four of the five make something out of nothing; **Condensate** only rearranges
+Five of the six make something out of nothing; **Condensate** only rearranges
 what is already in the dish.
 
 | Edition | Field | What it is |
@@ -21,6 +21,7 @@ what is already in the dish.
 | `reentry_excitable-medium_substrate` | biology | spiral waves in excitable tissue (Barkley) |
 | `condensate_phase-separation_substrate` | biology | liquid-liquid phase separation (Cahn-Hilliard) — **rejected**, T1/T2 |
 | `sandpile_abelian-lattice_substrate` | mathematics | grains toppling on a lattice |
+| `sector_range-expansion_substrate` | biology | a colony spreading on a plate, drawing its own genealogy |
 
 The tests a piece has to pass before it is built are in
 [`BRIEF.md`](../../BRIEF.md); the queue and the decisions are in
@@ -57,12 +58,13 @@ equal intervals of *that* rather than of time:
 | `hyphae` | pixels ever colonised | the picture is the colonised area |
 | `cleavage` | √(cell count) | wall length at fixed area rises with the root |
 | `sandpile` | grains ∝ t² | area rises with grains, so the radius rises linearly |
+| `sector` | colonised area | equal area per frame is equal newly-lit pixels per frame |
 
 For `hyphae` the front is also lit brighter than the rest — the advancing tips
 are the only part of the frame doing anything, and giving the eye something to
 track is most of what keeps a growth clip watchable.
 
-## The five processes
+## The six processes
 
 ### Hyphae
 
@@ -174,6 +176,93 @@ preference for its own company.
   the whole dish, leaving one solid disc that fades outward. Worth another
   attempt only with a model that limits the sink explicitly.
 
+
+### Sector
+
+**Rejected for the grid (T2), 2026-09-01.** The measurements are clean — a flat
+25/25/25/25% profile, 5.4% still frames — and the cut still reads as one
+coloured disc inflating: the wedge layout is set almost at once and everything
+after is the same pattern at a larger radius, because the real competition
+(boundaries wandering, lineages going extinct) plays out on a front too thin to
+see at video scale. Numbers passed; the shape never did anything the eye could
+follow. Kept because two things in it are worth reusing — see below and
+[`REJECTED.md`](../../REJECTED.md).
+
+A colony spreads on a plate and only its edge can divide. Everything inland is
+jammed against its neighbours and has stopped, so the interior is not a
+population — it is a record of who was at the front when that ring was laid
+down. Label the founders and the plate draws its own genealogy: the wedges are
+clones, their boundaries wander as one side or the other gains a few cells of
+frontage, and when two boundaries meet the lineage between them is gone from
+the front forever while every one of its cells is still alive inland. Mutation
+is what stops the picture settling — a few new lineages divide fractionally
+faster, push their arc of the front ahead of their neighbours, and a bulging
+front captures more of the circumference as it goes. Hook *"Not one cell moved.
+Every border did."*
+
+- **The eight-neighbour rule grows a diamond, not a plate.** Asking "is any of
+  my eight neighbours occupied" lets the diagonals advance √2 too fast, and the
+  colony comes out square with its corners on the diagonals. Measured as the
+  cos(4θ) component of the front radius, as a fraction of the mean radius:
+  **7.43% on eight neighbours, 4.80% on four, 2.99% on a disc of radius 1.9,
+  1.35% on a disc of radius 6.0 — and 0.98% here.** What ships asks a different
+  question: how much colony *surrounds* this site, measured with a Gaussian at
+  σ 2.0, which has no preferred direction. Cells still only ever appear one
+  lattice cell outside the colony, so lineage boundaries stay pixel-sharp; a
+  fat structuring element buys isotropy by letting cells jump six pixels from
+  their parent, which blurs the one structure the piece is about. Same lesson
+  as the isotropic nine-point laplacian in
+  [`../source/CLAUDE.md`](../source/CLAUDE.md).
+
+- **Nothing is banked.** The lattice is written once and never rewritten, so a
+  state is not stored — it is recovered exactly by taking the cells whose
+  arrival step is at or below the one wanted. One `int32` array holds the whole
+  clip, against the 184 MB banking every labelled state would have cost.
+
+- **Radius pacing is the prettier idea and the wrong one.** Paced by equal
+  radius increments the front advances at a steady speed and the change profile
+  comes out comet-shaped — **9.5% of the growth in the first quarter and 40.4%
+  in the last**, which is the profile the account explicitly values. It also
+  spends the opening two seconds on a dot, and a dot advancing one cell of
+  radius changes almost no pixels: **22.6% frozen frames, 52 of the 54 inside
+  the first two seconds**, longest run 21. Equal *area* per frame is equal
+  newly-lit pixels per frame, which is the thing the frozen-frame test actually
+  measures: **5.4%, and 1.3% once the 11-frame cover hold is discounted**, at
+  the cost of a flat 25.1 / 24.7% profile. The intermediate, area^0.75, splits
+  it at 7.9%. The comet profile was worth giving up; a stall in the first two
+  seconds is not recoverable.
+
+- **The default bloom made a pastel sticker of it.** A colony is a solid mass,
+  so `bloom` is the nominal choice, and it bleached every wedge towards white
+  and lifted the black into a mid-tone veil. This ships on **`sharp`**, and the
+  look is recorded in the edition's `EDITIONS` entry as well as in the
+  filename — `venation` shipped on `sharp` with nothing recording it and
+  re-rendering silently changed the cut.
+
+- **`LINEAGE` is the one palette in the set that does not darken at its low
+  end**, and that is deliberate. Hue here is an identity, not an amount, so
+  dimming the first stop would say a wedge was less of something. Brightness is
+  carried by the density channel instead, which is why the plate is still black
+  where nothing has grown and why the rim is the brightest part of it. The arc
+  runs violet to gold and never reaches cyan or green: `cleavage` owns the cold
+  end of this edition.
+
+- **A mutation moves its lineage 0.26 of the ramp from its parent.** At the
+  honest 0.075 the sub-wedges were invisible — everything descending from one
+  founder read as a single flat colour. At 0.26 relatives still look related
+  and a wedge inside a wedge is legible as what it is: a mutation that happened
+  inside a clone that was already winning.
+
+- **Drift alone does not carry eight seconds, and this was measured before any
+  render code existed.** Neutral founders coarsen and then stop: 21 lineages on
+  the front at the start, 9 by the quarter mark, and **9 / 9 / 9 for the rest
+  of the clip — 12 extinctions in the first quarter and zero after**. Sector
+  boundaries diffuse as √t while the circumference grows as t, so once they are
+  apart they never meet again; this is physics, not tuning. Mutation is the
+  external clock the brief calls for, and with it the front holds 48 / 31 / 33 /
+  34 lineages across the quarters. 444 lineages are founded over the run, 46
+  reach the rim, and 38 of those did not exist when it started. Of the 48
+  founders in the drop, **8**.
 
 ## Rendering
 
