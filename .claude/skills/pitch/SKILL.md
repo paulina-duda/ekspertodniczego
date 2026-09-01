@@ -119,9 +119,14 @@ kind of motion next to `folding` and `turing` — that is `trabecula`.
 
 ## The `2.0` path
 
-When Paulina asks for a **`2.0`** by name — *"I want `reentry` 2.0"* — the
+When Paulina asks for a **`2.0`** by name — *"I want `reentry` 2.0"* — she is
+naming the engine, not the changes. **Propose three different directions**
+before building any of them, the same way a fresh pitch proposes candidates,
+and let her pick. Only skip this and cut straight to one direction if she names
+it herself — that is her creative call to make, not a default to assume. The
 engine has already proven **T1** and **T3**, so skip them. Run **T2** and
-**T4** afresh, plus one test that only applies here:
+**T4** afresh on whichever direction is picked, plus one test that only applies
+here:
 
 ### T5 — is it a different experience?
 

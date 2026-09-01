@@ -21,7 +21,81 @@ cost to get right, kept so nobody re-learns it.
 ## Folding
 
 Differential growth, four closed curves. **Posted.** `field`, no hook,
-DejaVu-era layout.
+DejaVu-era layout. Carries a 2.0, `Gyrus`, below.
+
+**The shipped cut is four curves and the code is one.** The caption in the mp4
+says `4 curves`; `build()` in `render_biomorphs.py` returns a single
+`DifferentialGrowth`. The four-curve state is not in the tree any more, so the
+posted cut cannot be reproduced from this repo — only re-derived. Worth knowing
+before anyone tries.
+
+## Gyrus
+
+`folding` 2.0 — the same rule inside a circle it may not grow past. Built
+2026-09-01, `dish` (0.44) + one-line hook, three-line block, 8 s, `VENOM`.
+Hook *"It would fold anyway. The wall decides where."* Ready to post, not
+posted.
+
+- **It is named rather than numbered, and that was a decision.** Two reels
+  titled FOLDING off one engine read as a repost on the grid. The biomorph set
+  had already settled the same question the other way round — one wave trick,
+  three names, and `PLAN.md` says the escalation is the point.
+
+- **The wall is a spring, not a clamp.** `DifferentialGrowth` carries neither a
+  velocity nor a heading, so neither of the `reel` skill's two mechanisms
+  applies literally; what works is a restoring force that switches on only
+  outside the radius. A hard clamp puts every arriving node on the same circle
+  and draws a bright rim the rule never made. Soft, the boundary presses flat
+  but stays ragged — about 8 px of spread on the outermost shell, which is what
+  keeps it from reading as a vignette or a crop.
+
+- **The confinement has to arrive late, and this is the finding.** Growth here
+  is *stretch-driven*: an edge subdivides when something pulls it past
+  `spacing`. So jamming the curve does not redirect the growth, it stops it.
+  Measured over the same 956-step run the parent shipped, with the wall at
+  200 / 215 / 230 / 250 model units, contact lands 48 / 54 / 61 / 69% through
+  the clip and the last quarter contributes **3.3 / 4.7 / 5.5 / 12.6%** of the
+  total change. Only the last one clears T1's 10% floor. The piece is therefore
+  5.5 s of free growth and 2.3 s of collision — the wall is the last beat, not
+  the body, and pitching it as the body was wrong.
+
+- **The hook is true because the parent is the control.** `folding` is this
+  rule with no wall in it and it folds just as hard, so the wall demonstrably
+  does not cause the folds. That is the only reason the line is allowed to
+  claim it.
+
+- **A `0.44` dish and a two-line hook do not fit, and the first fix was the
+  wrong one.** At the house radius the outermost ink lands on row 1439 and a
+  two-line hook starts at 1425 — 14 px of overlap before bloom, about 30 after.
+  Every dish shipped before this one (`hyphae`, `reentry`) has a one-line hook
+  and never met it. Shrinking the dish to 0.40 clears it by 30 px and costs 10%
+  of the subject; putting the hook on one line and the block on three clears it
+  by **65 px** and costs two words and a line of data. Measured both ways
+  before choosing. **Cut the text, not the subject** — and note the two-line
+  hook was over the width limit anyway: 1000 px against 952, so it could never
+  have been one line as written. Dropping *only* brings it to 900.
+
+- **The dish's middle is genuinely empty**, because the seed circle expands and
+  leaves a hole, so colour-is-age puts the darkest end of the ramp on the
+  sparsest part of the form and the 200 px thumbnail collapses into a ring.
+  Lifting a ramp's bottom stops off black buys about 29% of core luminance and
+  no more; the hole is real and no palette fixes it. This is the piece's
+  weakest number and it is a thumbnail problem, not a full-size one.
+
+- **`VENOM` over `SULCUS`, chosen off a four-way render of the same settled
+  frame.** Core-to-rim contrast 4.4:1 against 3.4:1, which matters here for the
+  reason above. The rejected `HALOGEN` (magenta body, cyan rim) is the useful
+  negative: `build_palette` spaces stops evenly and colour is *ranked*, so
+  every stop-to-stop band carries an equal share of the curve — a desaturated
+  midpoint is a fifth of the picture, not a sliver, and magenta→cyan lands on
+  rgb(123, 127, 183) at luminance 130 and washes out the whole middle annulus.
+  `VENOM` puts its violet→green crossing at stop 2, where it desaturates by
+  0.05 at luminance 29 and nobody sees it.
+
+- **Still open:** it puts a second green piece on the grid next to `folding`,
+  which is the same question `sandpile`'s `LATTICE` raises. Acid green on a
+  violet mass in a dish is not culture green edge to edge, but it is the same
+  decision.
 
 ## Physarum
 

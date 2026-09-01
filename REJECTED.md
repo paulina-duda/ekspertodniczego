@@ -36,6 +36,9 @@ grepped when a surviving candidate looks like a relative of something here.
 | `ripple` | *Myxococcus* counter-propagating wave trains | **T1** | ordered by step 60 of 1200 and only decays after — 0.082 / 0.734 / 0.520 / 0.424 / 0.388 |
 | `nematic` | a rod-shaped bacterial monolayer ordering itself as it grows | **T4** | coloured confetti at full size, grey-green speckle at 200 px — `aggregation`'s failure, strokes too small to fuse |
 | `stripe` | zebrafish pigment cells, Turing with cells as the morphogens | **T1, T4** | 88.1% of the change in the first quarter, 0.8% in the last; the still is a labyrinth of filaments, not stripes |
+| `swarm` | *Proteus mirabilis* terraced swarming, the consolidate-and-migrate cycle | **T2, T4** | two formulations and 24 parameter sets gave one flood and never a staircase — a delayed excitable front in a continuum is a travelling wave, not a beat — and the finished frame is a featureless disc, interior density p90/p10 2.85 |
+| `mega` | the MEGA-plate: a colony evolving its way across bands of rising antibiotic | **T4** | T1 is comet-clean (38.3% first quarter, 14.7% last, 0.4% frozen) and the breakthroughs are real events, but each band is founded by one mutant whose clone then sweeps it, so the finished plate is 90–100% lit in four flat colour bars; no mutation rate buys both the event and the texture |
+| `band` | Budrene-Berg chemotactic spot arrays in *E. coli* | **build** | 42 parameter sets over four formulations gave two outcomes and nothing between — one smooth disc, or 400–1,500 blobs 1–3 px across; scaling `Dn` and χ together to resolve a wavelength deletes the instability rather than widening the spots |
 | Segment edition | `segment-editions/` | **subject** | ugly; dropped entirely |
 | Attractors, proteins | posted early, since taken down | **subject** | mathematics and structural biology, not biology-as-algorithm |
 

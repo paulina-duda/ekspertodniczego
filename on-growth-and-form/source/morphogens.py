@@ -272,6 +272,14 @@ class DifferentialGrowth:
     wherever an edge stretches too far. Length has to go somewhere and the only
     direction left is sideways, so the curve folds -- the same argument that
     explains a brain's gyri, a coral's rim and the villi of a gut.
+
+    Pass `wall` to run the same rule inside a circle it may not grow past,
+    which is the cortex case rather than the coral one: growth is free until
+    the form reaches the boundary, and after that lengthening can only be paid
+    for by crowding inward. Growth here is stretch-driven -- an edge subdivides
+    when it is pulled past `spacing` -- so confinement does not just redirect
+    the growth, it slows it. That is measured and it is why the wall belongs
+    late in a clip rather than early.
     """
 
     def __init__(
@@ -285,6 +293,8 @@ class DifferentialGrowth:
         repulsion: float = 0.62,
         node_limit: int = 90_000,
         seed: int = 20260814,
+        wall: float | None = None,
+        wall_stiffness: float = 0.35,
     ) -> None:
         angle = np.linspace(0.0, 2.0 * math.pi, nodes, endpoint=False)
         generator = np.random.default_rng(seed)
@@ -299,6 +309,15 @@ class DifferentialGrowth:
         self.repulsion = repulsion
         self.node_limit = node_limit
         self.generator = generator
+        # An optional circular wall the curve may not grow past -- a skull, in
+        # effect. It is a *soft* restoring force that only switches on outside
+        # the radius: a hard clamp stacks every arriving node on the same
+        # circle and draws a bright rim the rule never made. With this the
+        # boundary presses flat but stays ragged (measured: about 8 px of
+        # spread on the outermost shell at the shipped scale).
+        self.centre = np.array(centre, dtype=np.float32)
+        self.wall = wall
+        self.wall_stiffness = wall_stiffness
         # Age in growth steps, so the render can show which folds are old.
         self.age = np.zeros(len(self.points), dtype=np.float32)
         self.step_index = 0
@@ -331,6 +350,13 @@ class DifferentialGrowth:
                 np.add.at(push, pairs[:, 1], -strength)
 
             points = points + self.attraction * pull + self.repulsion * push
+            if self.wall is not None:
+                radial = points - self.centre
+                distance = np.linalg.norm(radial, axis=1, keepdims=True)
+                excess = np.maximum(distance - self.wall, 0.0)
+                points = points - self.wall_stiffness * excess * (
+                    radial / np.maximum(distance, 1e-6)
+                )
             self.points = points.astype(np.float32)
             self._resample()
 

@@ -70,6 +70,37 @@ Polish, printed in the reply and filed in the edition's `CAPTION.md`.**
 
 ---
 
+## A `2.0` off an engine that has already shipped
+
+**Only you can start this one** — the rule in `BRIEF.md` is that a `2.0` never
+gets proposed unprompted. But naming the engine is all you have to decide.
+**What changes is the model's proposal, not yours to specify** — a `2.0` is
+only worth doing if it is a genuinely different visual experience, and asking
+for one while dictating the shape and the look defeats the point: you would
+just be describing the render yourself and having it typed out.
+
+> Read `BRIEF.md`. I want a **`reentry` 2.0** — same engine, genuinely
+> different visual experience.
+>
+> Propose three different ways to re-cut it. Each has to change at least two
+> of: shape, palette family, look (`bloom` ↔ `sharp`), what the colour means,
+> scale, the hook — say which two and what each does to the picture. For each,
+> answer in one sentence: what does someone who already saw the original get
+> out of this one? **Stop** — I pick one.
+>
+> Then run `/pitch`'s `2.0` path on it (T1 and T3 are already proven by the
+> engine; confirm T2 and T4 hold for this cut), build it with `/reel`, write
+> the text with `/hook`, verify with `/check` — output tagged `_v2`, never over
+> the original — and file it as its own row in `PLAN.md`.
+>
+> **Stop again after the first render and show me frame one** before writing
+> any copy.
+
+Only fill in **which engine**, named exactly as it appears in `PLAN.md`'s Built
+tables. If you already know exactly what you want changed, say so instead of
+asking for proposals — but that is you making the creative call, not the
+model, and it is worth noticing which one you are doing.
+
 ## If you already know the subject
 
 Skip the survey. The only thing you write is the subject:

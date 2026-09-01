@@ -106,6 +106,58 @@ ACTIN = [(8, 0, 24), (78, 0, 120), (198, 0, 132), (255, 72, 116), (255, 176, 150
 # band is narrow and bright.
 CIRCUIT = [(3, 0, 12), (46, 0, 86), (140, 0, 170), (255, 40, 190), (170, 250, 80), (226, 255, 180)]
 
+# `folding` 2.0's first palette, replaced by VENOM below on 2026-09-01 and
+# kept for the comparison, the way MERISTEM is. Plum through crimson into amber
+# and bone -- deliberately the opposite end of the account from CULTURE, which
+# the first cut owns and which is the whole reason this one exists. Colour is still age, so the oldest
+# tissue is the plum in the middle of the dish and the youngest is the bright
+# rim pressed against the wall, which is where the eye should go.
+#
+# It sits in LAMINA's region of the ramp, and that region is free: LAMINA is on
+# `venation`, which was rejected and is off the disk. The one difference is
+# deliberate. LAMINA stops short of white because its bright end is a growing
+# margin that sweeps up through the hook and took the background behind that
+# line to 151. Here the bright end is a rim pinned at radius 475 px -- 445 px
+# clear of the hook strip and it never moves -- so white is affordable, and the
+# curve needs it: the point of the last two seconds is tissue crushing against
+# bone, and bone is the brightest thing in the frame.
+# The bottom two stops are lifted off black on purpose, and it is the one
+# palette decision here that was measured rather than chosen. Colour is age and
+# the dish's oldest tissue is in the middle, which is also the sparsest part of
+# the form -- the seed circle expands outwards and leaves a hole -- so a dark
+# low end darkens the core twice over and the 200 px thumbnail collapses into a
+# ring. Lifting them takes the mean luminance inside r<120 from 17.3 to 22.2
+# (+29%) and moves the rim by 0.03 and the black field by nothing, with no
+# clipped pixels either way. It does not fully fix the thumbnail, because the
+# hole is real and no ramp can fill it.
+SULCUS = [(40, 2, 34), (132, 6, 74), (198, 30, 58), (242, 106, 38), (255, 190, 100), (255, 240, 214)]
+
+# Shipped on `folding` 2.0, replacing SULCUS, chosen 2026-09-01 off a
+# four-way render of the same settled frame. Bruise-violet core, acid rim:
+# colour is
+# still age, so the violet is the old sparse middle and the poison is the
+# youngest tissue, which is exactly the part pressed against the wall.
+#
+# Two measured reasons it wins over the warm SULCUS it replaces. Core-to-rim
+# contrast goes 3.4:1 -> 4.4:1, which is the one number this piece was weak on:
+# the dish has a genuinely empty middle and the 200 px thumbnail was collapsing
+# into a ring. And the violet->green crossing is placed at stop 2, low on the
+# ramp, where it desaturates by 0.05 at luminance 29 -- dark enough that nobody
+# sees it.
+#
+# That placement is the whole trick and it is not optional. `build_palette`
+# spaces stops evenly and colour here is *ranked*, so every stop-to-stop band
+# carries an equal share of the curve: a desaturated midpoint is a fifth of the
+# picture, not a sliver. The rejected HALOGEN alternative (magenta body, cyan
+# rim) is what that costs when the crossing sits high instead -- it lands on
+# rgb(123, 127, 183) at luminance 130, a pale lavender grey washing out the
+# whole middle annulus.
+#
+# The third alternative, SULPHUR, came out a flat yellow-green with the violet
+# invisible -- which is CULTURE's family, i.e. the palette of the cut this one
+# exists to get away from.
+VENOM = [(18, 2, 30), (58, 0, 96), (14, 46, 34), (86, 172, 0), (198, 246, 0), (238, 255, 170)]
+
 EDITIONS: dict[str, dict] = {
     "turing": {
         "kind": "field",
@@ -156,6 +208,64 @@ EDITIONS: dict[str, dict] = {
             "a closed curve that must lengthen",
             "and may not touch itself",
         ),
+    },
+    # `folding` 2.0 -- same rule, put in a box, and named for what it makes
+    # rather than for the rule it shares. `folding` stays the parent; a second
+    # reel titled FOLDING off the same engine reads as a repost on the grid,
+    # and the biomorph set already settled this the other way (one wave trick,
+    # three names). Two changes carry it: the shape moves field -> dish (the
+    # confinement is the subject, not a crop) and the piece gains a hook,
+    # which the DejaVu-era original had nowhere to put.
+    # The palette moves with them, and the scale comes out 1.33x coarser than
+    # the original because the wall, not the frame, now fixes the magnification.
+    #
+    # The wall radius is not a taste decision. Measured over the same 956-step
+    # run the original shipped: at wall 200/215/230 the curve reaches the
+    # boundary 48-61% through and the last quarter of the clip contributes
+    # 3.3/4.7/5.5% of the total change -- the "it stops" failure, three times
+    # over. Only wall 250 holds, at 12.6%. Growth here is stretch-driven, so
+    # jamming the curve does not redirect it, it stops it, and the wall
+    # therefore has to arrive late.
+    "gyrus": {
+        "kind": "curve",
+        "title": "Gyrus",
+        "slug": "gyrus_differential-growth_venom",
+        "palette": VENOM,
+        "exposure": 1.20,
+        "boost": 1.25,
+        "steps_per_frame": 4,
+        "settle": 0,
+        # Model units. 250 -> the house dish radius of 0.44 x the short side.
+        #
+        # It briefly shipped at 0.40, and the reason is worth keeping because
+        # it was the wrong fix. A *two-line* hook starts at row 1425 and this
+        # dish's outermost ink lands on 1439, so the top line sat on the
+        # glowing rim -- 14 px of overlap before bloom, about 30 after. Every
+        # dish shipped before this one (`hyphae`, `reentry`) has a one-line
+        # hook and never met it. Shrinking the dish clears it, but so does
+        # putting the hook on one line, and that costs no picture: measured,
+        # 0.44 with a one-line hook and a three-line block clears by 65 px
+        # against 0.40's 30. Cut the text, not the subject.
+        "wall": 250.0,
+        "dish": 0.44,
+        # Three lines, not four. The node count was the fourth and it is the
+        # least load-bearing thing here; the contact frame stays, because it
+        # is the event the hook is about.
+        "caption": (
+            "differential growth, confined",
+            "attract · repel · subdivide · press",
+            "free until frame 165 of 239",
+        ),
+        # The parent cut is the control for this line: `folding` is the same
+        # rule with no wall in it, and it folds just as hard. So the wall is
+        # not what makes the folds -- it only decides where they land, which
+        # is the opposite of what a viewer assumes on seeing a circle.
+        # One line, and it has to be: the two-line version measures 1000 px
+        # against the 952 px limit anyway, and a two-line hook is what put the
+        # text on the rim. Dropping "only" brings it to 900 px. The limiting
+        # sense survives in the first clause -- "would fold anyway" already
+        # says the wall is not the cause.
+        "hook": ("It would fold anyway. The wall decides where.",),
     },
     "trabecula": {
         "kind": "bone",
@@ -700,12 +810,19 @@ def build(name: str, args: argparse.Namespace):
             sensing=args.bone_sensing, setpoint=args.bone_setpoint,
         )
     return morphogens.DifferentialGrowth(
-        (args.width * 0.5, args.height * 0.5), 55.0, nodes=200, spacing=2.5, repulsion_radius=11.0
+        (args.width * 0.5, args.height * 0.5), 55.0, nodes=200, spacing=2.5, repulsion_radius=11.0,
+        wall=spec.get("wall"),
     )
 
 
 def render_edition(name: str, args: argparse.Namespace) -> Path:
     spec = EDITIONS[name]
+    # A `sharp` piece carries its own bloom settings so the cut is reproducible
+    # from the edition alone. `venation` is the cautionary case: it ships sharp,
+    # its filename does not say so, and re-rendering it from the name silently
+    # changes the cut.
+    bloom_threshold = spec.get("bloom_threshold", args.bloom_threshold)
+    bloom_strength = spec.get("bloom_strength", args.bloom_strength)
     width, height = args.width, args.height
     frames = round(args.duration * args.fps)
     caption = build_overlay(width, height, spec, args)
@@ -721,10 +838,25 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
 
     if spec["kind"] == "curve":
         final_points = model.points.copy()
-        span = final_points.max(axis=0) - final_points.min(axis=0)
-        centre = (final_points.max(axis=0) + final_points.min(axis=0)) * 0.5
-        scale = min(args.fill * width / span[0], args.fill * height / span[1])
-        print(f"  {name}: {len(final_points):,} nodes, {scale:.2f} px/unit", flush=True)
+        if spec.get("wall"):
+            # Confined: the wall fixes the magnification, not the frame. Fitting
+            # the bounding box instead would let the dish breathe by a pixel or
+            # two per frame as the rim fills in, and the one thing a dish must
+            # do is sit still.
+            centre = np.array(
+                [width * 0.5, height * 0.5], dtype=np.float32
+            )
+            scale = spec["dish"] * min(width, height) / spec["wall"]
+        else:
+            span = final_points.max(axis=0) - final_points.min(axis=0)
+            centre = (final_points.max(axis=0) + final_points.min(axis=0)) * 0.5
+            scale = min(args.fill * width / span[0], args.fill * height / span[1])
+        radius = np.linalg.norm(final_points - centre, axis=1).max() * scale
+        print(
+            f"  {name}: {len(final_points):,} nodes, {scale:.2f} px/unit, "
+            f"outermost ink at {radius:.0f} px",
+            flush=True,
+        )
 
         def draw(points: np.ndarray, age: np.ndarray) -> np.ndarray:
             samples, segment = curve_samples((points - centre) * scale + np.array([width * 0.5, height * 0.5]))
@@ -737,7 +869,7 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
                 width, height, samples, colours, np.ones(len(samples), dtype=np.float32)
             )
             linear = glow.flame_map(colour_sum, density, reference, boost=spec["boost"])
-            linear = glow.bloom(linear, threshold=args.bloom_threshold, strength=args.bloom_strength)
+            linear = glow.bloom(linear, threshold=bloom_threshold, strength=bloom_strength)
             return glow.compose(glow.to_bytes(glow.tone_map(linear, exposure=spec["exposure"])), caption)
 
         samples, _ = curve_samples((final_points - centre) * scale + np.array([width * 0.5, height * 0.5]))
@@ -760,7 +892,7 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
             colours = glow.sample_palette(palette, carried)
             colour_sum, density = glow.splat(width, height, samples, colours, weights)
             linear = glow.flame_map(colour_sum, density, reference, boost=spec["boost"])
-            linear = glow.bloom(linear, threshold=args.bloom_threshold, strength=args.bloom_strength)
+            linear = glow.bloom(linear, threshold=bloom_threshold, strength=bloom_strength)
             return glow.compose(glow.to_bytes(glow.tone_map(linear, exposure=spec["exposure"])), caption)
 
         start, end, shade = model.segments()
@@ -779,8 +911,6 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
             print(f"  {name}: {model.count:,} tips, {len(model.sources):,} sources left", flush=True)
         cover = draw_veins(model)
     elif spec["kind"] == "swarm":
-        threshold = spec.get("bloom_threshold", args.bloom_threshold)
-        strength = spec.get("bloom_strength", args.bloom_strength)
         # Two references, both read off the finished plate. Density calibrates
         # the tone map the way it does everywhere else; the colour reference is
         # the extra one this kind needs, because hue carries a quantity that
@@ -794,7 +924,7 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
             colours = glow.sample_palette(palette, shade)
             colour_sum, density = glow.splat(width, height, samples, colours, weights)
             linear = glow.flame_map(colour_sum, density, reference, boost=spec["boost"])
-            linear = glow.bloom(linear, threshold=threshold, strength=strength)
+            linear = glow.bloom(linear, threshold=bloom_threshold, strength=bloom_strength)
             return glow.compose(glow.to_bytes(glow.tone_map(linear, exposure=spec["exposure"])), caption)
 
         samples, _, weights = swarm_samples(model, spec, colour_reference)
@@ -814,7 +944,7 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
             colours = glow.sample_palette(palette, shade)
             colour_sum, density = glow.splat(width, height, samples, colours, weights)
             linear = glow.flame_map(colour_sum, density, reference, boost=spec["boost"])
-            linear = glow.bloom(linear, threshold=args.bloom_threshold, strength=args.bloom_strength)
+            linear = glow.bloom(linear, threshold=bloom_threshold, strength=bloom_strength)
             return glow.compose(glow.to_bytes(glow.tone_map(linear, exposure=spec["exposure"])), caption)
 
         samples, _, weights = cell_samples(model, args, spec)

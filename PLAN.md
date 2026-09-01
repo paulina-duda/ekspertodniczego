@@ -34,6 +34,7 @@ edition's README.
 | Piece | Shape | State | Hook |
 | --- | --- | --- | --- |
 | `folding` | field | **posted** (1st) — DejaVu-era, staying that way by decision | — |
+| `gyrus` | dish + hook | `folding` 2.0, built 2026-09-01 — **ready to post** | *It would fold anyway. The wall decides where.* |
 | `turing` | field | **posted** (7th) — DejaVu-era, staying that way by decision | — |
 | `physarum` | slide + hook | reworked 2026-08-25 | *No brain. One cell. Still finds a way.* |
 | `somite` | field + hook | built, **rejected** — fails T4 | *Your spine was counted, not measured.* |
@@ -130,7 +131,7 @@ grid for two constants, the visual gain is subtle, and the cost is a
 ## Queued
 
 **Ready to post** — cut, measured, and judged worth posting: `phyllotaxis`,
-`comet`. Paulina posts `comet` herself and will say when.
+`comet`, `gyrus`. Paulina posts `comet` herself and will say when.
 
 `phyllotaxis` and `comet` were measured on the finished cut 2026-08-30: **0.0%
 still frames** each, profiles 29/23% and 12/48% across the quarters. `comet`
@@ -145,6 +146,12 @@ This is a publication queue, not an inventory. A piece being rendered does not
 put it here — `condensate`, `descent`, `cohort`, `aggregation` and `sector`
 were all cut and are all in [`REJECTED.md`](REJECTED.md). Anything on this list
 that has not actually been looked at cold still owes **T4**.
+
+`gyrus` is `folding`'s 2.0 and was measured on the finished cut 2026-09-01:
+**0.0% still frames** inside the dish, minimum inter-frame delta 0.320 against
+a 0.15 threshold, loop seam 1.25 against an adjacent-pair 13.56. It carries a
+new name rather than a second FOLDING, on the biomorph precedent — one trick,
+three names, and the escalation is the point.
 
 **`folding` and `turing` are not queued for a re-cut.** Both posted (1st, 7th)
 in the pre-hook, DejaVu-era layout, and Paulina has decided that stands: the
