@@ -65,6 +65,17 @@ PHOSPHOR = [(2, 10, 7), (0, 62, 44), (0, 150, 96), (60, 226, 150), (175, 250, 20
 # the ones that grew last come out nearly white.
 CYTOSOL = [(8, 2, 14), (58, 6, 52), (140, 14, 88), (222, 52, 96), (255, 138, 122), (255, 232, 214)]
 
+# HYPHAE 2.0. Colour here is not age, it is fate: whether the segment's tip
+# ended by fusing into the network or by running to the wall. So the ramp has
+# two arms rather than one gradient -- a dim, low-chroma slate for everything
+# not yet part of the network (a tip still running, or a dead end that never
+# joined), and an ember-to-white arm for everything that closed a loop. The
+# crossover stops in the middle are used: a segment warms across them over
+# ~22 steps when its tip fuses, so the event reads as a filament lighting
+# rather than as a colour popping. Retuned for `sharp`, not ported from
+# MYCELIUM -- with the halo down, amber cores come out pastel.
+ANASTOMOSIS = [(10, 14, 24), (46, 66, 92), (96, 132, 168), (196, 124, 96), (255, 148, 40), (255, 238, 200)]
+
 # Hue is a lineage here, not an amount, so this ramp is the one in the set that
 # does *not* darken towards its low end: a wedge landing on the first stop is
 # not less of anything, and dimming it would say it was. Brightness is carried
@@ -87,6 +98,41 @@ EDITIONS: dict[str, dict] = {
             "fusion makes a network, not a tree",
         ),
         "hook": ("A tree branches. A fungus branches back.",),
+    },
+    # HYPHAE 2.0 -- same engine, four things changed: the look (bloom -> sharp),
+    # the scale of the mesh (sensor 7 -> 20, branch_rate 0.030 -> 0.009), what
+    # the colour means (age -> fate), and the palette that follows from both.
+    # It lands alongside the original, never on top of it: --tag v2.
+    "anastomosis": {
+        "kind": "points",
+        "title": "Anastomosis",
+        "slug": "anastomosis_mycelial-fusion_substrate",
+        "palette": ANASTOMOSIS,
+        "look": "sharp",
+        # sharp at a lifted exposure, which is `venation`'s setting rather than
+        # `sector`'s: a plate 7% covered by one-pixel filaments has a fraction of
+        # the density a solid colony has, and at the nominal 1.00/1.05 the whole
+        # mesh came out bone-white and lost most of its colour by the time the
+        # grid downscaled it to 200 px.
+        "exposure": 1.10,
+        "boost": 1.20,
+        "bloom_threshold": 0.55,
+        "bloom_strength": 0.25,
+        # A wide avoidance radius and a quarter of the branching opens the mesh
+        # from 1.4 px between filaments to 14 -- the shipped cut fills 72% of
+        # the dish and reads as a lamp; this fills 7% and reads as a net.
+        "model": {"sensor": 20.0, "branch_rate": 0.009, "max_tips": 600},
+        "colour": "fate",
+        "unfused": 0.28,
+        # Short of the ramp's white end on purpose. At 0.96 the network reads as
+        # cream and the piece has no hue in it; 0.88 keeps the ember in the gold,
+        # which is what survives the thumbnail.
+        "fused": 0.88,
+        "caption": (
+            "fungal mycelium · anastomosis",
+            "colour is fate · slate not yet in the network, ember fused into it",
+        ),
+        "hook": None,
     },
     "cleavage": {
         "kind": "field",
@@ -234,7 +280,13 @@ def build_overlay(width: int, height: int, spec: dict, args) -> Image.Image:
     a few points above the block so it reads as the louder of the two and no
     louder than that: every pixel it takes is a pixel the organism gives up.
     Plex regular throughout, per house rule 5.
+
+    `--no-text` returns an empty layer. That is what a T4 legibility still is
+    rendered with: a title names the subject, and a still captioned with its own
+    name asks "is this a good drawing of X" rather than "what is this".
     """
+    if not args.text:
+        return Image.new("RGBA", (width, height), (0, 0, 0, 0))
     overlay = glow.make_caption(
         width,
         height,
@@ -313,19 +365,46 @@ def tone(colour_sum: np.ndarray, density: np.ndarray, reference: float, spec: di
 
 def hyphae_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], np.ndarray]:
     height, width = args.height, args.width
-    model = growths.Hyphae(height, width)
+    model = growths.Hyphae(height, width, **spec.get("model", {}))
     progress = [model.metric()]
     while len(model.x) and model.step_index < args.hyphae_steps:
         model.step(1)
         progress.append(model.metric())
     points, ages = model.samples()
-    print(f"  hyphae: {model.step_index} steps, {len(points):,} samples, {model.metric()/(height*width):.0%} lit", flush=True)
+    print(f"  {spec['title'].lower()}: {model.step_index} steps, {len(points):,} samples, {model.metric()/(height*width):.0%} lit", flush=True)
 
     schedule = even_schedule(np.asarray(progress), args.duration_frames)
     palette = glow.build_palette(spec["palette"])
     caption = build_overlay(width, height, spec, args)
-    span = max(float(ages[-1]), 1.0)
-    colours = glow.sample_palette(palette, (ages / span).astype(np.float32))
+
+    if spec.get("colour", "age") == "fate":
+        # Colour is what happened to the segment's tip, and it arrives when it
+        # happens: a filament is slate while its tip is still running, and warms
+        # to ember over `--fuse-warm` steps at the moment that tip fuses into an
+        # older hypha. A segment whose tip reached the wall instead never warms,
+        # so the finished frame separates the network from its dead ends.
+        # Colouring by the *final* fate from the first frame would be a spoiler
+        # and, worse, would throw away the only discrete event the piece has.
+        fused_at = model.fusion_steps()[model.segments()].astype(np.float32)
+        fused_at[fused_at < 0.0] = np.inf
+        cold, hot = float(spec.get("unfused", 0.28)), float(spec.get("fused", 0.96))
+        segments = len(model.fusion_steps())
+        fused_segments = int((model.fusion_steps() >= 0).sum())
+        print(
+            f"    {segments:,} segments · {fused_segments:,} fused into the network "
+            f"· {segments - fused_segments:,} ran to the wall",
+            flush=True,
+        )
+
+        def colours_for(count: int, now: float) -> np.ndarray:
+            warm = np.clip((now - fused_at[:count]) / args.fuse_warm, 0.0, 1.0)
+            return glow.sample_palette(palette, (cold + (hot - cold) * warm).astype(np.float32))
+    else:
+        span = max(float(ages[-1]), 1.0)
+        by_age = glow.sample_palette(palette, (ages / span).astype(np.float32))
+
+        def colours_for(count: int, now: float) -> np.ndarray:
+            return by_age[:count]
 
     def weights_for(count: int, now: float) -> np.ndarray:
         # The advancing front is the only part of the picture that is doing
@@ -339,7 +418,7 @@ def hyphae_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], np
         step = float(schedule[min(int(u * (len(schedule) - 1)), len(schedule) - 1)])
         count = max(int(np.searchsorted(ages, step, side="right")), 2)
         weight = weights_for(count, step)
-        colour_sum, density = glow.splat(width, height, points[:count], colours[:count], weight)
+        colour_sum, density = glow.splat(width, height, points[:count], colours_for(count, step), weight)
         return glow.compose(tone(colour_sum, density, reference, spec, args), caption)
 
     ones = np.ones(len(points), dtype=np.float32)
@@ -623,6 +702,7 @@ def sector_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], np
 
 TIMELINES = {
     "hyphae": hyphae_timeline,
+    "anastomosis": hyphae_timeline,
     "cleavage": cleavage_timeline,
     "sandpile": sandpile_timeline,
     "reentry": reentry_timeline,
@@ -642,6 +722,11 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
         # Same suffix the cleavage re-render carries, so the hooked Plex cut and
         # the older DejaVu one sit side by side in the folder without ambiguity.
         stem += "_hook_plex"
+    if args.tag:
+        # How a 2.0 lands alongside the cut it descends from instead of on top
+        # of it. Same mechanism as the biomorph renderer, which is how `gyrus`
+        # was written out next to `folding`.
+        stem += f"_{args.tag}"
     args.output_dir.mkdir(parents=True, exist_ok=True)
     Image.fromarray(finished).save(args.output_dir / f"{stem}.cover.png")
     if args.preview:
@@ -691,7 +776,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hook-gap", type=int, default=82, help="hook ink down to the data block's ink")
     parser.add_argument("--bloom-threshold", type=float, default=0.30)
     parser.add_argument("--bloom-strength", type=float, default=0.60)
+    parser.add_argument("--tag", help="suffix appended to the filename, e.g. v2")
+    parser.add_argument("--no-text", dest="text", action="store_false",
+                        help="render the form with no title, hook or data block — a T4 legibility still")
     parser.add_argument("--hyphae-steps", type=int, default=1400)
+    parser.add_argument("--fuse-warm", type=float, default=22.0,
+                        help="steps a segment takes to warm from slate to ember once its tip fuses")
     parser.add_argument("--tip-boost", type=float, default=2.2)
     parser.add_argument("--tip-decay", type=float, default=26.0)
     parser.add_argument("--cleavage-steps", type=int, default=300)

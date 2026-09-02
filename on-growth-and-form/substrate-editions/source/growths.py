@@ -75,6 +75,18 @@ class Hyphae:
         self.y = np.full(tips, height * 0.5, dtype=np.float32)
         self.heading = angle.astype(np.float32)
 
+        # Which segment laid each sample down. A segment is one internode: it
+        # begins where its tip was branched off and ends where that tip stops,
+        # so its fate is a single fact about it -- it fused into the network, or
+        # it ran to the wall. Nothing here draws from the generator, so a model
+        # built with the shipped parameters produces the shipped colony.
+        self.ident = np.arange(tips, dtype=np.int32)
+        self.next_ident = tips
+        self.idents: list[np.ndarray] = []
+        # Step at which each segment's tip fused. -1 is "never": it reached the
+        # rim, or the run ended while it was still going.
+        self.fused_step: list[int] = [-1] * tips
+
         # When each pixel was last written to. Anastomosis needs to tell "another
         # hypha" from "the piece of myself I laid down two steps ago", and the
         # only difference between them is age.
@@ -101,6 +113,7 @@ class Hyphae:
         self.touched[row, column] = self.step_index
         self.points.append(np.column_stack((self.x, self.y)).astype(np.float32))
         self.ages.append(np.full(len(self.x), self.step_index, dtype=np.float32))
+        self.idents.append(self.ident.copy())
 
     def step(self, count: int = 1) -> None:
         for _ in range(count):
@@ -134,7 +147,10 @@ class Hyphae:
             fused = (self.step_index - self.touched[row, column]) < self.refractory
             fused = ~fused & (self.touched[row, column] > -10_000)
             alive = inside & ~fused
+            for ident in self.ident[fused]:
+                self.fused_step[int(ident)] = self.step_index
             self.x, self.y, self.heading = self.x[alive], self.y[alive], self.heading[alive]
+            self.ident = self.ident[alive]
             if not len(self.x):
                 return
 
@@ -151,12 +167,24 @@ class Hyphae:
                     self.heading = np.concatenate(
                         (self.heading, self.heading[chosen] + side * math.radians(38.0))
                     ).astype(np.float32)
+                    fresh = np.arange(self.next_ident, self.next_ident + len(chosen), dtype=np.int32)
+                    self.next_ident += len(chosen)
+                    self.ident = np.concatenate((self.ident, fresh))
+                    self.fused_step.extend([-1] * len(chosen))
 
     def metric(self) -> float:
         return float(self.lit)
 
     def samples(self) -> tuple[np.ndarray, np.ndarray]:
         return np.concatenate(self.points), np.concatenate(self.ages)
+
+    def segments(self) -> np.ndarray:
+        """Segment id per sample, aligned with `samples()`."""
+        return np.concatenate(self.idents)
+
+    def fusion_steps(self) -> np.ndarray:
+        """Step each segment fused at, indexed by segment id; -1 for never."""
+        return np.asarray(self.fused_step, dtype=np.int32)
 
 
 class Cleavage:

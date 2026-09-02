@@ -1,20 +1,19 @@
 # Rejected, and which test it failed
 
-Tests are the four in [`BRIEF.md`](BRIEF.md), applied by `/pitch`: **T1**
-change profile · **T2** something to watch · **T3** density · **T4**
-legibility. `subject` means it failed the account's premise rather than a test.
+The four tests are in [`BRIEF.md`](BRIEF.md), applied by `/pitch`: **T1**
+profile · **T2** watch · **T3** density · **T4** legibility. `subject` means it
+failed the premise rather than a test.
 
 **This is a record, not a brief.** `/pitch` does not read it up front — the
-failure patterns live in BRIEF's tests and the standing bans in BRIEF's
-editions section, so a growing file is not paid for on every pitch. It is
-grepped when a surviving candidate looks like a relative of something here.
+failure patterns are in BRIEF's tests — and only greps it when a survivor
+looks like a relative of something here.
 
 ### How it stays small — capped at 80 lines
 
-- **One table row per rejection**, and that row is permanent. It is cheap.
-- **Prose only for a lesson that changed a rule**, and once the rule is written
-  into `BRIEF.md` or a skill, cut the prose here down to a sentence.
-- **Never restate a test.** The tests live in `BRIEF.md`.
+- **One table row per rejection**, permanent, and cheap.
+- **Prose only for a lesson that changed a rule** — and once that rule is in
+  `BRIEF.md` or a skill, cut the prose here to a sentence.
+- **Never restate a test.** They live in `BRIEF.md`.
 
 | Name | What it was | Failed | Why, in one clause |
 | --- | --- | --- | --- |
@@ -39,24 +38,27 @@ grepped when a surviving candidate looks like a relative of something here.
 | `swarm` | *Proteus mirabilis* terraced swarming, the consolidate-and-migrate cycle | **T2, T4** | two formulations and 24 parameter sets gave one flood and never a staircase — a delayed excitable front in a continuum is a travelling wave, not a beat — and the finished frame is a featureless disc, interior density p90/p10 2.85 |
 | `mega` | the MEGA-plate: a colony evolving its way across bands of rising antibiotic | **T4** | T1 is comet-clean (38.3% first quarter, 14.7% last, 0.4% frozen) and the breakthroughs are real events, but each band is founded by one mutant whose clone then sweeps it, so the finished plate is 90–100% lit in four flat colour bars; no mutation rate buys both the event and the texture |
 | `band` | Budrene-Berg chemotactic spot arrays in *E. coli* | **build** | 42 parameter sets over four formulations gave two outcomes and nothing between — one smooth disc, or 400–1,500 blobs 1–3 px across; scaling `Dn` and χ together to resolve a wavelength deletes the instability rather than widening the spots |
+| `chirality` | tilted nodal cilia rectifying rotation into a leftward flow | **T2** | T1 is clean (25.4% first quarter, 24.4% last, a driven flow) and there is no event in it — the specks drift one way at a constant rate, and the pit never changes shape |
+| `intercalation` | germband convergent extension, cells swapping neighbours | **T2** | aspect 1.14→1.76 passes T1 at 24.7/16.7%, but the median cell travels 1.80 cell diameters in 8 s and one exchange is 26 px wide — the arc is real and every event in it is smaller than the grid thumbnail |
+| `crest` | neural crest chasing placodes up a gradient the crest itself eats | **T4** | the chase is measured (placode cluster 10.3 body lengths, profile 13.5/30.3%) and both cuts fail the picture: blobs give two speckle clouds at 3.6% lit pixels, trails give a scribble field stacked against the walls |
+| `spindle` | mitotic search and capture: two poles guessing until every chromosome is held | **T4** | passed the gate on numbers (31.0/19.0% profile, 0.0% still frames, minimum delta 2.760) and Paulina rejected the finished cut cold — ugly, and no process visible in it. Four drawings of the chromosomes and none made the search legible; the picture is two starbursts and a white band |
 | Segment edition | `segment-editions/` | **subject** | ugly; dropped entirely |
 | Attractors, proteins | posted early, since taken down | **subject** | mathematics and structural biology, not biology-as-algorithm |
 
-A dozen further candidates were dropped on **T1** alone in the 2026-08
-shortlist and are not listed: the pattern is always coarsening, filling,
-settling or remodelling.
+A dozen more went on **T1** alone in the 2026-08 shortlist: the pattern is
+always coarsening, filling, settling or remodelling.
 
-**`condensate` is the one worth remembering.** It was pushed from 146k steps to
-1.2M and given three pacing schemes; the stutter went 29% → 5% and the droplets
-really do end up fat. All of that engineering was correct and none of it changed
-what the clip is. **A T1 failure is not a bug to be fixed by working harder on
-the render** — the process is the problem.
+**`spindle` passed a T4 nobody ran** — the still was shown with its subject named. Rule now in BRIEF's T4.
+
+**`condensate`:** 1.2M steps and three pacing schemes fixed its stutter and
+changed nothing about the clip. **A gate failure is not a bug to work harder
+on.**
 
 ---
 
 ## Kept as groundwork rather than deleted
 
-A rejection is about the grid, not the code. What survived, and why:
+What survived a rejection, and why:
 
 | From | What is reusable |
 | --- | --- |
@@ -69,10 +71,10 @@ A rejection is about the grid, not the code. What survived, and why:
 | `cohort` | the arithmetic: moving pixels are *creatures × body area × body-lengths travelled*, and isolated panels make that product flat |
 | `descent` | the genetic algorithm itself. The search was worth running; none of its three tellings became a reel |
 | `aggregation` | the isotropic nine-point laplacian, now in `on-growth-and-form/source/CLAUDE.md` — it fixed a real grid artefact and outlives this piece |
+| `spindle` | the search-and-capture model, and the `sample_limit` fix in `tree_samples` — the 32-sample ceiling drew any frame-crossing segment as one dot every 56 px, and that was a live bug for every long-segment edition |
 | `sector` | the Gaussian-neighbourhood isotropic growth rule and the O(1) frame recovery by arrival-step (one `int32` array for the whole clip, no per-state banking) |
 
 ## Delete the render, keep the code
 
-A rejected cut does not stay on disk. The mp4 and its cover come off; the
-model, the renderer and any weights stay, and the row above is the record. Disk
-is not an archive — `REJECTED.md` is.
+The mp4 and its cover come off; the model, the renderer and any weights stay,
+and the row above is the record. Disk is not an archive — this file is.

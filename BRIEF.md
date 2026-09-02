@@ -25,9 +25,9 @@ Keep the claims apart and do not let copy inflate them: alife argues
 organisation *is* what being alive consists of; Biomorph claims nothing.
 
 **Two standing bans.** `learned-editions/` is **parked** — one piece shipped, it
-failed, and the objection is in T4. And the **Lenia genetic-algorithm run has
-had three tellings** (`descent`, `cohort`, `shoal`), all rejected: the next
-Lenia idea must be a different subject, not a fourth camera on that run.
+failed, objection in T4. And the **Lenia genetic-algorithm run has had three
+tellings** (`descent`, `cohort`, `shoal`), all rejected: the next Lenia idea
+must be a different subject, not a fourth camera on that run.
 
 ---
 
@@ -68,28 +68,28 @@ stamped every 1.1 s, a collision, a tear that heals, chaos snapping into order.
 **Fail if the honest one-line description is "it gets bigger".**
 
 **Self-similar growth passes T1's numbers and is still "it gets bigger".**
-`sector` grows at a flat, honest rate (25/25/25/25%, 5.4% frozen) and still
-reads as one disc inflating, because the wedge pattern is set almost at once
-and everything after is the same shape at a larger radius — the real
-competition is a front too thin to see at video scale. Check the *shape*
-across the quarters, not only the pixel count.
+`sector` grows at a flat, honest 25/25/25/25% and still reads as one disc
+inflating: the wedge pattern is set almost at once and the real competition is
+a front too thin to see at video scale. Check the *shape* across the quarters,
+not only the pixel count.
 
 ### 3. Density — is it many interacting parts?
 
-The pipeline is additive splatting into a float buffer, log-density tone
-mapping, multi-scale bloom: **brightness is how much stuff is there.** A
-process converging to one clean object leaves the frame black and gives that
-machinery nothing to work on. **Fail if it makes one object.** The fix, twice,
-was *more of them* — and only if they **share a world**: `cohort` has twenty in
-twenty panels and is the stillest cut in the account.
+Additive splatting, log-density tone mapping, multi-scale bloom:
+**brightness is how much stuff is there.** A process converging to one clean
+object gives that machinery nothing to work on. **Fail if it makes one
+object.** The fix, twice, was *more of them* — and only if they **share a
+world**: `cohort` has twenty in twenty panels and is the stillest cut here.
 
 ### 4. Legibility — does it read cold, at 200 px?
 
 The subject is the process; the unit Instagram deals in is the first
 half-second and the grid thumbnail. **Show frame one to somebody who has not
-been told what it is, before the render, not after.** Fail if they cannot say
-what they are looking at — `regrowth` is the worked example: measurements
-sound, finding real, three purple shapes on screen.
+been told what it is, before the render, not after** — and *unnamed*, or you
+are asking "is that a good spindle", which only somebody already told can be
+asked; `spindle` passed a T4 run that way and was rejected on sight. **Two ways
+to fail: they cannot say what it is** — `regrowth`, three purple shapes on
+screen — **or they can, and it is not worth looking at.**
 
 **A wetware piece additionally has to change shape, not just contents** —
 `trabecula` refines a fixed silhouette, which reads as the wrong kind of motion.
@@ -132,8 +132,8 @@ is prettier" is not an answer. Output is suffixed `_v2`, never on top.
    where dense, not garish. **Blue is an accent, never a whole piece.**
 7. **No camera turn on plane processes.** Things in a plane have no far side.
 
-Numbers, margins, shapes and confinement mechanics are **not here** — the
-`reel` skill is the single source for them. Never copy them into this file.
+Numbers, margins, shapes and confinement are **not here** — the `reel` skill is
+the single source. Never copy them into this file.
 
 ## Where everything lives
 

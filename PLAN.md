@@ -43,10 +43,17 @@ edition's README.
 | `trabecula` | field + hook | built, **rejected** — fails T1/T4 | *No one drew this. The load did.* |
 | `venation` | field | built, **rejected** — T1 confirmed on the cut, 44.4% still | *The vein is not a route. It is a leftover.* |
 | `aggregation` | field + hook | built, **rejected** — fails T4 (reads as flowers) | *Every wave would carry them back. / So they only answer half of it.* |
+| `spindle` | field, `sharp` | built, **rejected** — fails T4, judged on the cut | — |
 
 Neither `somite` nor `trabecula` is going out, and both leave an axis behind:
 `somite` is the first piece in the account **with a beat** and `trabecula` the
 first **subtractive** one. Reuse the axes, not the cuts.
+
+`spindle` is the third piece to pass the gate on numbers and die on the
+picture, after `somite` and `sector`, and the only one to do it with a clean
+sheet — 0.0% still frames, minimum delta 2.760, profile 31.0/19.0%. **The gate
+does not measure whether a frame is worth looking at**, and three pieces now
+say the same thing: what it screens out is a bad process, not a bad picture.
 
 ### Substrate — [`README`](on-growth-and-form/substrate-editions/README.md)
 
@@ -171,34 +178,20 @@ Ten minutes of measurement would have saved `trabecula`, `venation` and
 Run `/pitch` on anything below before building it. Ordered by what would be
 built first.
 
-1. **`spindle`** — microtubules grow from two poles and collapse at random
-   until one is captured by a chromosome. Hundreds of filaments flicker for the
-   whole clip, then the chaos snaps into a bipolar spindle with the chromosomes
-   in a plate. Constant motion **plus a clear event**. Hook draft: *"Your cells
-   find their chromosomes by guessing."* Risk: low.
-2. **`chirality`** — tilted cilia in the embryonic node spin one way, the tilt
-   turns rotation into a leftward flow, and that is why the heart ends up on
-   the left. Rotation constant by construction. **Best hook of the set**, and a
-   subject nobody is doing. Risk: medium — Stokes flow, and handedness is
-   subtle to read in a frame.
-3. **`ripple`** — *Myxococcus* reverse on contact, filling the frame with
-   counter-propagating bands that **pass through each other**. Oscillatory, so
-   it runs forever. Hook draft: *"Nothing is travelling. Only the agreement
-   is."* Risk: medium-low.
-4. **`stripe`** — zebrafish pigment cells: short-range activation, long-range
-   inhibition, but the morphogens are *cells*. Stripes assemble from a scatter
-   and, cut half way through, **heal back into stripes**. Hook draft: *"Turing
-   was right. The morphogens are cells."* Risk: medium — the regeneration has
-   to actually work, not just the pattern.
-5. **`metachrony`** — a carpet of cilia coupled only through the fluid, falling
+**Four have come off this list and none of them survived:** `spindle` and
+`chirality` in the 2026-09-02 round, `ripple` and `stripe` earlier. All four
+are in [`REJECTED.md`](REJECTED.md) and none may be re-proposed. Being on this
+list has meant very little; treat it as a source of subjects, not of verdicts.
+
+1. **`metachrony`** — a carpet of cilia coupled only through the fluid, falling
    out of random phase into travelling waves. Would be the **true version of
    what `medusa` and `quorum` fake parametrically**, which closes that series
    properly. Hook draft: *"None of them can see the others. The water is
    enough."* Risk: medium.
-6. **`vortex`** — a dense suspension of flagellated swimmers, hydrodynamically
+2. **`vortex`** — a dense suspension of flagellated swimmers, hydrodynamically
    coupled, self-organising into a drifting lattice of vortices. Active matter:
    a steady state that never stops moving. Risk: medium-high.
-7. **`epithelium`** — a proliferating sheet where every division hands edges to
+3. **`epithelium`** — a proliferating sheet where every division hands edges to
    its neighbours, and the polygon-class distribution converges to the same one
    in a fly, a frog and a hydra. Dozens of division events per second. Hook
    draft: *"Six is not a plan. Six is an average."* Risk: medium — real chance

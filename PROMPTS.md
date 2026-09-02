@@ -127,6 +127,52 @@ them creates a second source that drifts.
 
 ---
 
+## Deciding what happens to a finished reel
+
+Three words, three outcomes. Say one of these once a reel is built and you
+have looked at it — the agent needs nothing else to act correctly.
+
+### "Reject `<name>` — `<why>`"
+
+> Reject `<name>`. `<one honest reason — ugly, no process visible, boring,
+> whatever it actually is>`.
+>
+> Add one row to `REJECTED.md`: the name, what it was in a clause, and which
+> test it failed — if you're not sure which test, say so rather than
+> guessing. Mark it `rejected` in its `PLAN.md` row. Delete the render and its
+> cover from disk; the code, model and weights stay.
+>
+> **Do not touch `BRIEF.md`, `PLAN.md`'s rules section, or any skill** unless
+> this piece passed every test as written and still failed — a genuine gap in
+> a test, not a matter of taste. If you think it exposes one, say which test
+> and how, and wait for me to agree before editing the standing rules.
+
+That last paragraph is the one that matters: a rejection is routine unless you
+say otherwise. `/pitch` now carries the same rule, so it will not amend a
+standing rule on its own just because the word "ugly" appeared — but saying it
+here, every time, costs nothing and removes any doubt.
+
+If you already believe the rejection exposes a real gap in a test — the way
+`sector` (a flat pixel-count profile that was still just a growing disc) or
+`spindle` (a clean T4 run shown with its subject named) did — say that
+explicitly instead of the line above:
+
+> Reject `<name>` — `<why>`. This one passed T`<n>` as written and still
+> failed, because `<what the test missed>`. Propose the fix to `BRIEF.md` and
+> **stop** — I want to see the wording before it goes in.
+
+### "Queue `<name>`" / "`<name>` is ready to post"
+
+> Move `<name>` into `PLAN.md`'s "Ready to post" list, with its measurements if
+> they're not already recorded. Nothing else changes — the render stays where
+> it is.
+
+### "Park `<name>`"
+
+> Mark `<name>` **parked** in its `PLAN.md` row and take it out of "Ready to
+> post" if it's there. It stays built, on disk, off the queue, until I call it
+> by name again.
+
 ## Steering it stage by stage
 
 The single prompt runs all five stages. Send them separately when you want to

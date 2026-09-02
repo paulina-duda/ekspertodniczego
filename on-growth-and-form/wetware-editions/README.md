@@ -543,3 +543,50 @@ half of it."* Not posted.
   it, but the title still sits on black by luck rather than by design. Reseeding
   or changing the pacemaker count would redistribute them; neither has been
   tried.
+
+## Spindle
+
+Mitotic search and capture — two poles guessing until every chromosome is
+held. Built and **rejected** 2026-09-02, on sight, as the finished cut:
+ugly, and no process visible in it. `field`, `sharp`, 8 s, `ASTER`. The render
+is deleted; `morphogens.Spindle` and the edition entry stay.
+
+**It is the cleanest set of numbers anything in this account has failed on.**
+Gate: bi-orientation 0 / 13 / 23 / 34 / 42 of 46, first quarter 31.0%, last
+19.0%, holding across three seeds. Cut: **0.0% still frames**, 0 of 239, none
+in any second; minimum inter-frame delta 2.760 against a 0.15 threshold, median
+3.565; loop seam 6.67 against mid-clip adjacent pairs of 4.69 and 5.05. None of
+that is worth anything, and the piece is the third — after `somite` and
+`sector` — to say so.
+
+- **T4 was run wrong, and that is the finding.** The gate still was shown with
+  the subject named on it, which asks whether it is a good drawing of a spindle
+  rather than what it is. The rule is now in BRIEF's T4: show it unnamed, and
+  count "not worth looking at" as a fail. A test you administer to yourself is
+  not the test.
+
+- **The chromosomes took four drawings and none of them worked.** Disc samples
+  scattered along the body draw stubble; a filled grid draws white dominoes; a
+  filled ellipse draws a cloud, and 46 overlapping ellipses draw one cloud with
+  no chromosomes in it; two sister chromatids lying across the axis, coiled and
+  seamed, finally read as bodies — and the plate still comes out looking like a
+  row of typographic marks. **The object was never the problem.** What is on
+  screen is two starbursts and a white band, and no amount of drawing the band
+  better makes 760 straight lines from two points into a process anyone can see
+  happening.
+
+- **Three things the model needed before it did anything real**, all of them
+  real biology and all measured: kinetochores that can only be bound from the
+  face they present (without it capture is ~20× too fast and the search is over
+  inside the first quarter); congression of singly-attached chromosomes to the
+  midplane (without it 2 of 18 ever bi-orient, because a chromosome sitting on
+  its own pole hides the free sister from the other one); and RanGTP
+  stabilisation of microtubules near chromatin, which is the published answer
+  to the standing objection that blind search-and-capture is too slow — without
+  it the run stalls at 27 of 92 kinetochores held.
+
+- **One renderer bug found here outlives the piece.** `tree_samples` capped
+  every segment at 32 samples, which suits a vein and draws a frame-crossing
+  microtubule as one dot every 56 px: the first cover came out at 40,404
+  samples against an honest 380,000. Editions that draw long segments now
+  declare `sample_limit`, and the ceiling is commented at the function.

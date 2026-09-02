@@ -169,6 +169,13 @@ Rules for the verdict:
 - **A REJECT is written down.** Append one line to [`REJECTED.md`](../../../REJECTED.md):
   name, one clause of what it was, and **which test it failed**. That line is
   what stops the same class of idea coming back in a month.
+- **Only touch `BRIEF.md` or a skill when the piece defeats the test itself** —
+  it passed every check and still failed, the way `sector` (flat T1 profile,
+  still just a growing disc) and `spindle` (clean T4 run, shown named rather
+  than cold) did. An ordinary rejection — a test caught it, or would have if
+  run right — is the `REJECTED.md` line and nothing more. Paulina saying a
+  piece is ugly is not, by itself, a reason to change a standing rule; a piece
+  that was ugly *despite passing every test as written* is.
 - **A BUILD adds one line to `PLAN.md`'s queue**, not a section. The long-form
   record is written *after* the piece exists, in its edition's `README.md`.
 - **Do not soften a fail.** If the numbers say the change crowds into the first

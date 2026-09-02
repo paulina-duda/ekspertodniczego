@@ -156,6 +156,14 @@ SULCUS = [(40, 2, 34), (132, 6, 74), (198, 30, 58), (242, 106, 38), (255, 190, 1
 # The third alternative, SULPHUR, came out a flat yellow-green with the violet
 # invisible -- which is CULTURE's family, i.e. the palette of the cut this one
 # exists to get away from.
+# The spindle. Colour is how long a filament has survived, so the low end is
+# most of the frame -- a population being torn down and rebuilt -- and the top
+# end is the few fibres that found a chromosome and stopped being disposable.
+# Cyan sits mid-ramp rather than at the bright end: house rule 6 allows blue as
+# an accent, and the bright end has to be hot so the k-fibres separate from the
+# search that made them.
+ASTER = [(4, 2, 26), (46, 0, 112), (126, 0, 188), (0, 172, 226), (255, 170, 110), (255, 248, 236)]
+
 VENOM = [(18, 2, 30), (58, 0, 96), (14, 46, 34), (86, 172, 0), (198, 246, 0), (238, 255, 170)]
 
 EDITIONS: dict[str, dict] = {
@@ -429,6 +437,47 @@ EDITIONS: dict[str, dict] = {
         # The block deliberately does not mention the adaptation. That is the
         # hook's, and a hook may not restate the block.
         "hook": ("Every wave would carry them back.", "So they only answer half of it."),
+    },
+    "spindle": {
+        "kind": "spindle",
+        "title": "Spindle",
+        "slug": "spindle_search-capture_aster",
+        "palette": ASTER,
+        # `sharp`, and it is the case the reel skill names outright: the
+        # subject is 760 thin lines and the halo smears them into haze. Side
+        # by side on the same end state, bloom puts a grey veil between the
+        # asters where sharp holds genuine black, and the k-fibres stop
+        # reading as separate fibres.
+        "look": "sharp",
+        "bloom_threshold": 0.55,
+        "bloom_strength": 0.25,
+        "exposure": 1.00,
+        "boost": 1.05,
+        "steps_per_frame": 3,
+        # 40 steps, not 0: at step 0 every filament is a stub and the poles
+        # have not separated, so frame one of the clip is a dot rather than
+        # two asters. 40 is the point where the search is visibly running and
+        # nothing has been captured yet.
+        "settle": 40,
+        # Weight follows survival as well as hue, so the disposable majority
+        # is present without carpeting the frame and a k-fibre reads as a
+        # fibre rather than as one more ray.
+        "taper": 0.8,
+        # A microtubule spans the frame, so the 32-sample ceiling that suits a
+        # vein draws it as a dotted rule. Measured: 40,404 samples against
+        # 380,000 at 0.6 px spacing.
+        "sample_limit": 4000,
+        # The body is filled by the model, so the renderer's blob splat is
+        # switched down to one sample per point and only carries the weight.
+        "head": 1.0,
+        "head_samples": 1,
+        "head_weight": 1.00,
+        "caption": (
+            "Homo sapiens  ·  mitotic spindle",
+            "grow · give up · shrink · guess again",
+            "46 chromosomes  ·  92 kinetochores  ·  760 filaments",
+            "search and capture, Kirschner & Mitchison 1986",
+        ),
     },
 }
 
@@ -711,16 +760,24 @@ def swarm_samples(model, spec, colour_reference: float):
     )
 
 
-def tree_samples(start: np.ndarray, end: np.ndarray, target: float = 0.6) -> tuple[np.ndarray, np.ndarray]:
+def tree_samples(
+    start: np.ndarray, end: np.ndarray, target: float = 0.6, limit: int = 32
+) -> tuple[np.ndarray, np.ndarray]:
     """Sample every vein segment along its own length.
 
     By length, not a fixed count per segment: a fixed count turns the long
     segments into dotted rules across the frame, and it reads as a layout bug
     rather than a sampling one. It cost real time in `descent`.
+
+    The ceiling is the same trap one level up. A vein or a comet tail is a few
+    dozen pixels and never reaches 32 samples, but a microtubule crosses the
+    frame: capped at 32 it is drawn as one dot every 56 px, which is the same
+    dotted rule and cost the first spindle cover 40,404 samples where the
+    honest count is 380,000. An edition that draws long segments says so.
     """
     delta = end - start
     length = np.linalg.norm(delta, axis=1)
-    counts = np.clip(np.ceil(length / target), 1, 32).astype(np.int64)
+    counts = np.clip(np.ceil(length / target), 1, limit).astype(np.int64)
     total = int(counts.sum())
     segment = np.repeat(np.arange(counts.size, dtype=np.int64), counts)
     starts = np.zeros(counts.size + 1, dtype=np.int64)
@@ -784,6 +841,10 @@ def build(name: str, args: argparse.Namespace):
         return morphogens.Physarum(args.height, args.width, agents=args.agents, band=band)
     if spec["kind"] == "comet":
         return morphogens.Comet(args.height, args.width, speed=args.comet_speed)
+    if spec["kind"] == "spindle":
+        # Everything the search is tuned by was measured at the gate and is in
+        # the model, not here: the one number this side owns is the clip pace.
+        return morphogens.Spindle(args.height, args.width)
     if spec["kind"] == "vein":
         # Stride and blade schedule are set together, and what they buy is
         # pacing: the veins reach the top of the frame around frame 155 and
@@ -879,11 +940,13 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
         )
         reference = float(np.percentile(probe[probe > 0], 92.0))
         cover = draw(final_points, model.age)
-    elif spec["kind"] in ("vein", "comet"):
+    elif spec["kind"] in ("vein", "comet", "spindle"):
+
+        limit = spec.get("sample_limit", 32)
 
         def draw_veins(state) -> np.ndarray:
             start, end, shade = state.segments()
-            samples, segment = tree_samples(start, end)
+            samples, segment = tree_samples(start, end, limit=limit)
             carried = shade[segment]
             taper = spec.get("taper", 0.0)
             weights = (carried ** taper if taper else np.ones(len(samples))).astype(np.float32)
@@ -896,7 +959,7 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
             return glow.compose(glow.to_bytes(glow.tone_map(linear, exposure=spec["exposure"])), caption)
 
         start, end, shade = model.segments()
-        samples, segment = tree_samples(start, end)
+        samples, segment = tree_samples(start, end, limit=limit)
         taper = spec.get("taper", 0.0)
         probe_weights = (shade[segment] ** taper if taper else np.ones(len(samples))).astype(np.float32)
         if spec.get("head"):
@@ -907,6 +970,10 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
         reference = float(np.percentile(probe[probe > 0], 92.0))
         if spec["kind"] == "comet":
             print(f"  {name}: {model.count:,} bacteria, {len(samples):,} samples", flush=True)
+        elif spec["kind"] == "spindle":
+            print(f"  {name}: {model.bioriented()}/{model.chromosomes} bi-oriented, "
+                  f"{model.attached()}/{2 * model.chromosomes} kinetochores held, "
+                  f"{len(samples):,} samples", flush=True)
         else:
             print(f"  {name}: {model.count:,} tips, {len(model.sources):,} sources left", flush=True)
         cover = draw_veins(model)
@@ -991,7 +1058,7 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
                 model.step(spec["steps_per_frame"])
             if spec["kind"] == "curve":
                 frame = draw(model.points, model.age)
-            elif spec["kind"] in ("vein", "comet"):
+            elif spec["kind"] in ("vein", "comet", "spindle"):
                 frame = draw_veins(model)
             elif spec["kind"] == "swarm":
                 frame = draw_swarm(model)
