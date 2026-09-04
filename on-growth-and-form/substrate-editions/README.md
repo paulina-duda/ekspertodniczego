@@ -1,17 +1,17 @@
 # Substrate Editions
 
-Six processes on a medium, five of them alive.
+Eight cuts of seven processes on a medium, six of them alive.
 
 `substrate-editions/` is about *where* a process happens. The sibling set in
 [`../source/`](../source/) runs two mathematical processes against one
 biological one — Gray-Scott and differential growth against a slime mould. This
-set inverts the ratio: five of these are things a microscope can be pointed at,
+set inverts the ratio: six of these are things a microscope can be pointed at,
 and **Sandpile** is a rule about integers that has no business producing an
 organism and produces one anyway. That contrast is the edition's whole
 argument — the substrate does the computing, and it need not be alive to look
 like it.
 
-Five of the six make something out of nothing; **Condensate** only rearranges
+Six of the seven make something out of nothing; **Condensate** only rearranges
 what is already in the dish.
 
 | Edition | Field | What it is |
@@ -22,6 +22,8 @@ what is already in the dish.
 | `condensate_phase-separation_substrate` | biology | liquid-liquid phase separation (Cahn-Hilliard) — **rejected**, T1/T2 |
 | `sandpile_abelian-lattice_substrate` | mathematics | grains toppling on a lattice |
 | `sector_range-expansion_substrate` | biology | a colony spreading on a plate, drawing its own genealogy |
+| `syncytium_hyphal-fusion_substrate` | biology | `hyphae` 2.0 — six spores fusing into one network |
+| `culture_cortical-network_substrate` | biology | dissociated cortical neurons wiring themselves up (Wagenaar 2006) |
 
 The tests a piece has to pass before it is built are in
 [`BRIEF.md`](../../BRIEF.md); the queue and the decisions are in
@@ -64,7 +66,7 @@ For `hyphae` the front is also lit brighter than the rest — the advancing tips
 are the only part of the frame doing anything, and giving the eye something to
 track is most of what keeps a growth clip watchable.
 
-## The six processes
+## The seven processes
 
 ### Hyphae
 
@@ -263,6 +265,105 @@ Every border did."*
   34 lineages across the quarters. 444 lineages are founded over the run, 46
   reach the rim, and 38 of those did not exist when it started. Of the 48
   founders in the drop, **8**.
+
+### Syncytium — `hyphae` 2.0
+
+Built 2026-09-02. Same engine as `hyphae`, four things changed: the look
+(`bloom` → `sharp`), the scale of the mesh, the shape (`dish` → `field`) and
+what the colour means (age → which spore). Hook *"A tree only branches apart. /
+These branched into each other."*, a deliberate second half to the first cut's
+*"A tree branches. A fungus branches back."*
+
+- **The shipped `hyphae` never shows the fusion its hook is about.** At
+  `sensor 7` and `branch_rate 0.030` the colony fills **72.1% of the dish with
+  1.4 px between filaments** — finer than a pixel, so the mesh tone-maps into a
+  lamp and every loop in it is gone. Opening the avoidance radius to 20 and
+  cutting the branch rate to 0.009 gives **8% coverage at ~14 px spacing**,
+  which is what makes the network legible as a network. Measured on the way:
+  `sensor 16` → 8.2% / 12.3 px, `sensor 20 branch 0.010` → 10.7% / 9.3 px
+  (solid again once the grid downscales it), `sensor 28` → 3.7% and the fusion
+  rate *falls* in the last quarter, which would have failed T2.
+
+- **The dish was never the fix; the density was.** The note further down this
+  file says the mycelium had to be given a plate because unbounded it ran off
+  every edge, filled the frame corner to corner, blew out to white and put the
+  caption on a bright field. All three of those are consequences of 72%
+  coverage. At 8% the frame keeps its black and `bound="frame"` is safe, so
+  this cut is the same colony let out to the frame edge.
+
+- **`field` still costs what the `reel` skill says it costs.** On the finished
+  frame the title band is **42.5% covered**, the hook band 57.7%, the data
+  block 48.4% — but at mean luminance 0.12–0.16 under each. The scrim and the
+  hook's stroke carry it and the text reads; this is mitigated, not solved, and
+  it is the reason `slide` exists.
+
+- **One spore is a disc for half the clip whatever it is bounded to.** Six
+  spores on a jittered grid fix that and buy the piece its event: colonies meet.
+  Random scatter was not used — it clumps, and a clump merges before either
+  colony has visibly been a colony.
+
+- **The event is measured, not asserted.** First fusion joining two different
+  spores at simulation step 347, which is **frame 78 — 2.60 s**. Grafts per
+  quarter of the clip after the cover hold: **0 / 31 / 104 / 271**, i.e. 0 →
+  16.2 → 54.5 → 142.0 per second. The first quarter is six organisms and the
+  last is one. 1,520 segments over the run, 1,312 fuse, 407 of those join two
+  spores.
+
+- **Colour is identity, so the palette has one stop per spore.** Six stops,
+  six spores, a segment lands exactly on its own and there are no in-between
+  colours to go muddy — the same argument as `LATTICE`'s four stops for four
+  states. Brightness is carried by density instead, as in `LINEAGE`. `FLUORO`
+  is the reading a fluorescence microscope gives with strains on separate
+  channels and the channels summed; two calmer candidates were rendered
+  alongside it and turned down for less impact.
+
+- **`sharp` at `venation`'s exposure, not `sector`'s.** A frame 8% covered by
+  one-pixel filaments has a fraction of the density a solid plate has, and at
+  the nominal `1.00 / 1.05` the mesh came out bone-white and lost most of its
+  colour to the 200 px downscale. Ships at `1.10 / 1.20`.
+
+- **The model change is transparent to the parent cut.** `Hyphae` now carries
+  segment identity, a fusion step, a founder and a pixel-ownership map, and
+  none of it draws from the generator, so `hyphae` re-renders to md5
+  `69e8f4e86a5882b5c4589531ba66d6f1` — byte-identical to the posted cover.
+
+### Culture
+
+Built 2026-09-04, `field`, no shape confinement. **Not yet run through the
+gate in reported form and not shown to anyone cold — built, not queued.**
+
+A cortical culture is plated as a suspension of single dissociated cells, every
+connection they had destroyed in the process, and left to wire itself: over
+the days that follow each cell puts out neurites, and a synapse switches on
+wherever one cell's reach passes another's — nobody specifies the wiring, it
+is a consequence of where each cell happened to land (Wagenaar, Pine & Potter
+2006). The rule per cell is integrate-and-fire with short-term depression: a
+cell charges, fires, empties, and a cell that just fired has less to give,
+which is what stops a wave rather than letting it burn across the whole field.
+Nothing is fitted, trained or searched. Eight seconds here stand for roughly
+the first three weeks of a real culture — isolated spikes at the start, then
+patches firing together, then dish-wide bursts nobody wired and nobody
+triggers, as the neurites simply get long enough to reach further.
+
+- **A neuron is one point, and a point is one pixel — the mistake that sank
+  `aggregation` and `nematic`.** At 12,000 neurons the mean spacing is 7.7 px,
+  so cells drawn a pixel wide stay separate specks at any size and tone-map
+  into grey speckle at the grid thumbnail. Splatted as a small disc of samples
+  instead, so neighbours fuse into mass wherever the tissue is actually active.
+- **No floor under a cell that has never fired.** A flat floor over all 12,000
+  covers three quarters of the frame in dust — the first cut's mistake — and
+  buries the structure it was meant to sit under. Brightness is spike plus a
+  slow decaying trace, and nothing else.
+- **Colour is recency, ranked over every spike in the clip rather than per
+  frame** — a long thin tail of cells go over on almost nothing, so a linear
+  map would put four spikes in five on one palette stop. Ranking once, over
+  the whole run, is what keeps an early frame genuinely sitting at the cold
+  end of the ramp (house rule 2's case for ranking a skewed scalar).
+- **Banked one state per frame and played straight through, not paced by
+  measurement.** Every other process in this edition is paced because it
+  creeps and then floods; this one carries its own beat — the developmental
+  arc from isolated spikes to dish-wide bursts — and re-timing that clock
+  would destroy the thing worth watching.
 
 ## Rendering
 

@@ -1,8 +1,6 @@
 # Rejected, and which test it failed
 
-The four tests are in [`BRIEF.md`](BRIEF.md), applied by `/pitch`: **T1**
-profile · **T2** watch · **T3** density · **T4** legibility. `subject` means it
-failed the premise rather than a test.
+The four tests are in [`BRIEF.md`](BRIEF.md), applied by `/pitch`: **T1** profile · **T2** watch · **T3** density · **T4** legibility — `subject` failed the premise.
 
 **This is a record, not a brief.** `/pitch` does not read it up front — the
 failure patterns are in BRIEF's tests — and only greps it when a survivor
@@ -10,10 +8,9 @@ looks like a relative of something here.
 
 ### How it stays small — capped at 80 lines
 
-- **One table row per rejection**, permanent, and cheap.
-- **Prose only for a lesson that changed a rule** — and once that rule is in
-  `BRIEF.md` or a skill, cut the prose here to a sentence.
-- **Never restate a test.** They live in `BRIEF.md`.
+One table row per rejection, permanent and cheap. Prose only for a lesson that
+changed a rule, cut to a sentence once that rule is in `BRIEF.md` or a skill.
+Never restate a test — they live in `BRIEF.md`.
 
 | Name | What it was | Failed | Why, in one clause |
 | --- | --- | --- | --- |
@@ -42,17 +39,19 @@ looks like a relative of something here.
 | `intercalation` | germband convergent extension, cells swapping neighbours | **T2** | aspect 1.14→1.76 passes T1 at 24.7/16.7%, but the median cell travels 1.80 cell diameters in 8 s and one exchange is 26 px wide — the arc is real and every event in it is smaller than the grid thumbnail |
 | `crest` | neural crest chasing placodes up a gradient the crest itself eats | **T4** | the chase is measured (placode cluster 10.3 body lengths, profile 13.5/30.3%) and both cuts fail the picture: blobs give two speckle clouds at 3.6% lit pixels, trails give a scribble field stacked against the walls |
 | `spindle` | mitotic search and capture: two poles guessing until every chromosome is held | **T4** | passed the gate on numbers (31.0/19.0% profile, 0.0% still frames, minimum delta 2.760) and Paulina rejected the finished cut cold — ugly, and no process visible in it. Four drawings of the chromosomes and none made the search legible; the picture is two starbursts and a white band |
+| `plume` | bioconvection — algae swim up until the water they have crowded falls back through them | **T1** | onset at t=1.45 of 35 and noise after it: 86% of the change in the first quarter, and the developed regime drifts less (+0.013 rms) than it fluctuates (sd 0.053) |
+| `clot` | a platelet plug built on an injured wall and torn off again by the flow that feeds it | **T2** | the plug grows cleanly (13.6% first quarter, 18.3% last) and the tear-off stays small — 195 fragments washed away, 7 of them above 2% of the clot, the largest 12.9% |
+| `ridge` | fingerprint primary ridges — a Turing pattern gated by fronts from the nail furrow, the pad apex and the crease | **subject, cut** | wrong subject for the account, and a reveal the gate could not see: T1 passes at 23.5/26.5% because crest length accumulates to the end, yet only 1.6% of the pad changes per frame — **53.1% still frames, longest run 90**, seconds 0–2 frozen solid |
+| `facet` | the morphogenetic furrow crystallising a Drosophila compound eye | **T4** | the lattice packs but never crystallises — ψ₆ 0.507–0.740 over seven parameter sets against 0.887 for a hex lattice with 6% jitter; drawn cell by cell it is speckle, and the continuum form of lateral inhibition gives stripes, not founders |
+| `cortex` | inside-out cortical lamination, 27,000 neurons climbing radial glia | **T4** | best profile of its round (17.0/29.3%, birth-to-depth correlation +0.900) and the still is a uniform grain rectangle — 76.7% lit, a grey block at 200 px, and the climbers are invisible inside the plate they climb through |
 | Segment edition | `segment-editions/` | **subject** | ugly; dropped entirely |
 | Attractors, proteins | posted early, since taken down | **subject** | mathematics and structural biology, not biology-as-algorithm |
 
-A dozen more went on **T1** alone in the 2026-08 shortlist: the pattern is
-always coarsening, filling, settling or remodelling.
-
-**`spindle` passed a T4 nobody ran** — the still was shown with its subject named. Rule now in BRIEF's T4.
-
-**`condensate`:** 1.2M steps and three pacing schemes fixed its stutter and
-changed nothing about the clip. **A gate failure is not a bug to work harder
-on.**
+A dozen more went on **T1** alone in the 2026-08 shortlist: always coarsening,
+filling, settling or remodelling. **`condensate`** took 1.2M steps and three
+pacing schemes to fix its stutter, changing nothing about the clip — a gate
+failure is not a bug to work harder on. **`spindle`** passed a T4 nobody ran,
+shown with its subject named; the rule is now in `BRIEF.md`'s T4.
 
 ---
 

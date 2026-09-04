@@ -69,6 +69,34 @@ A fail here is not always fatal: **an external clock rescues it** — a drive
 that keeps injecting material, or a beat. If you propose one, it is a different
 candidate and it goes through test 1 again with the clock in.
 
+### Then measure how much of the frame is live
+
+**The profile measures accumulation, and a reveal accumulates.** `shoal` is the
+warning in one direction — motion passes, only the profile sees the failure.
+`ridge` is the warning in the other, and it cost a full build: 23.5% first
+quarter against 26.5% last, a textbook pass, and the cut came out **53.1%
+frozen with the first three seconds solid**, because the only thing changing was
+a front creeping across a picture that was finished behind it.
+
+So ask where the change *is*, not just how much of it there is. On the same run,
+record the fraction of the frame that differs between consecutive rendered
+steps:
+
+```python
+live = np.mean([(np.abs(state[i + 1] - state[i]) > eps).mean()
+                for i in range(len(state) - 1)])
+```
+
+`ridge` reads **1.6%**. Everything behind the front was final, and nothing paces
+that away — the timestep only moves where the live band sits, measured at
+1.6 / 1.9 / 1.8% over three values while the print stopped finishing.
+
+**If the live fraction is a thin front and the rest of the frame is done, it is
+a reveal: reject it here.** The threshold is not yet calibrated against shipped
+pieces — `ridge` is the only measurement in this units so far — so until a
+second candidate is measured, treat a moving front with a finished wake as a
+fail on the structure rather than on a number.
+
 ## Test 2 — something to watch
 
 Write the honest one-line description of what happens over eight seconds, as

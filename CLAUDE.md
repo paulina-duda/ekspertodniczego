@@ -26,10 +26,16 @@ in the `reel` skill. Nothing gets mirrored between these files.
 conda activate ekspertodniczego
 ```
 
-Python 3.12, numpy, scipy, pillow, torch 2.11+cu128. The GPU is an RTX 5090 —
-Blackwell `sm_120`; older torch wheels install fine and only fail on the first
-GPU call. If an encode fails, compare `ffmpeg -encoders | grep libx264` between
-the conda ffmpeg and `/usr/bin/ffmpeg` — a conda build once lacked it.
+Python 3.12, numpy, scipy, pillow, torch 2.11+cu128. If an encode fails,
+compare `ffmpeg -encoders | grep libx264` between the conda ffmpeg and
+`/usr/bin/ffmpeg` — a conda build once lacked it.
+
+**Developed across two machines, same `ekspertodniczego` conda env on both:**
+a desktop with an RTX 5090 (Blackwell `sm_120`) and a laptop with an RTX 5070.
+Neither is faster in a way that changes any decision here — the renders in
+`PLAN.md` and the measurements in `REJECTED.md` are not tied to which machine
+made them, and a piece rejected on one card is rejected on the other. Older
+torch wheels install fine on either and only fail on the first GPU call.
 
 ## Layout
 

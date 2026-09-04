@@ -47,6 +47,8 @@ because each is its own parametric equation.
 ```bash
 python3 on-growth-and-form/biomorph-editions/source/generate_growth_mp4_v3_titled.py  # cosine-creature
 python3 on-growth-and-form/biomorph-editions/source/generate_medusa_mp4_titled.py     # medusa
+python3 on-growth-and-form/biomorph-editions/source/generate_ammonite_mp4_titled.py   # ammonite
+python3 on-growth-and-form/biomorph-editions/source/generate_hydrozoa_mp4_titled.py   # hydrozoa
 python3 on-growth-and-form/biomorph-editions/source/generate_quorum_mp4_titled.py     # quorum
 ```
 

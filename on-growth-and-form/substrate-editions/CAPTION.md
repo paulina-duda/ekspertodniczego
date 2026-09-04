@@ -5,6 +5,66 @@ it appears on the frame, then the caption in English and Polish.
 
 ---
 
+# `syncytium_hyphal-fusion_substrate` — `hyphae` 2.0
+
+Hook, in frame: **A tree only branches apart. / These branched into each other.**
+
+Data block, in frame:
+
+```
+fungal mycelium · anastomosis
+extend · branch · fuse · stop
+six spores · 407 fusions joined two of them
+```
+
+---
+
+## English
+
+A fungus grows only at the tips of its hyphae. Each tip wanders, splits in two,
+and turns away from ground the colony has already spent. When it runs into
+another hypha it fuses with it and stops. That fusion is anastomosis, and it is
+the whole difference between a fungus and a tree: a tree's branches never meet
+again, so every path back to the trunk is unique, while a mycelium's branches
+grow into one another and the colony becomes a network with loops in it — able
+to move material between distant points, and to carry on around damage.
+
+Six spores went onto this substrate, one colour each. For the first two and a
+half seconds they are six separate colonies. Then a tip from one of them reaches
+a hypha belonging to another, fuses, and the two stop being two. By the end, 407
+fusions have joined strands from different spores.
+
+Nothing here was assembled and nothing agreed to cooperate. Every tip is
+following the same three rules it followed while it was still alone. A real
+fungus can refuse the join — vegetative incompatibility, and the two colonies
+wall each other off — but between compatible individuals it does not, and what
+is left is one continuous body where six used to be.
+
+---
+
+## Polski
+
+Grzyb rośnie wyłącznie na szczytach strzępek. Każdy szczyt błądzi, rozdwaja się
+i odwraca od podłoża, które kolonia już zużyła. Kiedy trafi na inną strzępkę,
+zrasta się z nią i przestaje rosnąć. Ten zrost to anastomoza i to cała różnica
+między grzybem a drzewem: gałęzie drzewa nigdy się już nie spotykają, więc każda
+droga do pnia jest jedyna, a strzępki grzybni wrastają w siebie nawzajem i
+kolonia staje się siecią z pętlami — zdolną przenosić materiał między odległymi
+punktami i działać dalej mimo uszkodzenia.
+
+Na to podłoże trafiło sześć zarodników, każdy w swoim kolorze. Przez pierwsze
+dwie i pół sekundy to sześć osobnych kolonii. Potem szczyt jednej z nich dochodzi
+do strzępki należącej do innej, zrasta się z nią i dwa przestają być dwoma. Do
+końca klipu 407 zrostów łączy nici z różnych zarodników.
+
+Nic tu nie zostało złożone i nic się nie umówiło na współpracę. Każdy szczyt
+wykonuje te same trzy reguły, które wykonywał, kiedy był sam. Prawdziwy grzyb
+potrafi odmówić zrostu — to niezgodność wegetatywna, kolonie odgradzają się od
+siebie — ale między osobnikami zgodnymi nie odmawia, i zostaje jedno ciągłe
+ciało tam, gdzie było sześć.
+
+---
+
 # `sector_range-expansion_substrate`
 
 Hook, in frame: **Not one cell moved. Every border did.**
@@ -79,3 +139,64 @@ tym przebiegu powstały 444 linie; 46 z nich dociera do obrzeża, a 38 nie
 istniało na starcie.
 
 Klinów nikt nie narysował. Kliny to tempo wzrostu.
+
+---
+
+# `culture_cortical-network_substrate`
+
+Hook, in frame: **Every connection was cut. / It is firing again.**
+
+Data block, in frame:
+
+```
+dissociated cortical culture · Wagenaar et al. 2006
+charge · fire · deplete · recover
+colour is how long ago a cell fired · gold is now
+12,000 neurons · 570,560 synapses, none of them chosen
+```
+
+---
+
+## English
+
+A cortical culture starts as a suspension. A piece of cortex is broken down into
+single cells — destroying every connection those cells had — and the cells are
+seeded onto a coverslip, where they settle wherever they happen to land. Over
+the days that follow they put out neurites, and a synapse forms wherever one
+cell's process reaches another. Nobody specifies the wiring. It is a consequence
+of where each cell fell.
+
+What happens next is the piece. At first the cells fire alone: a spike here, a
+spike there, each one a cell that has leaked its way up to threshold with
+nothing pushing it. As the neurites get longer the events get larger — a spike
+recruits its neighbours, its neighbours recruit theirs — until the events are
+large enough to cross the whole field. The eight seconds here cover roughly the
+first three weeks of a real culture.
+
+Nothing in it is trained, fitted or searched. Each cell charges, fires, empties
+and is briefly unable to fire again, and every spike leaves it with less to
+give — which is what stops a wave rather than letting it burn the field down.
+Across the whole clip exactly one thing changes: how far the neurites have
+grown. Everything else follows from that.
+
+## Polski
+
+Hodowla korowa zaczyna się od zawiesiny. Fragment kory rozbija się na pojedyncze
+komórki — niszcząc przy tym każde połączenie, jakie miały — i wysiewa na
+szkiełko, gdzie osiadają tam, gdzie akurat wypadną. Przez kolejne dni wypuszczają
+neuryty, a synapsa powstaje wszędzie tam, gdzie wypustka jednej komórki dosięgnie
+drugiej. Nikt nie projektuje tych połączeń. Są konsekwencją tego, gdzie która
+komórka upadła.
+
+To, co dzieje się potem, jest właściwym tematem. Na początku komórki wyładowują
+się pojedynczo: impuls tu, impuls tam, za każdym razem komórka, która sama
+dopełzła do progu, bo nic jej nie popchnęło. Im dłuższe neuryty, tym większe
+zdarzenia — impuls porywa sąsiadów, sąsiedzi porywają swoich — aż zdarzenia
+stają się na tyle duże, że przechodzą przez całe pole. Osiem sekund odpowiada
+mniej więcej pierwszym trzem tygodniom prawdziwej hodowli.
+
+Nic tu nie jest trenowane, dopasowywane ani wyszukiwane. Każda komórka ładuje
+się, wyładowuje, pustoszeje i przez chwilę nie jest w stanie wystrzelić ponownie,
+a po każdym impulsie ma mniej do oddania — i to właśnie zatrzymuje falę, zamiast
+pozwolić jej wypalić pole do końca. Przez cały klip zmienia się dokładnie jedno:
+jak daleko sięgnęły neuryty. Reszta z tego wynika.

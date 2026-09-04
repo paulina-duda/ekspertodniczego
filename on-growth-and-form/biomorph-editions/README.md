@@ -11,6 +11,7 @@ intention into motion. Say so in the copy rather than hiding it.
 
 One script per creature rather than a registry, because each is its own
 equation: `generate_growth_mp4_v3_titled.py`, `generate_medusa_mp4_titled.py`,
+`generate_ammonite_mp4_titled.py`, `generate_hydrozoa_mp4_titled.py`,
 `generate_quorum_mp4_titled.py`. `fish.py` is the edition's shared animal and
 `quorum` is the first thing to use it.
 
@@ -91,6 +92,40 @@ Metachronal wave; a bell and fourteen tentacles driven by one sine with
 fourteen phase delays. Built with hook (`HOOK_GAP = 82`, same numbers as
 everywhere else). Its data block carries Greek (ξ, φ), so the title stays Plex
 while the block itself is drawn in DejaVu via `equation_face`. Not posted.
+
+## Ammonite
+
+The third coordinate system: the cosine creature read a formula along an axis,
+the medusa read one wave radially, this one is the equiangular spiral —
+r ∝ e^(0.13 θ), the same shape at every size, which is why a mollusc can live
+in one its whole life. The animal sits still at the aperture and lays down one
+rib per loop; everything it built recedes down the coil, shrinking by exactly
+K = 2.3^(1/16) per rib. Magenta is the living tissue — tentacles, mantle lip,
+and the one rib being written now, which materialises dot by dot as it slides
+out of the lip; white is shell, dead the moment it was finished. Built with
+hook (`HOOK_GAP = 82`), `_hook` cuts at 8 s and 12 s; title and hook Plex,
+data block DejaVu via `equation_face` (θ, ∝). Not posted.
+
+- **The loop is seamless *because of* the equation.** Self-similarity means
+  the frame after one rib is the frame before it. Verified: last frame vs
+  cover, mean pixel difference 0.65/255 — one animation step plus codec noise.
+- **The rib conveyor must share one dot pattern across all ribs**, scaled by
+  the local tube width, or rib j at the end of the loop lands on rib j+1's
+  position with different jitter and the seam pops. Same trick as the fade:
+  a rib is born at size 0 at the lip and dies at size 0 in the core, so the
+  set of visible ribs is identical across the seam.
+- **Rails are static, ribs drift.** The tube envelope is self-similar truth
+  and holds still; only the material moves. Animating both reads identically
+  and costs the jitter-seam problem twice.
+- **Wrap the aperture heading** (`np.angle(np.exp(1j·ang))`) before blending
+  tentacle directions, or the blend goes the long way round and the curtain
+  rolls into a ball of yarn.
+- **Tentacles must start already fanned** and turn at per-tentacle rates
+  toward per-tentacle hanging directions — a shared initial heading pinches
+  the curtain into a ponytail below the lip, tried twice.
+- **Mirrored composition is a font-free way to clear the typography**: mouth
+  lower-right, core upper-left, so the data block and hook sit on black and
+  the title clears the coil's crown.
 
 ## Quorum
 

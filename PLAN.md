@@ -44,6 +44,7 @@ edition's README.
 | `venation` | field | built, **rejected** — T1 confirmed on the cut, 44.4% still | *The vein is not a route. It is a leftover.* |
 | `aggregation` | field + hook | built, **rejected** — fails T4 (reads as flowers) | *Every wave would carry them back. / So they only answer half of it.* |
 | `spindle` | field, `sharp` | built, **rejected** — fails T4, judged on the cut | — |
+| `ridge` | field, `sharp` | built, **rejected** — a reveal, and the wrong subject | *It identifies you. Nobody specified it.* |
 
 Neither `somite` nor `trabecula` is going out, and both leave an axis behind:
 `somite` is the first piece in the account **with a beat** and `trabecula` the
@@ -65,6 +66,8 @@ say the same thing: what it screens out is a bad process, not a bad picture.
 | `condensate` | dish + hook | built, **rejected** — fails T1/T2 | *Nothing was built. It only stopped mixing.* |
 | `sandpile` | dish + hook | built, **parked** — Paulina will call when scheduling | *One rule about integers. No biology at all.* |
 | `sector` | field, `sharp` | built, **rejected** — fails T2 | *Not one cell moved. Every border did.* |
+| `syncytium` | field + hook, `sharp` | `hyphae` 2.0, built 2026-09-02 — **ready to post** | *A tree only branches apart. / These branched into each other.* |
+| `culture` | field | built 2026-09-04 — owes T1–T4 confirmed and a cold read | *Every connection was cut. / It is firing again.* |
 
 ### Artificial Life — [`README`](on-growth-and-form/alife-editions/README.md)
 
@@ -94,12 +97,23 @@ next Lenia idea has to be a different subject, not a different camera.
 | --- | --- | --- | --- |
 | `cosine-creature` | field | **posted** — inspired by **yuruyurau**, credited | — |
 | `medusa` | field + hook, 12 s | **posted** (8th) | *Nothing here swims. / One sine wave, fourteen phase delays.* |
+| `ammonite` | field + hook | built 2026-09-02 — owes a cold T4 read | — |
+| `hydrozoa` | field, no hook | built 2026-09-04, closed-loop fix of an abandoned `hydrocreatures` sketch — owes T1/T3/T4 | — |
 | `quorum` | field + hook | **parked** — a sketch, not a cut | — |
 
 The series tells one trick three times and **the escalation is the point**: the
 cosine creature is a wave pretending to be a body, the medusa the same wave
 pretending to swim, `quorum` the same wave pretending to be a society. Keep
 that order in the copy if `quorum` is ever finished.
+
+`ammonite` (equiangular-spiral shell growth) and `hydrozoa` (three animals on
+one yuruyurau-family curve) are both fully worked in their own docstrings and
+in `README.md` — real measurements, not hand-waving — but neither has been run
+through the gate in the reported `/pitch` block form, and neither still has
+been shown to anyone cold. **Not queued until that happens.** `hydrozoa`
+supersedes an earlier `hydrocreatures` sketch whose loop never closed
+(seam 1.72 body radii, no clip length fixed it); that sketch and its scratch
+directory are gone rather than kept, since nothing in it survived unchanged.
 
 **`quorum` is parked as a sketch.** The idea and `fish.py` are sound and the
 depth trick works, but what exists is a first pass, not a cut. It is also the
@@ -138,7 +152,7 @@ grid for two constants, the visual gain is subtle, and the cost is a
 ## Queued
 
 **Ready to post** — cut, measured, and judged worth posting: `phyllotaxis`,
-`comet`, `gyrus`. Paulina posts `comet` herself and will say when.
+`comet`, `gyrus`, `syncytium`. Paulina posts `comet` herself and will say when.
 
 `phyllotaxis` and `comet` were measured on the finished cut 2026-08-30: **0.0%
 still frames** each, profiles 29/23% and 12/48% across the quarters. `comet`
@@ -159,6 +173,13 @@ that has not actually been looked at cold still owes **T4**.
 a 0.15 threshold, loop seam 1.25 against an adjacent-pair 13.56. It carries a
 new name rather than a second FOLDING, on the biomorph precedent — one trick,
 three names, and the escalation is the point.
+
+`syncytium` is `hyphae`'s 2.0 and was measured on the finished cut 2026-09-02:
+**0.0% still frames** after the cover hold, minimum inter-frame delta 0.172
+against a 0.15 threshold, loop seam 1.99 against an encoder noise floor of 5.18
+measured between the lossless cover and the encoded frame one. It carries a new
+name on the `gyrus` precedent. The one thing it owes is **T4's cold read** — the
+still has not been shown to anyone who was not already told what it is.
 
 **`folding` and `turing` are not queued for a re-cut.** Both posted (1st, 7th)
 in the pre-hook, DejaVu-era layout, and Paulina has decided that stands: the

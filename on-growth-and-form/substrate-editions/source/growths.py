@@ -52,6 +52,9 @@ class Hyphae:
         speed: float = 1.25,
         wander: float = 0.20,
         radius: float | None = None,
+        seeds: int = 1,
+        bound: str = "disc",
+        keepout: np.ndarray | None = None,
         sensor: float = 7.0,
         sensor_angle: float = math.radians(32.0),
         turn: float = math.radians(15.0),
@@ -61,8 +64,20 @@ class Hyphae:
         seed: int = 20260815,
     ) -> None:
         self.height, self.width = height, width
-        # Bounded like a plate culture: unbounded, the colony runs off every edge,
-        # buries the caption and loses the black the house style is composed on.
+        # `disc` bounds the colony like a plate culture. That was not a taste
+        # decision: the first cut ran off every edge, filled the frame corner to
+        # corner, blew out to white and put the caption on a bright field. What
+        # made it unrecoverable was the density -- at 1.4 px between filaments
+        # there is no black left to lose. `frame` is the same colony let out to
+        # the frame edge, and it is only safe at a mesh open enough that most of
+        # the picture is still substrate.
+        self.bound = bound
+        # Ground the colony is not allowed onto. Sensing treats it as already
+        # colonised, so tips turn away from it a sensor-length out rather than
+        # walking into it and dying on a line -- the difference between a
+        # mycelium growing around an obstacle and a mycelium with a bite taken
+        # out of it. Used to hold the margins and the text clear.
+        self.keepout = None if keepout is None else np.ascontiguousarray(keepout, dtype=bool)
         self.radius = float(min(height, width) * 0.44 if radius is None else radius)
         self.centre = np.array([width * 0.5, height * 0.5], dtype=np.float32)
         self.speed, self.wander = speed, wander
@@ -70,27 +85,47 @@ class Hyphae:
         self.branch_rate, self.max_tips, self.refractory = branch_rate, max_tips, refractory
         self.generator = np.random.default_rng(seed)
 
+        # One spore or several. Several is what a substrate actually gets, and it
+        # is the only way the fusion the piece is about happens between two
+        # individuals rather than inside one. They go down on a jittered grid
+        # rather than at random: random scatter clumps, and a clump of colonies
+        # merges before either has been visibly a colony. Nothing here touches
+        # the generator unless there is more than one seed, so a model built with
+        # the shipped parameters still produces the shipped colony.
+        origins = self._sow(seeds)
+        self.founders = seeds
         angle = np.linspace(0.0, 2.0 * math.pi, tips, endpoint=False)
-        self.x = np.full(tips, width * 0.5, dtype=np.float32)
-        self.y = np.full(tips, height * 0.5, dtype=np.float32)
-        self.heading = angle.astype(np.float32)
+        self.x = np.repeat(origins[:, 0], tips).astype(np.float32)
+        self.y = np.repeat(origins[:, 1], tips).astype(np.float32)
+        self.heading = np.tile(angle, seeds).astype(np.float32)
+        # Which spore each tip came from, carried down every branch.
+        self.founder = np.repeat(np.arange(seeds, dtype=np.int32), tips)
 
         # Which segment laid each sample down. A segment is one internode: it
         # begins where its tip was branched off and ends where that tip stops,
         # so its fate is a single fact about it -- it fused into the network, or
         # it ran to the wall. Nothing here draws from the generator, so a model
         # built with the shipped parameters produces the shipped colony.
-        self.ident = np.arange(tips, dtype=np.int32)
-        self.next_ident = tips
+        self.ident = np.arange(len(self.x), dtype=np.int32)
+        self.next_ident = len(self.x)
         self.idents: list[np.ndarray] = []
         # Step at which each segment's tip fused. -1 is "never": it reached the
         # rim, or the run ended while it was still going.
-        self.fused_step: list[int] = [-1] * tips
+        self.fused_step: list[int] = [-1] * len(self.x)
+        # Founder per segment id, so a sample can be coloured by whose it is.
+        self.founder_of: list[int] = list(self.founder)
+        # Fusions in which the two hyphae came from different spores -- the step
+        # at which two individuals stopped being two.
+        self.grafts: list[int] = []
 
         # When each pixel was last written to. Anastomosis needs to tell "another
         # hypha" from "the piece of myself I laid down two steps ago", and the
         # only difference between them is age.
         self.touched = np.full((height, width), -10_000, dtype=np.int32)
+        # Whose hypha wrote each pixel. Needed to tell a fusion inside one colony
+        # from a fusion between two, which is the only difference between a
+        # mycelium tidying itself up and two individuals becoming one.
+        self.owner = np.full((height, width), -1, dtype=np.int16)
         self.step_index = 0
 
         self.points: list[np.ndarray] = []
@@ -101,15 +136,58 @@ class Hyphae:
         self.lit = 0
         self._deposit()
 
+    def _sow(self, seeds: int) -> np.ndarray:
+        if seeds <= 1:
+            return np.array([[self.width * 0.5, self.height * 0.5]], dtype=np.float32)
+        # Columns and rows chosen so the cells come out as square as the frame
+        # allows; a 2 x 3 grid on 9:16 gives cells 540 x 640.
+        columns = max(1, int(round(math.sqrt(seeds * self.width / self.height))))
+        rows = int(math.ceil(seeds / columns))
+        cell = np.array([self.width / columns, self.height / rows], dtype=np.float32)
+        centres = np.array(
+            [[(c + 0.5) * cell[0], (r + 0.5) * cell[1]] for r in range(rows) for c in range(columns)],
+            dtype=np.float32,
+        )[:seeds]
+        placed = centres + self.generator.uniform(-0.22, 0.22, centres.shape).astype(np.float32) * cell
+        if self.keepout is not None:
+            # A spore dropped on forbidden ground never germinates, so re-jitter
+            # any that land there. Bounded tries, then fall back to the nearest
+            # allowed pixel so this can never fail to terminate.
+            for _ in range(40):
+                rows = np.clip(placed[:, 1].astype(np.int32), 0, self.height - 1)
+                columns = np.clip(placed[:, 0].astype(np.int32), 0, self.width - 1)
+                bad = self.keepout[rows, columns]
+                if not bad.any():
+                    break
+                placed[bad] = (
+                    centres[bad]
+                    + self.generator.uniform(-0.45, 0.45, (int(bad.sum()), 2)).astype(np.float32) * cell
+                )
+            rows = np.clip(placed[:, 1].astype(np.int32), 0, self.height - 1)
+            columns = np.clip(placed[:, 0].astype(np.int32), 0, self.width - 1)
+            bad = self.keepout[rows, columns]
+            if bad.any():
+                allowed = np.argwhere(~self.keepout)
+                for index in np.flatnonzero(bad):
+                    distance = np.hypot(allowed[:, 0] - placed[index, 1], allowed[:, 1] - placed[index, 0])
+                    nearest = allowed[int(np.argmin(distance))]
+                    placed[index] = (nearest[1], nearest[0])
+        return placed.astype(np.float32)
+
     def _sample(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
         column = np.clip(x.astype(np.int32), 0, self.width - 1)
         row = np.clip(y.astype(np.int32), 0, self.height - 1)
-        return (self.touched[row, column] > -10_000).astype(np.float32)
+        seen = self.touched[row, column] > -10_000
+        if self.keepout is not None:
+            seen = seen | self.keepout[row, column]
+        return seen.astype(np.float32)
 
     def _deposit(self) -> None:
         column = np.clip(self.x.astype(np.int32), 0, self.width - 1)
         row = np.clip(self.y.astype(np.int32), 0, self.height - 1)
         self.lit += int((self.touched[row, column] == -10_000).sum())
+        fresh = self.touched[row, column] == -10_000
+        self.owner[row[fresh], column[fresh]] = self.founder[fresh].astype(np.int16)
         self.touched[row, column] = self.step_index
         self.points.append(np.column_stack((self.x, self.y)).astype(np.float32))
         self.ages.append(np.full(len(self.x), self.step_index, dtype=np.float32))
@@ -139,9 +217,20 @@ class Hyphae:
             self.x = (self.x + self.speed * np.cos(self.heading)).astype(np.float32)
             self.y = (self.y + self.speed * np.sin(self.heading)).astype(np.float32)
 
-            inside = (
-                np.hypot(self.x - self.centre[0], self.y - self.centre[1]) < self.radius
-            )
+            if self.bound == "frame":
+                inside = (
+                    (self.x >= 0.0) & (self.x < self.width) & (self.y >= 0.0) & (self.y < self.height)
+                )
+            else:
+                inside = (
+                    np.hypot(self.x - self.centre[0], self.y - self.centre[1]) < self.radius
+                )
+            if self.keepout is not None:
+                blocked = self.keepout[
+                    np.clip(self.y.astype(np.int32), 0, self.height - 1),
+                    np.clip(self.x.astype(np.int32), 0, self.width - 1),
+                ]
+                inside = inside & ~blocked
             column = np.clip(self.x.astype(np.int32), 0, self.width - 1)
             row = np.clip(self.y.astype(np.int32), 0, self.height - 1)
             fused = (self.step_index - self.touched[row, column]) < self.refractory
@@ -149,8 +238,12 @@ class Hyphae:
             alive = inside & ~fused
             for ident in self.ident[fused]:
                 self.fused_step[int(ident)] = self.step_index
+            # A graft is a fusion where the hypha landed on is another spore's.
+            joined = self.owner[row[fused], column[fused]]
+            self.grafts.extend([self.step_index] * int((joined != self.founder[fused]).sum()))
             self.x, self.y, self.heading = self.x[alive], self.y[alive], self.heading[alive]
             self.ident = self.ident[alive]
+            self.founder = self.founder[alive]
             if not len(self.x):
                 return
 
@@ -170,7 +263,9 @@ class Hyphae:
                     fresh = np.arange(self.next_ident, self.next_ident + len(chosen), dtype=np.int32)
                     self.next_ident += len(chosen)
                     self.ident = np.concatenate((self.ident, fresh))
+                    self.founder = np.concatenate((self.founder, self.founder[chosen]))
                     self.fused_step.extend([-1] * len(chosen))
+                    self.founder_of.extend(int(f) for f in self.founder[chosen])
 
     def metric(self) -> float:
         return float(self.lit)
@@ -185,6 +280,10 @@ class Hyphae:
     def fusion_steps(self) -> np.ndarray:
         """Step each segment fused at, indexed by segment id; -1 for never."""
         return np.asarray(self.fused_step, dtype=np.int32)
+
+    def founders_of(self) -> np.ndarray:
+        """Founding spore per segment id."""
+        return np.asarray(self.founder_of, dtype=np.int32)
 
 
 class Cleavage:
@@ -954,3 +1053,181 @@ class Sector:
         density = here * (base + tip_boost * np.exp(-age / tip_decay))
         shade = self.hue[self.label] * here
         return density.astype(np.float32), shade.astype(np.float32)
+
+
+class Culture:
+    """Dissociated cortical neurons on a coverslip, wiring themselves up.
+
+    Plated as a soup of single cells, a cortical culture spends its first weeks
+    growing neurites and making synapses, and its electrical behaviour changes
+    while it does: isolated cells twitch on their own, then small patches go
+    together, and by the third week the whole culture fires in dish-wide bursts
+    that nobody wired and nobody triggers (Wagenaar, Pine & Potter 2006). That
+    developmental arc is the clip -- weeks of it, in eight seconds.
+
+    The rule is the smallest one that has all three ingredients. Integrate and
+    fire: a cell charges, crosses threshold, empties and sits refractory. A
+    synapse switches on when the growing neurite reach passes its length, which
+    is the only thing in here that changes with time. Short-term depression is
+    what *stops* a burst -- a cell that has just fired has less to give -- and a
+    weak spontaneous drive is what starts one. Nothing is fitted, trained or
+    searched; the wiring is where the cells happen to have landed.
+
+    The states are banked one per frame and never re-timed. Every other process
+    in this file is paced by measurement, because a mycelium creeps and then
+    floods; this one carries a beat, and re-timing a clock is the one thing that
+    would destroy the thing worth watching.
+    """
+
+    def __init__(
+        self,
+        height: int,
+        width: int,
+        neurons: int = 35_000,
+        reach: float = 36.0,
+        growth: float = 0.35,
+        weight: float = 0.030,
+        drive: float = 6e-4,
+        depression: float = 0.45,
+        recovery: float = 0.010,
+        refractory: int = 4,
+        delay: int = 2,
+        afterglow: float = 12.0,
+        trace: float = 150.0,
+        maturity: float = 1.0,
+        seed: int = 7,
+    ) -> None:
+        self.height, self.width = height, width
+        self.reach, self.growth = float(reach), float(growth)
+        self.weight, self.drive = float(weight), float(drive)
+        self.depression, self.recovery = float(depression), float(recovery)
+        self.refractory, self.delay = int(refractory), int(delay)
+        self.decay = float(0.5 ** (1.0 / max(afterglow, 1e-6)))
+        # How far into the outgrowth the clip stops. Below 1.0 the network is
+        # still wiring when the last frame lands, which is what keeps the
+        # finished frame a field of separate lit territories instead of the
+        # even fog a saturated network settles into.
+        self.maturity = float(maturity)
+        self.rng = np.random.default_rng(seed)
+
+        self.positions = np.stack(
+            [self.rng.random(neurons) * width, self.rng.random(neurons) * height], axis=1
+        ).astype(np.float64)
+        pairs = cKDTree(self.positions).query_pairs(self.reach, output_type="ndarray")
+        # Both directions: a synapse is one-way, and the pair list is not.
+        source = np.concatenate([pairs[:, 0], pairs[:, 1]])
+        target = np.concatenate([pairs[:, 1], pairs[:, 0]])
+        length = np.linalg.norm(self.positions[source] - self.positions[target], axis=1)
+        order = np.argsort(length)
+        # Sorted by length once, so "which synapses exist yet" is a prefix of the
+        # array rather than a mask over it -- the reach only ever grows.
+        self.source = source[order].astype(np.int32)
+        self.target = target[order].astype(np.int32)
+        self.length = length[order]
+
+        self.neurons = neurons
+        self.potential = self.rng.random(neurons)
+        self.refractory_left = np.zeros(neurons, dtype=np.int32)
+        self.resource = np.ones(neurons)
+        self.arriving = np.zeros((self.delay, neurons))
+        self.activation = np.zeros(neurons, dtype=np.float32)
+        self.step_index = 0
+        self.total_steps = 1
+        self.spikes = 0
+        self.ever_fired = np.zeros(neurons, dtype=bool)
+        self.live = 0
+
+        # What fired the cell: how much synaptic input it was holding at the
+        # moment it last crossed threshold. This is what the colour means. Near
+        # zero is a cell that got there on its own leak; large is one shoved
+        # over by a wave that had already recruited half the frame.
+        #
+        # The *last* spike and not the average over all of them, which is what
+        # the first cut used and why it came out as hue confetti: averaged, the
+        # quantity is a per-cell idiosyncrasy and neighbouring cells disagree by
+        # the width of the ramp. Taken at the last spike it is a property of the
+        # event rather than of the cell, so everything a wave recruited carries
+        # one colour and holds it until the next wave arrives -- which is also
+        # what makes the finished frame a map of which event each patch of
+        # tissue last belonged to.
+        #
+        # It is deliberately not "recruitment order inside a burst": at these
+        # parameters the culture never goes silent between events, so there is
+        # no burst to be early in, and a quantity that needs one would have been
+        # measuring nothing.
+        self.driven_last = np.zeros(neurons, dtype=np.float32)
+        self.driven_count = np.zeros(neurons, dtype=np.int32)
+        # A second, slow decay. `activation` is the spike itself and is gone in
+        # a few frames; this is how long the tissue stays visible after it, and
+        # it is the layer the colour map is actually read off.
+        self.trace = np.zeros(neurons, dtype=np.float32)
+        self.trace_decay = float(0.5 ** (1.0 / max(trace, 1e-6)))
+
+    # -- the rule ---------------------------------------------------------
+    def step(self, count: int = 1) -> None:
+        for _ in range(count):
+            fraction = (self.step_index + 1) / max(self.total_steps, 1)
+            self.live = int(np.searchsorted(self.length, self.reach * fraction ** self.growth))
+            slot = self.step_index % self.delay
+            incoming = self.arriving[slot]
+            self.potential += incoming + self.drive
+
+            fired = (self.potential > 1.0) & (self.refractory_left == 0)
+            if fired.any():
+                self.driven_last[fired] = incoming[fired]
+                self.driven_count[fired] += 1
+                sending = fired[self.source[: self.live]]
+                if sending.any():
+                    landing = self.target[: self.live][sending]
+                    charge = self.weight * self.resource[self.source[: self.live][sending]]
+                    self.arriving[(self.step_index + self.delay - 1) % self.delay] += np.bincount(
+                        landing, weights=charge, minlength=self.neurons
+                    )
+                self.potential[fired] = 0.0
+                self.refractory_left[fired] = self.refractory
+                self.resource[fired] *= self.depression
+                self.spikes += int(fired.sum())
+                self.ever_fired |= fired
+            # Zeroed only after it has been read, and it is the other slot that
+            # the spikes just posted into, so nothing is dropped.
+            self.arriving[slot] = 0.0
+
+            self.resource += (1.0 - self.resource) * self.recovery
+            self.refractory_left = np.maximum(self.refractory_left - 1, 0)
+            # The ceiling stops a silent cell charging up an unbounded credit it
+            # would spend the instant the network reaches it.
+            self.potential = np.clip(self.potential, 0.0, 1.6)
+            self.activation *= self.decay
+            self.activation += fired
+            self.trace *= self.trace_decay
+            self.trace = np.maximum(self.trace, fired)
+            self.step_index += 1
+
+    # -- what the renderer needs -----------------------------------------
+    def push(self) -> np.ndarray:
+        """The synaptic input each cell was holding at its last spike.
+
+        Raw, not ranked: ranking it frame by frame would re-normalise every
+        frame and delete the one thing the piece is about, since a clip whose
+        events grow by two orders of magnitude would show the same spread of
+        colour throughout. The renderer ranks it once, against every spike in
+        the clip, so early frames genuinely sit at the low end of the ramp.
+        """
+        return self.driven_last.copy()
+
+    def record(self, frames: int, steps_per_frame: int) -> list[tuple[np.ndarray, np.ndarray, np.ndarray]]:
+        """One banked state per frame: the spike, the tissue behind it, the push.
+
+        Three layers rather than one composite, because which of them carries
+        the brightness and which the colour is a decision for the renderer and
+        it was changed twice before the picture read.
+        """
+        self.total_steps = int(frames * steps_per_frame / max(self.maturity, 1e-6))
+        states = []
+        for _ in range(frames):
+            self.step(steps_per_frame)
+            states.append((self.activation.copy(), self.trace.copy(), self.push()))
+        return states
+
+    def metric(self) -> float:
+        return float(self.ever_fired.mean())
