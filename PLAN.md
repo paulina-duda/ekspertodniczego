@@ -54,8 +54,9 @@ first **subtractive** one. Reuse the axes, not the cuts.
 `spindle` is the third piece to pass the gate on numbers and die on the
 picture, after `somite` and `sector`, and the only one to do it with a clean
 sheet — 0.0% still frames, minimum delta 2.760, profile 31.0/19.0%. **The gate
-does not measure whether a frame is worth looking at**, and three pieces now
-say the same thing: what it screens out is a bad process, not a bad picture.
+does not measure whether a frame is worth looking at**, and with `packing` and
+`plaque` withdrawn on 2026-09-04 five pieces now say the same thing: what it
+screens out is a bad process, not a bad picture.
 
 ### Substrate — [`README`](on-growth-and-form/substrate-editions/README.md)
 
@@ -69,9 +70,9 @@ say the same thing: what it screens out is a bad process, not a bad picture.
 | `sector` | field, `sharp` | built, **rejected** — fails T2 | *Not one cell moved. Every border did.* |
 | `syncytium` | field + hook, `sharp` | `hyphae` 2.0, built 2026-09-02, **parked** — Paulina is still deciding what to do with it | *A tree only branches apart. / These branched into each other.* |
 | `culture` | field | built, **rejected** — fails T4 (reads as blinking dots) | *Every connection was cut. / It is firing again.* |
-| `packing` | dish + hook | built 2026-08-31 | *Room runs out. Growth does not.* |
-| `packing` (orientation) | dish + hook | variant of the above, `--tag orientation` | — |
-| `plaque` | dish + hook, `sharp` | built 2026-08-31 | *Nothing here learned to survive.* |
+| `packing` | dish + hook | built 2026-08-31, **rejected** 2026-09-04 — fails T4, judged on the cut | *Room runs out. Growth does not.* |
+| `packing` (orientation) | dish + hook | variant of the above, **rejected** with it | — |
+| `plaque` | dish + hook, `sharp` | built 2026-08-31, **rejected** 2026-09-04 — fails T4, judged on the cut | *Nothing here learned to survive.* |
 | `defect` | dish + hook | built 2026-09-04 | *Nothing here is alive. It still cannot rest.* |
 
 ### Artificial Life — [`README`](on-growth-and-form/alife-editions/README.md)

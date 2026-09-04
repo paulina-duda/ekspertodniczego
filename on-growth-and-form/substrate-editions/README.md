@@ -33,8 +33,8 @@ destroying its own order.
 | `sector_range-expansion_substrate` | biology | a colony spreading on a plate, drawing its own genealogy |
 | `syncytium_hyphal-fusion_substrate` | biology | `hyphae` 2.0 — six spores fusing into one network |
 | `culture_cortical-network_substrate` | biology | dissociated cortical neurons wiring themselves up (Wagenaar 2006) — **rejected**, T4 |
-| `packing_monolayer-verticalisation_substrate` | biology | a flat colony that runs out of plane |
-| `plaque_luria-delbruck_substrate` | biology | phage clearing a lawn, and the mutants already in it |
+| `packing_monolayer-verticalisation_substrate` | biology | a flat colony that runs out of plane — **rejected**, T4 |
+| `plaque_luria-delbruck_substrate` | biology | phage clearing a lawn, and the mutants already in it — **rejected**, T4 |
 | `defect_active-nematic_substrate` | biology, not alive | a film of microtubules and motors tearing itself apart |
 
 The tests a piece has to pass before it is built are in
