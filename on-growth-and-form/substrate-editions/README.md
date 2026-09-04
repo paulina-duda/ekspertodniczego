@@ -23,7 +23,7 @@ what is already in the dish.
 | `sandpile_abelian-lattice_substrate` | mathematics | grains toppling on a lattice |
 | `sector_range-expansion_substrate` | biology | a colony spreading on a plate, drawing its own genealogy |
 | `syncytium_hyphal-fusion_substrate` | biology | `hyphae` 2.0 — six spores fusing into one network |
-| `culture_cortical-network_substrate` | biology | dissociated cortical neurons wiring themselves up (Wagenaar 2006) |
+| `culture_cortical-network_substrate` | biology | dissociated cortical neurons wiring themselves up (Wagenaar 2006) — **rejected**, T4 |
 
 The tests a piece has to pass before it is built are in
 [`BRIEF.md`](../../BRIEF.md); the queue and the decisions are in
@@ -329,8 +329,10 @@ These branched into each other."*, a deliberate second half to the first cut's
 
 ### Culture
 
-Built 2026-09-04, `field`, no shape confinement. **Not yet run through the
-gate in reported form and not shown to anyone cold — built, not queued.**
+**Rejected for the grid (T4), 2026-09-04.** Shown cold, it reads as blinking
+dots — the wiring-up and the burst it develops into, which is the entire
+point of the piece, never becomes visible. Kept below because the model and
+the splatting fix are real; see [`REJECTED.md`](../../REJECTED.md).
 
 A cortical culture is plated as a suspension of single dissociated cells, every
 connection they had destroyed in the process, and left to wire itself: over

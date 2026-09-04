@@ -44,6 +44,7 @@ Never restate a test — they live in `BRIEF.md`.
 | `ridge` | fingerprint primary ridges — a Turing pattern gated by fronts from the nail furrow, the pad apex and the crease | **subject, cut** | wrong subject for the account, and a reveal the gate could not see: T1 passes at 23.5/26.5% because crest length accumulates to the end, yet only 1.6% of the pad changes per frame — **53.1% still frames, longest run 90**, seconds 0–2 frozen solid |
 | `facet` | the morphogenetic furrow crystallising a Drosophila compound eye | **T4** | the lattice packs but never crystallises — ψ₆ 0.507–0.740 over seven parameter sets against 0.887 for a hex lattice with 6% jitter; drawn cell by cell it is speckle, and the continuum form of lateral inhibition gives stripes, not founders |
 | `cortex` | inside-out cortical lamination, 27,000 neurons climbing radial glia | **T4** | best profile of its round (17.0/29.3%, birth-to-depth correlation +0.900) and the still is a uniform grain rectangle — 76.7% lit, a grey block at 200 px, and the climbers are invisible inside the plate they climb through |
+| `culture` | dissociated cortical neurons wiring into dish-wide bursts, Wagenaar 2006 | **T4** | Paulina cold on the finished cut: reads as blinking dots, not as a network wiring itself or bursting together — the thing the piece is about never becomes visible |
 | Segment edition | `segment-editions/` | **subject** | ugly; dropped entirely |
 | Attractors, proteins | posted early, since taken down | **subject** | mathematics and structural biology, not biology-as-algorithm |
 

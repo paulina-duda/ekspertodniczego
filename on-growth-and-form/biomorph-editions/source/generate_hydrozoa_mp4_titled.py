@@ -99,14 +99,17 @@ import glow
 OUTPUT_DIR = Path(__file__).parents[1] / "instagram" / "phone-9x16"
 
 TITLE = "Hydrocreatures"
-# The house data block, not the generator. The first cut carried all four lines
-# of the equation, which is four lines of glyphs nobody reads at 27 px; the
-# generator is in this docstring, where it can be read. Plex carries the middle
-# dot, so there is no DejaVu fallback on this layer.
+# The generator, one line at a time, each labelled with the thing it does. Four
+# bare lines of algebra was too much and three lines of prose said nothing an
+# equation says; a label per line is what makes the block readable at 27 px --
+# you can find the pulse without parsing it. Widest line measures 880 px against
+# the 952 the margins allow, and Plex carries every glyph in it, so nothing on
+# this layer falls back to DejaVu.
 CAPTION = (
-    "parametric biomorph · one closed curve (yuruyurau)",
-    "sweep · pulse · stretch · lean",
-    "3 genomes out of 1,260 · 240 frames and it repeats",
+    "body     k = 9·cos(ai)·sin(bi)   e = 9·cos(ci)·sin(fi)",
+    "breath   d = hypot(k,e)³/999 + 1.2 − sin(t/2+m)³/4",
+    "stretch  p = d^sin(d²−t+m)     lean  C = d/9 − t/24 + m",
+    "travel   x = 99·sin(C) + k·p   y = 99·sin(4C) + e·p",
 )
 
 
@@ -154,7 +157,12 @@ PULSE_GAIN = 0.70
 # creature 24 across, this one is 1080 wide with creatures 320 across. TRAVEL
 # is that ratio, not a decision about how fast anything swims: the path shape,
 # its timing and its closure are the equation's.
-TRAVEL = 0.35
+#
+# 0.35 until the data block went back to four lines, which lifted the hook to
+# row 1471 and left ten pixels over the animals -- less than the bloom bleeds.
+# The 79 px came off the excursion rather than off the animals, because the
+# frame is already only 2.5% lit and the three read small.
+TRAVEL = 0.30
 
 # harmonics (a, b, c, f), branch, phase, home in model units, display scale.
 # The branch picks which of the two seam roots the animal sits on -- they are pi
@@ -163,9 +171,9 @@ TRAVEL = 0.35
 # with `phase` (see that function) and a stored m would quietly stop closing the
 # loop the moment anything else about the animal changed.
 CREATURES = (
-    ((2, 2, 3, 6), 0, 0.0, (-0.48, 0.42), 0.460),
-    ((6, 6, 1, 2), 0, 7.4, (0.50, 0.02), 0.460),
-    ((2, 6, 4, 1), 1, 3.1, (-0.02, -0.44), 0.400),
+    ((2, 2, 3, 6), 0, 0.0, (-0.48, 0.466), 0.460),
+    ((6, 6, 1, 2), 0, 7.4, (0.50, 0.066), 0.460),
+    ((2, 6, 4, 1), 1, 3.1, (-0.02, -0.394), 0.400),
 )
 
 # One hue per animal, because the only thing separating them is the genome --
@@ -194,6 +202,21 @@ VARIANTS = {
             [(2, 16, 6), (10, 74, 28), (26, 158, 62), (86, 230, 120), (190, 252, 206), (244, 255, 246)],
             [(20, 4, 4), (92, 18, 10), (182, 48, 26), (244, 104, 62), (255, 178, 142), (255, 240, 230)],
             [(6, 4, 20), (30, 26, 92), (58, 66, 190), (110, 130, 246), (188, 206, 255), (240, 246, 255)],
+        ),
+    ),
+    # Neon: the same three ramps pushed to the corners of the gamut -- full
+    # cyan, full magenta, acid lime -- with the low ends dropped nearly to
+    # black. The ranked stretch term is unchanged, so what reads as harder edges
+    # is the ramp spending less of itself on the mid tones and more on the jump
+    # from dark to core. Only the palette changes; exposure, boost and both
+    # bloom knobs are identical across the three cuts, so the comparison is of
+    # colour and nothing else.
+    "neon": dict(
+        hook=("They are not related. They are the same thing.",),
+        palettes=(
+            [(0, 8, 12), (0, 54, 82), (0, 148, 202), (0, 228, 255), (150, 250, 255), (240, 255, 255)],
+            [(12, 0, 10), (76, 0, 48), (188, 0, 118), (255, 40, 170), (255, 150, 215), (255, 236, 248)],
+            [(8, 12, 0), (44, 68, 0), (126, 178, 0), (200, 255, 40), (236, 255, 150), (250, 255, 226)],
         ),
     ),
 }
@@ -404,6 +427,15 @@ def draw_hook(overlay: Image.Image, args: argparse.Namespace) -> None:
     )
 
 
+def text_layer(args: argparse.Namespace) -> Image.Image:
+    """The overlay with the scrim off, so `report` measures ink and not the veil."""
+    scrim, args.scrim = args.scrim, 0.0
+    try:
+        return build_overlay(args)
+    finally:
+        args.scrim = scrim
+
+
 def build_overlay(args: argparse.Namespace) -> Image.Image:
     overlay = glow.make_caption(
         args.width, args.height, TITLE, CAPTION,
@@ -458,8 +490,20 @@ def report(frames: int, args: argparse.Namespace, plan: list[dict], palettes) ->
         lo = np.minimum(lo, S.min(axis=0))
         hi = np.maximum(hi, S.max(axis=0))
     print(f"  ink box over the clip: x {lo[0]:.0f}..{hi[0]:.0f} of {args.width}, "
-          f"y {lo[1]:.0f}..{hi[1]:.0f} of {args.height} "
-          f"(title ends ~{args.title_top + 40}, caption starts ~{args.height - args.caption_bottom - 120})",
+          f"y {lo[1]:.0f}..{hi[1]:.0f} of {args.height}", flush=True)
+    # The text zones are measured off the layer itself rather than guessed from
+    # the margins: a hook moves with the height of the data block above it, so
+    # the estimate that used to be printed here stopped being true the moment
+    # this cut grew a hook and lost a caption line.
+    text = np.asarray(text_layer(args))[:, :, 3] > 40
+    rows = np.where(text.any(axis=1))[0]
+    blocks = np.split(rows, np.where(np.diff(rows) > 40)[0] + 1)
+    zones = " | ".join(f"{b.min()}..{b.max()}" for b in blocks)
+    above = lo[1] - blocks[0].max()
+    below = (blocks[1].min() if len(blocks) > 1 else args.height) - hi[1]
+    print(f"  text ink rows: {zones}  ->  {above:.0f} px under the title, "
+          f"{below:.0f} px over the {'hook' if args.hook else 'data block'} "
+          f"({'clear' if min(above, below) > 20 else 'TOO TIGHT'}, bloom bleeds 10-20)",
           flush=True)
 
 

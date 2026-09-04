@@ -66,8 +66,8 @@ say the same thing: what it screens out is a bad process, not a bad picture.
 | `condensate` | dish + hook | built, **rejected** — fails T1/T2 | *Nothing was built. It only stopped mixing.* |
 | `sandpile` | dish + hook | built, **parked** — Paulina will call when scheduling | *One rule about integers. No biology at all.* |
 | `sector` | field, `sharp` | built, **rejected** — fails T2 | *Not one cell moved. Every border did.* |
-| `syncytium` | field + hook, `sharp` | `hyphae` 2.0, built 2026-09-02 — **ready to post** | *A tree only branches apart. / These branched into each other.* |
-| `culture` | field | built 2026-09-04 — owes T1–T4 confirmed and a cold read | *Every connection was cut. / It is firing again.* |
+| `syncytium` | field + hook, `sharp` | `hyphae` 2.0, built 2026-09-02, **parked** — Paulina is still deciding what to do with it | *A tree only branches apart. / These branched into each other.* |
+| `culture` | field | built, **rejected** — fails T4 (reads as blinking dots) | *Every connection was cut. / It is firing again.* |
 
 ### Artificial Life — [`README`](on-growth-and-form/alife-editions/README.md)
 
@@ -97,8 +97,8 @@ next Lenia idea has to be a different subject, not a different camera.
 | --- | --- | --- | --- |
 | `cosine-creature` | field | **posted** — inspired by **yuruyurau**, credited | — |
 | `medusa` | field + hook, 12 s | **posted** (8th) | *Nothing here swims. / One sine wave, fourteen phase delays.* |
-| `ammonite` | field + hook | built 2026-09-02 — owes a cold T4 read | — |
-| `hydrozoa` | field, no hook | built 2026-09-04, closed-loop fix of an abandoned `hydrocreatures` sketch — owes T1/T3/T4 | — |
+| `ammonite` | field + hook | built 2026-09-02, **parked** — Paulina is fine-tuning it | — |
+| `hydrocreatures` | field, no hook | **ready to post** — 3 palette variants, none picked | — |
 | `quorum` | field + hook | **parked** — a sketch, not a cut | — |
 
 The series tells one trick three times and **the escalation is the point**: the
@@ -106,14 +106,21 @@ cosine creature is a wave pretending to be a body, the medusa the same wave
 pretending to swim, `quorum` the same wave pretending to be a society. Keep
 that order in the copy if `quorum` is ever finished.
 
-`ammonite` (equiangular-spiral shell growth) and `hydrozoa` (three animals on
-one yuruyurau-family curve) are both fully worked in their own docstrings and
-in `README.md` — real measurements, not hand-waving — but neither has been run
-through the gate in the reported `/pitch` block form, and neither still has
-been shown to anyone cold. **Not queued until that happens.** `hydrozoa`
-supersedes an earlier `hydrocreatures` sketch whose loop never closed
-(seam 1.72 body radii, no clip length fixed it); that sketch and its scratch
-directory are gone rather than kept, since nothing in it survived unchanged.
+`ammonite` (equiangular-spiral shell growth) is fully worked in its own
+docstring and in `README.md` — real measurements, not hand-waving — but parked
+rather than queued: Paulina likes the animal and is tuning it further herself.
+
+`hydrocreatures` (three animals on one yuruyurau-family curve) fixes an
+earlier sketch under the same name whose loop never closed at any clip length
+(seam 1.72 body radii); the file and its on-screen title both read
+`hydrocreatures` now, the source filename is still
+`generate_hydrozoa_mp4_titled.py` from the engineering pass that fixed it. The
+loop-closure work is real and measured (1,260-genome search, seam down to
+1.3–1.9 frame steps against a p90 step) but it has not been run through the
+full gate in reported `/pitch` form and has three unresolved palette variants
+— `aurora`, `reef`, `neon`, plus the plain original — with no hook shipped on
+the base cut and a different hook per variant. **Queued, but a variant still
+needs picking before it can post.**
 
 **`quorum` is parked as a sketch.** The idea and `fish.py` are sound and the
 depth trick works, but what exists is a first pass, not a cut. It is also the
@@ -152,7 +159,8 @@ grid for two constants, the visual gain is subtle, and the cost is a
 ## Queued
 
 **Ready to post** — cut, measured, and judged worth posting: `phyllotaxis`,
-`comet`, `gyrus`, `syncytium`. Paulina posts `comet` herself and will say when.
+`comet`, `gyrus`, `hydrocreatures`. Paulina posts `comet` herself and will say
+when; `hydrocreatures` still needs a palette variant picked before it can go.
 
 `phyllotaxis` and `comet` were measured on the finished cut 2026-08-30: **0.0%
 still frames** each, profiles 29/23% and 12/48% across the quarters. `comet`
@@ -160,13 +168,15 @@ puts its biggest change in the last quarter, which is what it was picked for.
 `phyllotaxis` was re-cut 2026-08-31 with a new palette (`APEX`, replacing
 `MERISTEM`) — measured clean again, 0.0% still.
 
-**Parked, not queued** — `highway` and `sandpile`. Built and passing, waiting
-on Paulina to call them for scheduling rather than sitting in "ready to post".
+**Parked, not queued** — `highway`, `sandpile`, `ammonite` and `syncytium`.
+`highway` and `sandpile` are built and passing, waiting on Paulina to call
+them for scheduling. `ammonite` and `syncytium` are hers to keep editing —
+neither has a known defect, both are just not finished being worked on.
 
 This is a publication queue, not an inventory. A piece being rendered does not
-put it here — `condensate`, `descent`, `cohort`, `aggregation` and `sector`
-were all cut and are all in [`REJECTED.md`](REJECTED.md). Anything on this list
-that has not actually been looked at cold still owes **T4**.
+put it here — `condensate`, `descent`, `cohort`, `aggregation`, `sector` and
+`culture` were all cut and are all in [`REJECTED.md`](REJECTED.md). Anything
+on this list that has not actually been looked at cold still owes **T4**.
 
 `gyrus` is `folding`'s 2.0 and was measured on the finished cut 2026-09-01:
 **0.0% still frames** inside the dish, minimum inter-frame delta 0.320 against
@@ -174,12 +184,11 @@ a 0.15 threshold, loop seam 1.25 against an adjacent-pair 13.56. It carries a
 new name rather than a second FOLDING, on the biomorph precedent — one trick,
 three names, and the escalation is the point.
 
-`syncytium` is `hyphae`'s 2.0 and was measured on the finished cut 2026-09-02:
-**0.0% still frames** after the cover hold, minimum inter-frame delta 0.172
-against a 0.15 threshold, loop seam 1.99 against an encoder noise floor of 5.18
-measured between the lossless cover and the encoded frame one. It carries a new
-name on the `gyrus` precedent. The one thing it owes is **T4's cold read** — the
-still has not been shown to anyone who was not already told what it is.
+`hydrocreatures` fixes an earlier sketch of the same name whose loop never
+closed at any clip length (seam 1.72 body radii). The fix is measured — a
+1,260-genome search, seam down to 1.3–1.9 frame steps against the clip's own
+p90 step — but that is loop closure alone, not the full gate, and nobody has
+looked at any of its three palette variants (`aurora`, `reef`, `neon`) cold.
 
 **`folding` and `turing` are not queued for a re-cut.** Both posted (1st, 7th)
 in the pre-hook, DejaVu-era layout, and Paulina has decided that stands: the
