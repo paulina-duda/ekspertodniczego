@@ -41,6 +41,7 @@ edition's README.
 | `comet` | field + hook | built 2026-08-30 | *No motor. It is pushed by what it builds.* |
 | `trabecula` | field + hook | built, **rejected** — fails T1/T4 | *No one drew this. The load did.* |
 | `venation` | field | built, **rejected** — T1 confirmed on the cut, 44.4% still | *The vein is not a route. It is a leftover.* |
+| `stripe` | dish + hook, `bloom` | built 2026-09-04 | *Turing predicted chemicals. These are cells.* |
 
 Neither `somite` nor `trabecula` is going out, and both leave an axis behind:
 `somite` is the first piece in the account **with a beat** and `trabecula` the
@@ -55,6 +56,10 @@ first **subtractive** one. Reuse the axes, not the cuts.
 | `reentry` | dish + hook | **posted** (9th) | *Nothing in the rule says spiral.* |
 | `condensate` | dish + hook | built, **rejected** — fails T1/T2 | *Nothing was built. It only stopped mixing.* |
 | `sandpile` | dish + hook | built | *One rule about integers. No biology at all.* |
+| `packing` | dish + hook | built 2026-08-31 | *Room runs out. Growth does not.* |
+| `packing` (orientation) | dish + hook | variant of the above, `--tag orientation` | — |
+| `plaque` | dish + hook, `sharp` | built 2026-08-31 | *Nothing here learned to survive.* |
+| `defect` | dish + hook | built 2026-09-04 | *Nothing here is alive. It still cannot rest.* |
 
 ### Artificial Life — [`README`](on-growth-and-form/alife-editions/README.md)
 
@@ -65,6 +70,7 @@ first **subtractive** one. Reuse the axes, not the cuts.
 | `shoal` | lane + hook | built, **rejected** — fails T1/T2 | *Generation zero could only fill its world. / Forty generations later it crosses it.* |
 | `descent` | — | built, **rejected** — fails T2/T4 | *Everything at the top has one ancestor.* |
 | `cohort` | grid of panels | built, **rejected** — fails T2/T3 | *Not one of the first sixty-four was alive. / Everything alive here is a copy of one.* |
+| `replicator` | field + hook, `sharp` | built 2026-09-04 — two palette cuts, `sharp-forge` and `sharp-verdigris` | *Each was built by the one beside it. / Only the edge is still building.* |
 
 **One run, told three ways, and none of them holds.** `descent` draws the
 pedigree, `cohort` panels the animals, `shoal` races them in lanes — the first
@@ -176,20 +182,15 @@ built first.
    counter-propagating bands that **pass through each other**. Oscillatory, so
    it runs forever. Hook draft: *"Nothing is travelling. Only the agreement
    is."* Risk: medium-low.
-5. **`stripe`** — zebrafish pigment cells: short-range activation, long-range
-   inhibition, but the morphogens are *cells*. Stripes assemble from a scatter
-   and, cut half way through, **heal back into stripes**. Hook draft: *"Turing
-   was right. The morphogens are cells."* Risk: medium — the regeneration has
-   to actually work, not just the pattern.
-6. **`metachrony`** — a carpet of cilia coupled only through the fluid, falling
+5. **`metachrony`** — a carpet of cilia coupled only through the fluid, falling
    out of random phase into travelling waves. Would be the **true version of
    what `medusa` and `quorum` fake parametrically**, which closes that series
    properly. Hook draft: *"None of them can see the others. The water is
    enough."* Risk: medium.
-7. **`vortex`** — a dense suspension of flagellated swimmers, hydrodynamically
+6. **`vortex`** — a dense suspension of flagellated swimmers, hydrodynamically
    coupled, self-organising into a drifting lattice of vortices. Active matter:
    a steady state that never stops moving. Risk: medium-high.
-8. **`epithelium`** — a proliferating sheet where every division hands edges to
+7. **`epithelium`** — a proliferating sheet where every division hands edges to
    its neighbours, and the polygon-class distribution converges to the same one
    in a fly, a frog and a hydra. Dozens of division events per second. Hook
    draft: *"Six is not a plan. Six is an average."* Risk: medium — real chance

@@ -77,6 +77,30 @@ LAMINA = [(16, 0, 22), (110, 0, 92), (222, 20, 96), (250, 104, 36), (255, 186, 9
 # a streak.
 ACTIN = [(8, 0, 24), (78, 0, 120), (198, 0, 132), (255, 72, 116), (255, 176, 150), (255, 246, 235)]
 
+# Two pigment cells, so two palettes that sum where a stripe border falls --
+# the same two-channel answer as `physarum` and `trabecula`. The split is the
+# whole subject here: which of the two kinds of cell won that patch of skin.
+# Cool for the melanophore, warm for the xanthophore, and the melanophore ramp
+# is taken through violet rather than straight up the blues, because half the
+# disc is this colour and a blue that large stops being an accent.
+#
+# The low stop of each ramp is doing more work here than in any other edition,
+# and it is worth saying why. Shade is recency, and a cell that has settled
+# sits at the very bottom of its ramp -- so **the first stop is the colour of a
+# stripe's interior**, which is most of the frame, and the upper stops only
+# appear along a border that is currently being argued over. Both ramps
+# therefore start at a real colour rather than near-black: at (28,8,0) the
+# xanthophore interiors came out a desaturated brown, measured at blue/red 0.42
+# against 0.35 once the stop was opened up.
+#
+# The two are deliberately NOT matched in luminance -- the violet measures 60
+# against the gold's 109. A melanophore is a black cell and a xanthophore a
+# yellow one, so the dark band belongs darker; balancing them would have meant
+# pushing the melanophore toward magenta to buy luminance blue cannot carry,
+# and that is fighting the animal to satisfy a number.
+MELANO = [(30, 0, 86), (110, 0, 205), (196, 80, 250), (240, 200, 255)]
+XANTHO = [(92, 38, 0), (196, 86, 0), (255, 170, 28), (255, 238, 180)]
+
 EDITIONS: dict[str, dict] = {
     "turing": {
         "kind": "field",
@@ -226,6 +250,41 @@ EDITIONS: dict[str, dict] = {
             "clock and wavefront, Cooke & Zeeman 1976",
         ),
         "hook": ("Your spine was counted, not measured.",),
+    },
+    "stripe": {
+        "kind": "skin",
+        "title": "Stripe",
+        "slug": "stripe_pigment-cells_skin",
+        "palette": MELANO,
+        "palette_b": XANTHO,
+        "exposure": 1.16,
+        "boost": 1.22,
+        # Eight steps a frame rather than four. The reaction has to reinsert a
+        # stripe faster than the skin carries the neighbours apart, and at four
+        # it loses that race: the stripes just get fatter.
+        "steps_per_frame": 8,
+        # Frame one is a patterned disc, not the salt-and-pepper the cells
+        # start in. Without this the thumbnail is grey noise.
+        "settle": 260,
+        "cell_radius": 1.9,
+        "cell_samples": 6,
+        "look": "bloom",
+        "caption": (
+            "zebrafish pigment pattern  ·  Nakamasu 2009",
+            "support close · suppress far · switch",
+            "33,000 cells become 118,000 · 667,000 switches",
+            "the stripe's width is fixed; the skin's is not",
+        ),
+        # The hook takes the Turing reversal and the block takes the mechanism,
+        # so neither says the other's sentence. `turing` is already on the grid
+        # as Gray-Scott; this piece is the correction to it.
+        #
+        # One line, and that is a clearance constraint rather than a taste one.
+        # A dish is centred with radius 0.44 x the short side, which puts the
+        # disc's bottom at row 1435; a two-line hook starts at row 1420 and
+        # overlaps it by 15 px before bloom. Every shipped dish hook is one
+        # line for this reason.
+        "hook": ("Turing predicted chemicals. These are cells.",),
     },
 }
 
@@ -426,6 +485,26 @@ def cell_samples(model, args, spec=None) -> tuple[np.ndarray, np.ndarray, np.nda
     return samples, np.repeat(shade, per_cell), weights
 
 
+def skin_samples(model, args, spec=None) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """`cell_samples`, plus which of the two pigment cells each blob is.
+
+    Kept separate rather than widening `cell_samples`: that one is shared by
+    `somite` and `phyllotaxis` and returns three values everywhere it is
+    called. Weight comes from the model here, not a constant, because a skin at
+    one areal density has nothing for the log-density map to grade.
+    """
+    spec = spec or {}
+    points, shade = model.cells()
+    species = model.species()
+    radius = spec.get("cell_radius", args.cell_radius)
+    count, per_cell = len(points), spec.get("cell_samples", args.cell_samples)
+    index = (np.arange(count, dtype=np.int64)[:, None] * per_cell
+             + np.arange(per_cell, dtype=np.int64)[None, :]) % len(DISC)
+    samples = (points[:, None, :] + DISC[index] * radius).reshape(-1, 2)
+    weights = (np.repeat(model.weights(), per_cell) / per_cell).astype(np.float32)
+    return samples, np.repeat(shade, per_cell), weights, np.repeat(species, per_cell)
+
+
 def tree_samples(start: np.ndarray, end: np.ndarray, target: float = 0.6) -> tuple[np.ndarray, np.ndarray]:
     """Sample every vein segment along its own length.
 
@@ -491,6 +570,23 @@ def build(name: str, args: argparse.Namespace):
             tail_start=args.tail_start,
             tail_end=args.tail_end,
             densify=args.densify,
+        )
+    if spec["kind"] == "skin":
+        # The disc has to arrive at the dish radius on the last frame and not
+        # before, so the growth increment is solved from the clip length rather
+        # than set: asking for a longer cut grows the same skin more slowly.
+        # Linear in radius, because the stripe count goes as the radius.
+        frames = round(args.duration * args.fps)
+        # The settle steps grow the disc too, so they belong in the divisor.
+        # Leaving them out overshoots: the skin hits the dish radius at frame
+        # 207 of 240 and the last second is a disc that has stopped growing.
+        steps = spec["settle"] + spec["steps_per_frame"] * (frames - 1)
+        limit = args.skin_radius
+        return morphogens.Stripe(
+            args.height, args.width,
+            radius=limit,
+            seed_radius=args.skin_seed,
+            growth=(limit - args.skin_seed) / steps,
         )
     if spec["kind"] == "physarum":
         band = (args.band_top, args.band_bottom) if args.band_top < args.band_bottom else None
@@ -601,6 +697,34 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
         else:
             print(f"  {name}: {model.count:,} tips, {len(model.sources):,} sources left", flush=True)
         cover = draw_veins(model)
+    elif spec["kind"] == "skin":
+
+        def draw_skin(state) -> np.ndarray:
+            samples, shade, weights, species = skin_samples(state, args, spec)
+            # One splat, two palettes. Summing the two channels separately --
+            # the `physarum` answer -- is for two populations that overlap; two
+            # pigment cells never occupy the same patch of skin, so the choice
+            # is per cell and a single additive pass keeps a stripe border a
+            # border rather than a seam where one layer paints over the other.
+            colours = np.where(
+                (species == 1)[:, None],
+                glow.sample_palette(palette_b, shade),
+                glow.sample_palette(palette, shade),
+            )
+            colour_sum, density = glow.splat(width, height, samples, colours, weights)
+            linear = glow.flame_map(colour_sum, density, reference, boost=spec["boost"])
+            linear = glow.bloom(linear, threshold=args.bloom_threshold, strength=args.bloom_strength)
+            return glow.compose(glow.to_bytes(glow.tone_map(linear, exposure=spec["exposure"])), caption)
+
+        samples, _, weights, _ = skin_samples(model, args, spec)
+        _, probe = glow.splat(
+            width, height, samples, np.zeros((len(samples), 3), dtype=np.float32), weights
+        )
+        reference = float(np.percentile(probe[probe > 0], args.cell_reference))
+        warm = int(model.species().sum())
+        print(f"  {name}: {model.count:,} cells, {warm:,} xanthophore, "
+              f"radius {model.radius:.0f} px, stripe border {model.boundary():,} px", flush=True)
+        cover = draw_skin(model)
     elif spec["kind"] in ("cells", "spiral"):
 
         def draw_cells(state) -> np.ndarray:
@@ -631,6 +755,11 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
     stem = f"{spec['slug']}_{width}x{height}_{args.duration:g}s_{args.fps}fps"
     if args.hook and spec.get("hook"):
         stem += "_hook_plex"
+    # `venation` shipped on `sharp` and its filename does not say so, which
+    # means re-rendering it without the flags silently changes the cut. An
+    # edition that names its look gets it recorded; the others are untouched.
+    if spec.get("look"):
+        stem += f"_{spec['look']}"
     if args.tag:
         # A variant cut written alongside the original rather than over it.
         stem += f"_{args.tag}"
@@ -651,6 +780,8 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
                 model.step(spec["steps_per_frame"])
             if spec["kind"] == "curve":
                 frame = draw(model.points, model.age)
+            elif spec["kind"] == "skin":
+                frame = draw_skin(model)
             elif spec["kind"] in ("vein", "comet"):
                 frame = draw_veins(model)
             elif spec["kind"] in ("cells", "spiral"):
@@ -688,6 +819,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--comet-speed", type=float, default=6.4)
     parser.add_argument("--vein-stride", type=float, default=4.0)
     parser.add_argument("--head-radius", type=float, default=500.0)
+    # dish: radius 0.44 x the short side, per the reel skill. The seed is the
+    # disc frame one shows, and at 220 it already holds three stripes -- small
+    # enough that the growth is the piece, large enough to be a thumbnail.
+    parser.add_argument("--skin-radius", type=float, default=475.0)
+    parser.add_argument("--skin-seed", type=float, default=220.0)
     parser.add_argument("--bone-divisor", type=int, default=3)
     # How far an osteocyte is taken to feel, in grid cells. It is the only
     # length in the rule and it sets trabecular thickness and spacing.

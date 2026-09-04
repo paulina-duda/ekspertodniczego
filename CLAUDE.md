@@ -25,9 +25,20 @@ in the `reel` skill. Nothing gets mirrored between these files.
 conda activate ekspertodniczego
 ```
 
-Python 3.12, numpy, scipy, pillow, torch 2.11+cu128. The GPU is an RTX 5090 —
-Blackwell `sm_120`; older torch wheels install fine and only fail on the first
-GPU call.
+Python 3.12, numpy, scipy, pillow, torch 2.11+cu128.
+
+**Two machines, two GPUs.** The env name is the same on both; the card is not.
+
+| GPU | Arch | Watch out for |
+| --- | --- | --- |
+| RTX 5090 | Blackwell `sm_120` | older torch wheels install fine and only fail on the first GPU call |
+| RTX 4070 Laptop | Ada `sm_89` | the smaller card of the two — a grid or particle count that fits the other may not fit here |
+
+Check which one you are on before trusting a timing or a memory figure:
+
+```bash
+python -c "import torch; print(torch.cuda.get_device_name(0), 'sm_%d%d' % torch.cuda.get_device_capability(0))"
+```
 
 ## Layout
 
@@ -50,9 +61,12 @@ Each of these cost real time at least once.
 
 - **ffmpeg**: a conda build once lacked libx264, advertised libopenh264 and
   failed at render time. The env's current ffmpeg *does* have libx264 (checked
-  2026-08-30) and the renderers probe for a working encoder themselves, so this
-  is now a thing to check rather than a rule — if an encode fails, compare
-  `ffmpeg -encoders | grep libx264` between the conda one and `/usr/bin/ffmpeg`.
+  2026-08-30, and again on the laptop 2026-09-03) and the renderers probe for a
+  working encoder themselves, so this is now a thing to check rather than a rule
+  — if an encode fails, compare `ffmpeg -encoders | grep libx264` between the
+  conda one and `/usr/bin/ffmpeg`. **It is the build string that decides**:
+  conda-forge's default ffmpeg is the LGPL one and has only libopenh264, so a
+  rebuilt env needs `ffmpeg=*=gpl*` asked for by name.
 - **Even dimensions only.** yuv420p subsamples chroma by two; an odd width or
   height fails with a message that says nothing about the cause.
 - **`np.roll` is wrong whenever several loops share one array** — it stitches

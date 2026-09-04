@@ -32,6 +32,14 @@ grepped when a surviving candidate looks like a relative of something here.
 | Conway's Life | the classic binary automaton | **T3** | sparse binary cells have no mass and no density gradient; Lenia does the job |
 | Segment edition | `segment-editions/` | **subject** | ugly; dropped entirely |
 | Attractors, proteins | posted early, since taken down | **subject** | mathematics and structural biology, not biology-as-algorithm |
+| `sector` | neutral drift at an expanding colony frontier, lineages lost to chance | **T1** | half the lineages gone in the first quarter, then flat — 14 / 7 / 7 / 7 / 7 |
+| `division` | one motion law that makes cells, which grow and divide (primordial particle system) | **T1** | soup into cells is over by second two — visible blobs 0 / 50 / 57 / 56 / 55, and no pacing fixes it |
+| `takeover` | swarm-chemistry recipes inherited on contact: heredity with no fitness function | **T1** | the contagion saturates in the first quarter — 0.25 → 1.00 by frame 57; transmission 100× slower still reads 84% / 6% |
+| `budget` | Flow-Lenia — mass conserved, so different rules compete for a fixed amount of matter | **build** | 160 parameter draws, every one a static droplet; the best traveller moved 0.77 cells in 500 steps |
+| `chemotaxis` | Budrene-Berg aggregate arrays: E. coli chasing its own attractant | **build** | ten settings sat either side of the pattern — no aggregation at all, or collapse, or spots one grid cell wide |
+| `mitosis` | Lenia solitons that divide rather than hold: self-replication in a continuous field | **build** | 6,900 draws, 563 live genomes tracked 1,500 steps, not one ever became three bodies |
+| `cooperation` | Nowak-May spatial prisoner's dilemma, cooperators and defectors on a lattice | **T3, T4** | two-valued cells hand the density pipeline a flat block; frame one reads as a QR code |
+| `hypercycle` | Boerlijst-Hogeweg: five replicators in a catalytic cycle, spirals as the unit of selection | **build** | 27 parameter sets and three 3,000-step runs made confetti, never a wave — autocorrelation has no negative lobe, and the sparse settings go extinct |
 
 A dozen further candidates were dropped on **T1** alone in the 2026-08
 shortlist and are not listed: the pattern is always coarsening, filling,

@@ -344,3 +344,127 @@ Not posted.
 - Colour is when it grew, ranked: magenta at the base, gold at the tips.
   Ranked rather than scaled because the tip count grows with the front's
   length, so raw age piles most of the network into the top of the ramp.
+
+## Stripe
+
+Zebrafish pigment pattern on skin that keeps growing. Built 2026-09-04.
+`dish` + hook, `bloom`, 8 s. Model `morphogens.Stripe`, render kind `skin`.
+Hook *"Turing predicted chemicals. These are cells."*
+
+The subject is the correction to `turing` next door. Gray-Scott is two
+substances diffusing at different rates; the zebrafish was the textbook case
+for that story and turned out not to run on it. The interaction has the shape
+Turing needed — support your own kind close in, suppress it further out — but
+the morphogens are whole cells, black melanophores and yellow xanthophores,
+measured by Nakamasu and colleagues in 2009 by killing cells with a laser and
+watching what grew back.
+
+### The pitch was accepted with two known defects, and both were real
+
+`stripe` went through the gate against `spindle` and `aggregation` and was the
+only one of the three whose T1 was both passing and not blocked on a broken
+model. It was accepted with two objections recorded against it, and building it
+meant answering both rather than discovering them late.
+
+**The stripes were stretching, not splitting.** The first passing profile —
+boundary length 22.0% first quarter, 28.0% last — was mostly measuring *the
+disc getting bigger*. The diagnostic that separates the two is boundary length
+over radius: flat means the pattern is being scaled up, rising means it is
+being recomputed. It read 12.8 → 14.6 across the clip, a rise of 1.20× where
+stripes perfectly holding their width would give 2.16×. **A scalar that passes
+T1 is not the same as a scalar that measures the process**, and the ratio
+against a geometric baseline is what tells them apart. Two changes fixed it:
+
+* **Growth linear in radius, not exponential.** The number of stripes the disc
+  can hold goes as the radius, so only a linear radius spreads the splitting
+  evenly. Exponential growth puts two thirds of the splits in the last quarter.
+* **Long-range inhibition at 1.70.** Below about 1.45 the pattern is stable to
+  stretching and the stripes simply fatten. 1.25 → 1.38×, 1.45 → 1.62×,
+  1.70 → 1.80×.
+
+Anisotropy is the third number and it is a taste one: at 7.0 the bands are
+straight, parallel and read as a barcode — which is `cooperation`'s "frame one
+reads as a QR code" arriving from a different direction. 3.5 keeps them
+horizontal and lets them wander, which is what an animal looks like.
+
+**The `somite` objection.** `somite` was rejected for reading as a weak stripe
+pattern, and this piece is literally a stripe pattern. `dish` is the answer:
+the disc is centred with radius 0.44 × 1080 = 475, so every line of text sits
+on black rather than competing with the subject. Measured on the finished
+frame, background luminance under the title, hook and data block is 0.57, 2.16
+and 0.42 against glyphs at 243–251.
+
+### Two-valued cells give the density pipeline nothing
+
+`cooperation` was rejected mid-build for exactly this: a two-valued lattice at
+one areal density hands the log-density map a flat block. The skin has the same
+problem — the disc is uniformly full of cells, so density carries no
+information at all.
+
+The answer is **recency**. Age since a cell last switched type is the one thing
+about a cell that is neither its type nor its position, it is intrinsic, and it
+is concentrated exactly where the pattern is being decided. It drives both
+channels: per-cell weight (a cell that has just changed its mind is worth 3.4×
+one that has settled) and shade. That is what makes the stripe borders glow,
+and the borders are the event.
+
+A consequence worth knowing before touching the palettes: **shade is recency,
+so a settled cell sits at the very bottom of its ramp — the first stop is the
+colour of a stripe's interior**, which is most of the frame, and the upper
+stops only appear along a border currently being argued over. At `(28, 8, 0)`
+the xanthophore interiors came out a desaturated brown, blue/red 0.42 against
+0.35 once the stop was opened to `(92, 38, 0)`.
+
+The two ramps are deliberately **not** matched in luminance — violet measures
+60 against the gold's 109. A melanophore is a black cell and a xanthophore a
+yellow one, so the dark band belongs darker. Balancing them would have meant
+pushing the melanophore toward magenta to buy luminance that blue cannot carry,
+which is fighting the animal to satisfy a number.
+
+### Two things that cost a re-render each
+
+* **The settle steps grow the disc too.** Solving the growth increment over
+  `steps_per_frame × (frames − 1)` and forgetting the 260 settle steps
+  overshoots: the skin hits the dish radius at frame 207 of 240 and the last
+  second is a disc that has stopped growing.
+* **A two-line hook does not fit a dish.** The first draft hook was two lines,
+  which starts at row 1420 against a disc bottom of 1435 — a 15 px overlap
+  before bloom, and bloom bleeds ~24 px past the model's own extent. Every
+  shipped dish hook in the account is one line and this is why. The fix was the
+  hook, not the geometry: `centre = (width/2, height/2)` with radius
+  `0.44 × min(w, h)` is what every other dish uses and is not worth breaking
+  for one piece.
+
+### Measured on the shipped cut
+
+Boundary is stripe border in pixels, sampled after the settle:
+
+| | frame 1 | 60 | 120 | 180 | 239 |
+| --- | --- | --- | --- | --- | --- |
+| cells | 32,862 | 49,309 | 69,082 | 92,180 | 118,136 |
+| radius px | 250.5 | 306.9 | 363.2 | 419.6 | 475.0 |
+| border px | 3,324 | 4,485 | 5,916 | 7,497 | 9,450 |
+| bands | 9 | 9 | 9 | 11 | 11 |
+
+**T1: 18.9% first quarter, 31.9% last** — alongside `comet` (12/48) and
+`phyllotaxis` (29/23). Border/radius rises 13.3 → 19.9, a factor of 1.50
+against the 1.90 that perfect splitting would give at this growth: **most of
+the change is genuine insertion, and some of it is still stretch.** That is the
+honest number and the place to start if the piece is ever reworked.
+
+`check`: 0.0% frozen frames against a house norm of 4%, longest run 0, minimum
+inter-frame delta 0.832. Loop seam 9.38 against an adjacent-pair 9.25, so it
+closes exactly. 5m31s for the render on the 4070 laptop.
+
+### What is reusable
+
+The `skin` render kind is the account's first **two palettes chosen per
+subject rather than per channel** — one additive splat with the ramp picked per
+cell, instead of `physarum`'s two summed density fields. Right whenever the two
+populations are exclusive rather than overlapping, and it keeps a border a
+border instead of a seam where one layer paints over the other.
+
+Filenames now record the look when an edition names one (`"look": "bloom"`),
+which is the standing `venation` problem — it shipped on `sharp` and its
+filename does not say so, so re-rendering it without the flags silently changes
+the cut.

@@ -65,6 +65,16 @@ last  = (q[4] - q[3]) / total     # share in the last quarter
 
 Report the raw five numbers, not just the ratios.
 
+**Measure something the viewer can see.** A scalar behind a threshold will
+flatter the process: `division` counted particle clumps whose core exceeded a
+neighbour count and read 22% first / 36% last across three seeds — a clean pass
+— while the number of clumps actually visible on screen read 0 / 50 / 57 / 56 /
+55, which is the whole change in quarter one. The detector was measuring
+compaction *inside* blobs that were already there. If two frames a quarter apart
+look the same, the scalar is wrong, not the eye: **put the quarters side by side
+as thumbnails before believing the profile.** That strip costs a minute and it
+is the only check on the number.
+
 A fail here is not always fatal: **an external clock rescues it** — a drive
 that keeps injecting material, or a beat. If you propose one, it is a different
 candidate and it goes through test 1 again with the clock in.

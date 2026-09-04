@@ -46,6 +46,7 @@ from PIL import Image, ImageDraw, ImageFont
 import evolution
 import glow
 import lenia
+import loops as langton
 import swarm
 
 
@@ -115,6 +116,33 @@ FOUND_SOLITON = {
 # nearly zero, and a palette that puts that in the middle turns the whole frame
 # into one flat mid-tone.
 PLASMA = [(2, 1, 9), (26, 3, 44), (70, 8, 86), (150, 20, 120), (240, 80, 90), (255, 235, 205)]
+
+# Steps since a cell last changed, ranked. Eight of the ten stops are dark,
+# for the same reason PLASMA's are, and the arithmetic says how many. Ranking
+# spreads a skewed quantity evenly over the ramp *by construction* -- half the
+# cells land above the midpoint whatever the quantity does -- so a colony that
+# is three quarters dead came out an even lavender until the ramp was shaped.
+# Measured on the last frame: 9% of drawn cells changed within the last five
+# steps, 12% within twenty, and the median cell last moved 461 steps ago. So
+# the burn is given the top fifth and the climb through indigo takes the rest.
+# Dark, but never black: that lattice is the whole picture at thumbnail size.
+FORGE = [
+    (6, 5, 16), (10, 8, 26), (15, 12, 38), (21, 16, 52), (29, 21, 70),
+    (40, 27, 92), (58, 36, 118), (96, 50, 150), (240, 120, 70), (255, 246, 214),
+]
+
+# The same ramp in oxidised bronze. What the two palettes differ on is not
+# taste: the colour is how long ago a cell last moved, so the husks and the
+# working rim want to be *different* hues rather than neighbouring ones. FORGE
+# runs indigo to cream and the diamond reads as one material with a brighter edge;
+# VERDIGRIS puts the dead body in patina and keeps gold for the cells the
+# machine is touching this instant, which is the distinction the piece is about.
+VERDIGRIS = [
+    (4, 10, 9), (7, 18, 16), (10, 28, 24), (14, 40, 34), (18, 54, 46),
+    (24, 72, 60), (32, 94, 76), (44, 120, 96), (235, 150, 60), (255, 244, 214),
+]
+
+LOOP_PALETTES = {"forge": FORGE, "verdigris": VERDIGRIS}
 
 # One hue per founder, cycled: sixty-four distinguishable colours do not exist
 # in this family and would not survive Instagram's compression if they did.
@@ -198,6 +226,27 @@ EDITIONS: dict[str, dict] = {
         "hook": (
             "Generation zero could only fill its world.",
             "Forty generations later it crosses it.",
+        ),
+    },
+    "replicator": {
+        "title": "Replicator",
+        "slug": "replicator_langtons-loops_alife",
+        "palette": FORGE,
+        "exposure": 1.00,
+        "boost": 1.05,
+        # `sharp`, pinned here rather than left to the command line: the piece
+        # is a lattice of 3 px walls and the default halo smears it to haze.
+        "bloom_threshold": 0.55,
+        "bloom_strength": 0.25,
+        "caption": (
+            "Langton's loops \u00b7 self-replicating automaton (1984)",
+            "circulate \u00b7 extend \u00b7 turn left \u00b7 cut free",
+            "one loop becomes 345 \u00b7 100 still working",
+            "colour is steps since a cell last changed",
+        ),
+        "hook": (
+            "Each was built by the one beside it.",
+            "Only the edge is still building.",
         ),
     },
     "descent": {
@@ -322,7 +371,13 @@ def stamp(radius: float) -> tuple[np.ndarray, np.ndarray]:
 
 def tone(colour_sum: np.ndarray, density: np.ndarray, reference: float, spec: dict, args) -> np.ndarray:
     linear = glow.flame_map(colour_sum, density, reference, boost=spec["boost"])
-    linear = glow.bloom(linear, threshold=args.bloom_threshold, strength=args.bloom_strength)
+    threshold = args.bloom_threshold
+    strength = args.bloom_strength
+    linear = glow.bloom(
+        linear,
+        threshold=spec.get("bloom_threshold", 0.30) if threshold is None else threshold,
+        strength=spec.get("bloom_strength", 0.60) if strength is None else strength,
+    )
     return glow.to_bytes(glow.tone_map(linear, exposure=spec["exposure"]))
 
 
@@ -1200,12 +1255,134 @@ def descent_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], n
     return draw, draw(1.0)
 
 
+def replicator_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], np.ndarray]:
+    height, width = args.height, args.width
+    spec = dict(spec, palette=LOOP_PALETTES[args.loops_palette])
+    cell = args.loops_cell
+    world = langton.Loops(height // cell, width // cell, args.loops_row, args.loops_column)
+
+    # Where the seed sits is decided by the text, not by the middle of the
+    # frame. The colony is a diamond -- four neighbours cannot grow a circle --
+    # and the seed carries its construction arm to the right, so growth is not
+    # symmetric about the seed and centring it means offsetting the seed left.
+    # At 2,250 steps the diamond is 963 x 903 px: 54 px of black to its left,
+    # 60 to its right, 141 under the title's ink and 146 over the hook.
+    #
+    # Where the run *stops* is a composition decision too, and a sharper one
+    # than it looks. The replication period is 151 steps, so the phase of the
+    # colony at the last frame decides how much of it is caught mid-copy:
+    # 2,250 steps leaves 100 of 345 loops still working, where 2,200 and 2,300
+    # leave 50 and 54. The cover frame is the one that has to carry the piece.
+    # Pacing, and this piece needs it more than anything else in the account.
+    # Replication is exponential, so equal steps per frame spend the first four
+    # seconds on a speck: at 3 px a cell one loop is 30 px, and the finished cut
+    # measured 40.6% of its frames under the freeze threshold with every one of
+    # them in the opening half. A power law over the frame index gets that to
+    # 8.4% and then puts freezes back at the *end*, because it is a guess at the
+    # curve rather than the curve.
+    #
+    # So the curve is measured, and measured on the right quantity. Counting
+    # the cells that *change* reads 15.5%: it counts the signal train cycling
+    # on the spot, which at 135 px is not a picture changing at all. What the
+    # eye reacts to is the difference between one banked state and the next, so
+    # the probe run stores a coarse map of where there is any ink, walks the
+    # distance between consecutive maps, and banks where that running distance
+    # crosses equal shares. Every frame then carries the same amount of change
+    # and the clip plays straight through with no scheduler at all.
+    probe = langton.Loops(height // cell, width // cell, args.loops_row, args.loops_column)
+    block = 10
+    signature = np.empty(
+        (args.loops_total + 1, (height // cell) // block, (width // cell) // block),
+        dtype=np.float32,
+    )
+
+    def coarse(grid: np.ndarray) -> np.ndarray:
+        rows, columns = signature.shape[1], signature.shape[2]
+        return (grid[: rows * block, : columns * block] > 0).reshape(
+            rows, block, columns, block
+        ).mean(axis=(1, 3))
+
+    signature[0] = coarse(probe.grid)
+    for index in range(args.loops_total):
+        probe.step()
+        signature[index + 1] = coarse(probe.grid)
+    walk = np.abs(np.diff(signature, axis=0)).mean(axis=(1, 2))
+    running = np.cumsum(walk)
+    wanted = running[-1] * (np.arange(1, args.duration_frames + 1) / args.duration_frames)
+    targets = np.searchsorted(running, wanted) + 1
+    # Never hand the same state to two frames: a repeated state *is* the stutter.
+    targets = np.minimum(np.maximum.accumulate(targets), args.loops_total)
+    targets = np.maximum(targets, np.arange(1, args.duration_frames + 1))
+
+    states: list[tuple[np.ndarray, np.ndarray]] = []
+    advanced = 0
+    for frame in range(args.duration_frames):
+        target = int(targets[frame])
+        world.step(target - advanced)
+        advanced = target
+        states.append(
+            (world.grid.copy(), np.clip(world.age, 0, args.loops_total).astype(np.uint16))
+        )
+
+    total_loops, alive = world.census()
+    top, bottom, left, right = world.extent()
+    print(
+        f"  replicator: {advanced:,} steps, first frame at step {int(targets[0])}, "
+        f"{total_loops} loops, {alive} still working, "
+        f"{int((world.grid > 0).sum()):,} cells drawn; "
+        f"rows {top * cell}-{bottom * cell} px, columns {left * cell}-{right * cell} px",
+        flush=True,
+    )
+
+    # Colour is steps since a cell last changed, and that is hopelessly skewed:
+    # nearly every cell in a finished colony is a husk that has not moved for
+    # hundreds of steps, while the machine works on a handful. Scaled, the
+    # whole frame lands on one palette entry. Ranked against the distribution
+    # the last frame actually has, the ramp is spent where the cells are.
+    final_grid, final_age = states[-1]
+    ladder = np.sort(final_age[final_grid > 0])
+    span = np.arange(args.loops_total + 2, dtype=np.int64)
+    rank = np.searchsorted(ladder, span, side="left") / max(len(ladder), 1)
+    # Fresh at the top of the ramp: what is bright is what is being worked on.
+    shade_ladder = (1.0 - rank).astype(np.float32)
+
+    offsets, weights = stamp(args.loops_body)
+    palette = glow.build_palette(spec["palette"])
+    caption = build_overlay(width, height, spec, args)
+    reference = 1.0
+
+    def fields_at(index: int) -> tuple[np.ndarray, np.ndarray]:
+        grid, age = states[index]
+        rows, columns = np.nonzero(grid)
+        shade = shade_ladder[np.clip(age[rows, columns], 0, len(shade_ladder) - 1)]
+        centres = np.stack(
+            [(columns + 0.5) * cell, (rows + 0.5) * cell], axis=1
+        ).astype(np.float32)
+        # Every cell weighs the same. A cell is one unit of stuff, so density
+        # stays what the house says it is -- how much is there -- and the live
+        # rim reads because its colour is at the bright end, not because it was
+        # given extra weight.
+        screen = (centres[:, None, :] + offsets[None, :, :]).reshape(-1, 2)
+        colours = np.repeat(glow.sample_palette(palette, shade), len(offsets), axis=0)
+        sample_weights = np.tile(weights, len(centres)).astype(np.float32)
+        return glow.splat(width, height, screen, colours, sample_weights)
+
+    def draw(u: float) -> np.ndarray:
+        colour_sum, density = fields_at(min(int(u * (len(states) - 1)), len(states) - 1))
+        return glow.compose(tone(colour_sum, density, reference, spec, args), caption)
+
+    _, final_density = fields_at(len(states) - 1)
+    reference = float(np.percentile(final_density[final_density > 0], 92.0))
+    return draw, draw(1.0)
+
+
 TIMELINES = {
     "affinity": affinity_timeline,
     "soliton": soliton_timeline,
     "cohort": cohort_timeline,
     "shoal": shoal_timeline,
     "descent": descent_timeline,
+    "replicator": replicator_timeline,
 }
 
 
@@ -1267,8 +1444,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-hook", dest="hook", action="store_false")
     parser.add_argument("--hook-size", type=int, default=34)
     parser.add_argument("--hook-gap", type=int, default=82)
-    parser.add_argument("--bloom-threshold", type=float, default=0.30)
-    parser.add_argument("--bloom-strength", type=float, default=0.60)
+    # Default None so a piece may pin its own look in the spec and still be
+    # overridden from the command line. `replicator` pins `sharp`: a lattice
+    # of 3 px walls is exactly what a wide halo smears into haze.
+    parser.add_argument("--bloom-threshold", type=float, default=None)
+    parser.add_argument("--bloom-strength", type=float, default=None)
     # Scaled to the band, not to the frame. What these rules do depends on how
     # many neighbours a particle has, so keeping the count while shrinking the
     # area by two fifths would quietly hand the piece a denser world and a
@@ -1362,6 +1542,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--tree-bottom", type=int, default=250, help="gap over the data block")
     parser.add_argument("--tree-inset", type=int, default=20)
     parser.add_argument("--spacing", type=float, default=1.5, help="pixels between splatted points")
+    parser.add_argument(
+        "--loops-total", type=int, default=2250,
+        help="simulation steps in the whole run; where it stops is a composition choice",
+    )
+    parser.add_argument("--loops-cell", type=int, default=3, help="pixels per automaton cell")
+    parser.add_argument("--loops-row", type=int, default=298, help="seed row, in cells")
+    parser.add_argument("--loops-column", type=int, default=171, help="seed column, in cells")
+    parser.add_argument("--loops-body", type=float, default=1.8, help="splat radius of one cell")
+    parser.add_argument(
+        "--loops-palette", choices=sorted(LOOP_PALETTES), default="forge",
+        help="which ramp the staleness is read through",
+    )
     parser.add_argument("--ink", type=float, default=0.85)
     parser.add_argument("--thickness", type=float, default=1.1, help="pixels either side of a line")
     parser.add_argument("--exposure", type=float)

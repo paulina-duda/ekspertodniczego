@@ -20,6 +20,7 @@ it is the only place the account has an opinion.
 | `descent_genetic-algorithm_alife` | genetic algorithm | the pedigree of a real run: 64 founders, 40 generations, one ancestor |
 | `cohort_genetic-algorithm_alife` | genetic algorithm | the same run, seen as the animals it made rather than as a tree |
 | `shoal_genetic-algorithm_alife` | genetic algorithm | the same run as a race: four generations, four lanes, one winner |
+| `replicator_langtons-loops_alife` | Langton's loops | a machine that copies itself, and a colony that is alive only on its rim |
 
 ## Affinity
 
@@ -470,6 +471,139 @@ it. The house norm is 4%. `cohort`, the same run in panels, measures 78%.
 > kopiuj z błędami, porównaj trzy losowe, zostaw zwycięzcę. Czterdzieści rund
 > tego i różnica między górnym torem a dolnym jest różnicą między wypełnieniem
 > świata a przebyciem go.
+
+## Replicator
+
+Every other piece in this edition films a rule that makes something *look*
+alive. This one films the question that started the field: von Neumann's, in
+1948 -- can a machine build a machine as complicated as itself? He answered it
+with a universal constructor too large for anyone to have run it. Codd cut it
+down in 1968. Langton cut it down again in 1984 by giving up on universality,
+and what is left is small enough to watch: eight states, five cells in the
+neighbourhood, 219 transitions, one starting shape ninety cells across.
+
+The loop is a sheath wrapped around a core carrying the train `70 70 70 70 40
+40`. A 7 extends the arm by one cell, a 4 turns it left; the train is both the
+machine and its own blueprint, and four extensions and a turn, four times over,
+close the arm into a daughter holding a copy of the train. Nothing in the rule
+mentions copying, a parent, a daughter or a colony.
+
+### The seed has to be exact, and a wrong one looks like a broken renderer
+
+The first run moved 88 cells to 89 over 400 steps and sat there. The table was
+right; the starting shape was not. One row should read `2170140142` and had
+been transcribed `217014142` -- a single missing `0` in the signal train. No
+transition matches a shape that is not in the language, and Golly's `@TABLE`
+convention for an unmatched neighbourhood is **leave the cell alone**, so the
+automaton answers a bad seed by freezing rather than by failing.
+
+Getting that default backwards is the other way to lose: setting unmatched
+cells to zero erases the colony from the inside out.
+
+Both the table and the seed are verified by running them rather than by
+reading them. The seed doubles its cell count by step 150, which is the
+published replication period. Nothing else proves a 219-line table was
+transcribed correctly.
+
+### Where it is seeded, and where it stops
+
+Two placements, both measured against the text rather than against the frame.
+
+At **2,400 steps the colony reaches the last column of a wrapping world** -- one
+step further and it grows into its own left side, which is the wrap-segment
+gotcha wearing a different hat. And because the seed carries its construction
+arm to the right, growth is not symmetric about the seed: centring the diamond
+means offsetting the seed left, by nine cells here.
+
+Where the run stops is a sharper decision than it looks. The replication period
+is 151 steps, so the phase of the colony on the last frame decides how much of
+it is caught mid-copy, and frame one is the grid thumbnail:
+
+| Steps | Loops | Still working |
+| --- | --- | --- |
+| 2,200 | 295 | 50 |
+| **2,250** | **345** | **100** |
+| 2,300 | 345 | 54 |
+
+Fifty steps either side of the shipped number halves the live rim.
+
+### Colour is age, and age turned out to mean something else
+
+The intention was a dead crystal with a live rim: colour the cells by how long
+since each last changed, and the working machinery separates from the husks.
+What it actually draws is **growth rings** -- age mostly records when a part of
+the colony was built, not whether it is working now -- and that is the better
+picture anyway, so it stayed.
+
+Ranking it, which is the house answer to a skewed scalar, then made the whole
+colony an even lavender. **Ranking spreads a quantity evenly over the ramp by
+construction**: half the cells land above the midpoint whatever the quantity
+does, so a colony that is three quarters dead comes out uniformly mid-tone. The
+fix is `PLASMA`'s -- a long dark end -- and the distribution says how long. On
+the last frame 9% of drawn cells had changed within five steps, 12% within
+twenty, and the median cell last moved 461 steps ago, so eight of the ten stops
+are dark and the burn gets the top fifth.
+
+### The pacing, which is most of what this piece cost
+
+The finished cut measured **40.6% of its frames under the freeze threshold,
+every one of them in the opening half**: 29, 30, 25 and 13 per second across the
+first four seconds, then nothing. The house norm is 4%.
+
+This is worth stating plainly because the gate had passed it. **T1 measured 4%
+of the change in the first quarter and 48% in the last, which is a clean pass --
+and it is a clean pass precisely because the colony is invisible early.** A
+strongly back-loaded profile and an empty opening are the same fact seen twice.
+The change profile cannot see it; only the motion count can.
+
+Four fixes were measured and three of them failed:
+
+| Attempt | Frozen | Why it failed |
+| --- | --- | --- |
+| bigger cells, 4-6 px | 33-53% | fewer total steps over the same 240 frames, so frames repeat |
+| power law over the frame index | 8.4% at `p=0.35` | a guess at the curve; puts freezes back at the *end* |
+| bank on cells that changed | 15.5% | counts the signal train cycling on the spot, which at 135 px is not a picture changing |
+| **bank on the distance between banked states** | **5.4%** | measures the thing the eye is reacting to |
+
+The last one is the check skill's own prescription taken literally. A probe run
+stores a coarse map of where there is any ink at every step, walks the distance
+between consecutive maps, and banks the states where that running distance
+crosses equal shares of itself. Every frame then carries the same amount of
+change and the clip plays straight through with no scheduler at all. Frame one
+lands at step 154 and the gaps run 103, 75, 58, 50 steps down to 4 at the end.
+
+Two smaller findings from the same sweep. **Starting the film later makes it
+worse** -- 9.2% at step 0 against 12.1% at step 300 -- so skipping the small
+phase is not the answer. And the splat body is a real lever on a threshold
+measured as a whole-frame mean: 1.2 px to 2.2 px moves it 9.2% to 7.5%, and 1.8
+is where the lattice is still crisp.
+
+**What is left is three frames, and it is irreducible in this composition.** All
+of them are in second 0. Frame one of the growing part already covers 103 steps
+of simulation, and a two-loop colony occupies 0.3% of the frame: no schedule
+moves a whole-frame mean by 0.15/255 on that much ink. The only fix that would
+is a camera that scales with the colony, which is a different piece.
+
+### Two palettes, and why both are kept
+
+`FORGE` runs indigo to cream; `VERDIGRIS` puts the dead body in patina and
+keeps gold for the cells the machine is touching. The difference is not taste.
+Colour here is how long ago a cell last moved, so the husks and the working rim
+want to be **different hues rather than neighbouring ones** -- under `FORGE` the
+diamond reads as one material with a brighter edge, and under `VERDIGRIS` the
+distinction the piece is about is the first thing visible. Both were cut with
+`--tag`, so neither replaces the other.
+
+Rejected on the way: `GLACIER`, blue throughout, which breaks the house rule
+that blue is an accent and never a whole piece; and `PHOSPHOR`, the brightest of
+the five, against an open question about how much green the grid already has.
+
+### Measured on the finished cuts
+
+1080 x 1920, h264, yuv420p, 240 frames, 8.000 s. **5.4% of frames under the
+freeze threshold, thirteen of them, ten of which are the deliberate `--hold 11`
+cover**; longest run 10. Colony rows 411-1314 px: 141 px clear of the title's
+ink and 114 px clear of the hook's top line.
 
 ## What is different about this edition
 

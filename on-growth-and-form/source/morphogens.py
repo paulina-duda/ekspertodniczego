@@ -1859,3 +1859,203 @@ class Comet:
         keep = real & jump
         shade = np.repeat(1.0 - rung / max(self.length - 2, 1), live).reshape(self.length - 1, live).T
         return head[keep], tail[keep], shade[keep].astype(np.float32)
+
+
+class Stripe:
+    """Turing was right about the stripes. He was wrong about the morphogens.
+
+    A zebrafish stripe is not two chemicals racing each other across a sheet.
+    It is two kinds of cell -- black melanophores and yellow xanthophores --
+    each one reading how many of the other kind are nearby and, if the answer
+    is wrong, becoming the other kind. The interaction has the shape Turing
+    needed: a cell is supported by its own kind close in and suppressed by its
+    own kind further out, which is short-range activation and long-range
+    inhibition with whole cells standing where the chemicals were. Nakamasu
+    and colleagues measured the two ranges by killing cells with a laser and
+    watching what grew back.
+
+    So the pattern is computed by the tissue rather than painted onto it, and
+    the machinery is visible: every pixel of a stripe is an individual animal
+    cell that decided, and can still change its mind.
+
+    **The fish does not stop growing, and that is the piece.** The two ranges
+    are fixed -- they are the reach of one cell's processes, and a cell does
+    not get longer because the fish does. A stripe therefore has a width it
+    wants, and skin that keeps widening carries the existing stripes apart
+    until the gap between them is wide enough to hold another one, at which
+    point a new stripe nucleates in the middle of it. A zebrafish adds its
+    adult stripes exactly this way, ventrally and dorsally, as it grows. There
+    is no counter anywhere and nothing decides how many stripes to make: the
+    number is whatever the skin's height divided by that fixed width comes to.
+
+    Two consequences worth stating, because both cost a rebuild to find:
+
+    * **The radius has to advance by a fixed amount per step, not a fixed
+      fraction.** The stripe count goes as the radius, so only linear growth
+      spreads the splitting evenly across a clip; exponential growth puts two
+      thirds of it in the last quarter and the first half is a still.
+    * **The long-range term has to be strong enough to break a stripe from
+      the inside.** Under a weak one the pattern is stable to stretching and
+      the stripes simply get fatter as the skin grows -- which is a picture of
+      a disc being scaled up, not of a pattern being recomputed. Measured as
+      boundary length over radius: flat means stretching, rising means
+      splitting.
+    """
+
+    def __init__(
+        self,
+        height: int,
+        width: int,
+        radius: float | None = None,
+        seed_radius: float = 220.0,
+        per_cell: float = 6.0,
+        divisor: int = 3,
+        sigma_short: float = 4.6,
+        sigma_long: float = 13.6,
+        # Stripes run along the body axis because the ranges are not the same
+        # in both directions. Straight parallel bands need a much stronger bias
+        # than this and stop looking like an animal -- at 7 the disc reads as a
+        # barcode. 3.5 keeps them horizontal and lets them wander.
+        anisotropy: float = 3.5,
+        weight: float = 1.70,
+        rate: float = 0.30,
+        growth: float | None = None,
+        wander: float = 0.80,
+        recency: float = 26.0,
+        seed: int = 20260904,
+    ) -> None:
+        from scipy.ndimage import gaussian_filter
+
+        self._gaussian = gaussian_filter
+        self.height, self.width, self.divisor = height, width, divisor
+        self.rows, self.columns = height // divisor, width // divisor
+        self.limit = radius if radius is not None else 0.44 * min(height, width)
+        self.radius = float(seed_radius)
+        self.centre = np.array([width * 0.5, height * 0.5], dtype=np.float64)
+        self.per_cell, self.rate, self.wander = per_cell, rate, wander
+        self.sigma_short = (sigma_short, sigma_short * anisotropy)
+        self.sigma_long = (sigma_long, sigma_long * anisotropy)
+        self.weight, self.recency = weight, recency
+        self.growth = growth if growth is not None else 0.34
+        self.generator = np.random.default_rng(seed)
+
+        count = int(math.pi * self.radius ** 2 / per_cell)
+        span = self.radius * np.sqrt(self.generator.random(count))
+        angle = self.generator.uniform(0.0, 2.0 * math.pi, count)
+        self.x = (self.centre[0] + span * np.cos(angle)).astype(np.float32)
+        self.y = (self.centre[1] + span * np.sin(angle)).astype(np.float32)
+        self.kind = (self.generator.random(count) < 0.5).astype(np.int8)
+        self.age = np.zeros(count, dtype=np.float32)
+        self.switches = 0
+
+    def _bins(self) -> tuple[np.ndarray, np.ndarray]:
+        row = np.clip((self.y / self.divisor).astype(np.int32), 0, self.rows - 1)
+        column = np.clip((self.x / self.divisor).astype(np.int32), 0, self.columns - 1)
+        return row, column
+
+    def drive(self) -> np.ndarray:
+        """Short-range support for one's own kind, minus long-range suppression.
+
+        Smoothed with `mode="nearest"`, never wrapped: the skin has an edge and
+        a cell at the rim must not read the far side of the disc as a
+        neighbour, or stripes stitch themselves across the black.
+        """
+        row, column = self._bins()
+        field = np.zeros((self.rows, self.columns), dtype=np.float32)
+        np.add.at(field, (row, column), np.where(self.kind == 1, 1.0, -1.0))
+        short = self._gaussian(field, self.sigma_short, mode="nearest")
+        long_range = self._gaussian(field, self.sigma_long, mode="nearest")
+        return short - self.weight * long_range
+
+    def step(self, count: int = 1) -> None:
+        for _ in range(count):
+            if self.radius < self.limit:
+                previous = self.radius
+                self.radius = min(self.radius + self.growth, self.limit)
+                scale = self.radius / previous
+                self.x = (self.centre[0] + (self.x - self.centre[0]) * scale).astype(np.float32)
+                self.y = (self.centre[1] + (self.y - self.centre[1]) * scale).astype(np.float32)
+
+            drive = self.drive()
+            row, column = self._bins()
+            want = (drive[row, column] > 0).astype(np.int8)
+            # Only a fraction of the skin is up for replacement on any step.
+            # Switching every cell that disagrees at once makes the boundary a
+            # hard line that snaps between frames instead of a border being
+            # argued over, which is what the clip is of.
+            hot = self.generator.random(len(self.x)) < self.rate
+            flip = hot & (want != self.kind)
+            self.switches += int(flip.sum())
+            self.kind = np.where(flip, want, self.kind)
+            self.age = np.where(flip, 0.0, np.minimum(self.age + 1.0, 4.0 * self.recency)).astype(np.float32)
+
+            self.x += (self.wander * self.generator.standard_normal(len(self.x))).astype(np.float32)
+            self.y += (self.wander * self.generator.standard_normal(len(self.y))).astype(np.float32)
+
+            # New skin is new cells, not existing ones spread thinner: hold the
+            # areal density and let the population follow the area.
+            target = int(math.pi * self.radius ** 2 / self.per_cell)
+            missing = target - len(self.x)
+            if missing > 0:
+                span = self.radius * np.sqrt(self.generator.random(missing))
+                angle = self.generator.uniform(0.0, 2.0 * math.pi, missing)
+                born_x = (self.centre[0] + span * np.cos(angle)).astype(np.float32)
+                born_y = (self.centre[1] + span * np.sin(angle)).astype(np.float32)
+                born_row = np.clip((born_y / self.divisor).astype(np.int32), 0, self.rows - 1)
+                born_column = np.clip((born_x / self.divisor).astype(np.int32), 0, self.columns - 1)
+                self.x = np.concatenate((self.x, born_x))
+                self.y = np.concatenate((self.y, born_y))
+                self.kind = np.concatenate((self.kind, (drive[born_row, born_column] > 0).astype(np.int8)))
+                self.age = np.concatenate((self.age, np.zeros(missing, dtype=np.float32)))
+
+            # Confine the model, not the render: a cell pushed past the margin
+            # is put back on it, so the black outside is black because nothing
+            # was ever allowed to be there.
+            offset = np.hypot(self.x - self.centre[0], self.y - self.centre[1])
+            outside = offset > self.radius
+            if outside.any():
+                scale = self.radius / np.maximum(offset[outside], 1e-6)
+                self.x[outside] = (self.centre[0] + (self.x[outside] - self.centre[0]) * scale).astype(np.float32)
+                self.y[outside] = (self.centre[1] + (self.y[outside] - self.centre[1]) * scale).astype(np.float32)
+
+    def boundary(self) -> int:
+        """Stripe border on screen, in pixels. The quantity the piece is about.
+
+        Divided by the radius it says which of the two things is happening: a
+        flat ratio is stripes being stretched, a rising one is stripes being
+        split.
+        """
+        drive = self.drive()
+        grid_y, grid_x = np.mgrid[: self.rows, : self.columns]
+        inside = (
+            (grid_y - self.centre[1] / self.divisor) ** 2
+            + (grid_x - self.centre[0] / self.divisor) ** 2
+        ) < (self.radius / self.divisor - 2.0) ** 2
+        warm = (drive > 0) & inside
+        total = int((warm[:-1, :] != warm[1:, :])[inside[:-1, :] & inside[1:, :]].sum())
+        total += int((warm[:, :-1] != warm[:, 1:])[inside[:, :-1] & inside[:, 1:]].sum())
+        return total * self.divisor
+
+    @property
+    def count(self) -> int:
+        return len(self.x)
+
+    def species(self) -> np.ndarray:
+        return self.kind
+
+    def weights(self) -> np.ndarray:
+        """A cell that has just changed its mind is worth more light.
+
+        Density is otherwise flat everywhere inside the disc -- two-valued
+        cells at one areal density give the log-density map a solid block to
+        work on and the frame reads as a printed pattern rather than a
+        population. Recency is the one thing about a cell that is neither its
+        type nor its position, it is intrinsic, and it is concentrated exactly
+        where the pattern is being decided.
+        """
+        return (1.0 + 2.4 * np.exp(-self.age / self.recency)).astype(np.float32)
+
+    def cells(self) -> tuple[np.ndarray, np.ndarray]:
+        """Positions, and how recently each cell last changed type."""
+        points = np.column_stack((self.x, self.y)).astype(np.float32)
+        return points, np.exp(-self.age / self.recency).astype(np.float32)
