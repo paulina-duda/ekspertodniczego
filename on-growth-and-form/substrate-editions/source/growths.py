@@ -54,6 +54,9 @@ class Hyphae:
         speed: float = 1.25,
         wander: float = 0.20,
         radius: float | None = None,
+        seeds: int = 1,
+        bound: str = "disc",
+        keepout: np.ndarray | None = None,
         sensor: float = 7.0,
         sensor_angle: float = math.radians(32.0),
         turn: float = math.radians(15.0),
@@ -63,8 +66,20 @@ class Hyphae:
         seed: int = 20260815,
     ) -> None:
         self.height, self.width = height, width
-        # Bounded like a plate culture: unbounded, the colony runs off every edge,
-        # buries the caption and loses the black the house style is composed on.
+        # `disc` bounds the colony like a plate culture. That was not a taste
+        # decision: the first cut ran off every edge, filled the frame corner to
+        # corner, blew out to white and put the caption on a bright field. What
+        # made it unrecoverable was the density -- at 1.4 px between filaments
+        # there is no black left to lose. `frame` is the same colony let out to
+        # the frame edge, and it is only safe at a mesh open enough that most of
+        # the picture is still substrate.
+        self.bound = bound
+        # Ground the colony is not allowed onto. Sensing treats it as already
+        # colonised, so tips turn away from it a sensor-length out rather than
+        # walking into it and dying on a line -- the difference between a
+        # mycelium growing around an obstacle and a mycelium with a bite taken
+        # out of it. Used to hold the margins and the text clear.
+        self.keepout = None if keepout is None else np.ascontiguousarray(keepout, dtype=bool)
         self.radius = float(min(height, width) * 0.44 if radius is None else radius)
         self.centre = np.array([width * 0.5, height * 0.5], dtype=np.float32)
         self.speed, self.wander = speed, wander
@@ -72,15 +87,47 @@ class Hyphae:
         self.branch_rate, self.max_tips, self.refractory = branch_rate, max_tips, refractory
         self.generator = np.random.default_rng(seed)
 
+        # One spore or several. Several is what a substrate actually gets, and it
+        # is the only way the fusion the piece is about happens between two
+        # individuals rather than inside one. They go down on a jittered grid
+        # rather than at random: random scatter clumps, and a clump of colonies
+        # merges before either has been visibly a colony. Nothing here touches
+        # the generator unless there is more than one seed, so a model built with
+        # the shipped parameters still produces the shipped colony.
+        origins = self._sow(seeds)
+        self.founders = seeds
         angle = np.linspace(0.0, 2.0 * math.pi, tips, endpoint=False)
-        self.x = np.full(tips, width * 0.5, dtype=np.float32)
-        self.y = np.full(tips, height * 0.5, dtype=np.float32)
-        self.heading = angle.astype(np.float32)
+        self.x = np.repeat(origins[:, 0], tips).astype(np.float32)
+        self.y = np.repeat(origins[:, 1], tips).astype(np.float32)
+        self.heading = np.tile(angle, seeds).astype(np.float32)
+        # Which spore each tip came from, carried down every branch.
+        self.founder = np.repeat(np.arange(seeds, dtype=np.int32), tips)
+
+        # Which segment laid each sample down. A segment is one internode: it
+        # begins where its tip was branched off and ends where that tip stops,
+        # so its fate is a single fact about it -- it fused into the network, or
+        # it ran to the wall. Nothing here draws from the generator, so a model
+        # built with the shipped parameters produces the shipped colony.
+        self.ident = np.arange(len(self.x), dtype=np.int32)
+        self.next_ident = len(self.x)
+        self.idents: list[np.ndarray] = []
+        # Step at which each segment's tip fused. -1 is "never": it reached the
+        # rim, or the run ended while it was still going.
+        self.fused_step: list[int] = [-1] * len(self.x)
+        # Founder per segment id, so a sample can be coloured by whose it is.
+        self.founder_of: list[int] = list(self.founder)
+        # Fusions in which the two hyphae came from different spores -- the step
+        # at which two individuals stopped being two.
+        self.grafts: list[int] = []
 
         # When each pixel was last written to. Anastomosis needs to tell "another
         # hypha" from "the piece of myself I laid down two steps ago", and the
         # only difference between them is age.
         self.touched = np.full((height, width), -10_000, dtype=np.int32)
+        # Whose hypha wrote each pixel. Needed to tell a fusion inside one colony
+        # from a fusion between two, which is the only difference between a
+        # mycelium tidying itself up and two individuals becoming one.
+        self.owner = np.full((height, width), -1, dtype=np.int16)
         self.step_index = 0
 
         self.points: list[np.ndarray] = []
@@ -91,18 +138,62 @@ class Hyphae:
         self.lit = 0
         self._deposit()
 
+    def _sow(self, seeds: int) -> np.ndarray:
+        if seeds <= 1:
+            return np.array([[self.width * 0.5, self.height * 0.5]], dtype=np.float32)
+        # Columns and rows chosen so the cells come out as square as the frame
+        # allows; a 2 x 3 grid on 9:16 gives cells 540 x 640.
+        columns = max(1, int(round(math.sqrt(seeds * self.width / self.height))))
+        rows = int(math.ceil(seeds / columns))
+        cell = np.array([self.width / columns, self.height / rows], dtype=np.float32)
+        centres = np.array(
+            [[(c + 0.5) * cell[0], (r + 0.5) * cell[1]] for r in range(rows) for c in range(columns)],
+            dtype=np.float32,
+        )[:seeds]
+        placed = centres + self.generator.uniform(-0.22, 0.22, centres.shape).astype(np.float32) * cell
+        if self.keepout is not None:
+            # A spore dropped on forbidden ground never germinates, so re-jitter
+            # any that land there. Bounded tries, then fall back to the nearest
+            # allowed pixel so this can never fail to terminate.
+            for _ in range(40):
+                rows = np.clip(placed[:, 1].astype(np.int32), 0, self.height - 1)
+                columns = np.clip(placed[:, 0].astype(np.int32), 0, self.width - 1)
+                bad = self.keepout[rows, columns]
+                if not bad.any():
+                    break
+                placed[bad] = (
+                    centres[bad]
+                    + self.generator.uniform(-0.45, 0.45, (int(bad.sum()), 2)).astype(np.float32) * cell
+                )
+            rows = np.clip(placed[:, 1].astype(np.int32), 0, self.height - 1)
+            columns = np.clip(placed[:, 0].astype(np.int32), 0, self.width - 1)
+            bad = self.keepout[rows, columns]
+            if bad.any():
+                allowed = np.argwhere(~self.keepout)
+                for index in np.flatnonzero(bad):
+                    distance = np.hypot(allowed[:, 0] - placed[index, 1], allowed[:, 1] - placed[index, 0])
+                    nearest = allowed[int(np.argmin(distance))]
+                    placed[index] = (nearest[1], nearest[0])
+        return placed.astype(np.float32)
+
     def _sample(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
         column = np.clip(x.astype(np.int32), 0, self.width - 1)
         row = np.clip(y.astype(np.int32), 0, self.height - 1)
-        return (self.touched[row, column] > -10_000).astype(np.float32)
+        seen = self.touched[row, column] > -10_000
+        if self.keepout is not None:
+            seen = seen | self.keepout[row, column]
+        return seen.astype(np.float32)
 
     def _deposit(self) -> None:
         column = np.clip(self.x.astype(np.int32), 0, self.width - 1)
         row = np.clip(self.y.astype(np.int32), 0, self.height - 1)
         self.lit += int((self.touched[row, column] == -10_000).sum())
+        fresh = self.touched[row, column] == -10_000
+        self.owner[row[fresh], column[fresh]] = self.founder[fresh].astype(np.int16)
         self.touched[row, column] = self.step_index
         self.points.append(np.column_stack((self.x, self.y)).astype(np.float32))
         self.ages.append(np.full(len(self.x), self.step_index, dtype=np.float32))
+        self.idents.append(self.ident.copy())
 
     def step(self, count: int = 1) -> None:
         for _ in range(count):
@@ -128,15 +219,33 @@ class Hyphae:
             self.x = (self.x + self.speed * np.cos(self.heading)).astype(np.float32)
             self.y = (self.y + self.speed * np.sin(self.heading)).astype(np.float32)
 
-            inside = (
-                np.hypot(self.x - self.centre[0], self.y - self.centre[1]) < self.radius
-            )
+            if self.bound == "frame":
+                inside = (
+                    (self.x >= 0.0) & (self.x < self.width) & (self.y >= 0.0) & (self.y < self.height)
+                )
+            else:
+                inside = (
+                    np.hypot(self.x - self.centre[0], self.y - self.centre[1]) < self.radius
+                )
+            if self.keepout is not None:
+                blocked = self.keepout[
+                    np.clip(self.y.astype(np.int32), 0, self.height - 1),
+                    np.clip(self.x.astype(np.int32), 0, self.width - 1),
+                ]
+                inside = inside & ~blocked
             column = np.clip(self.x.astype(np.int32), 0, self.width - 1)
             row = np.clip(self.y.astype(np.int32), 0, self.height - 1)
             fused = (self.step_index - self.touched[row, column]) < self.refractory
             fused = ~fused & (self.touched[row, column] > -10_000)
             alive = inside & ~fused
+            for ident in self.ident[fused]:
+                self.fused_step[int(ident)] = self.step_index
+            # A graft is a fusion where the hypha landed on is another spore's.
+            joined = self.owner[row[fused], column[fused]]
+            self.grafts.extend([self.step_index] * int((joined != self.founder[fused]).sum()))
             self.x, self.y, self.heading = self.x[alive], self.y[alive], self.heading[alive]
+            self.ident = self.ident[alive]
+            self.founder = self.founder[alive]
             if not len(self.x):
                 return
 
@@ -153,12 +262,30 @@ class Hyphae:
                     self.heading = np.concatenate(
                         (self.heading, self.heading[chosen] + side * math.radians(38.0))
                     ).astype(np.float32)
+                    fresh = np.arange(self.next_ident, self.next_ident + len(chosen), dtype=np.int32)
+                    self.next_ident += len(chosen)
+                    self.ident = np.concatenate((self.ident, fresh))
+                    self.founder = np.concatenate((self.founder, self.founder[chosen]))
+                    self.fused_step.extend([-1] * len(chosen))
+                    self.founder_of.extend(int(f) for f in self.founder[chosen])
 
     def metric(self) -> float:
         return float(self.lit)
 
     def samples(self) -> tuple[np.ndarray, np.ndarray]:
         return np.concatenate(self.points), np.concatenate(self.ages)
+
+    def segments(self) -> np.ndarray:
+        """Segment id per sample, aligned with `samples()`."""
+        return np.concatenate(self.idents)
+
+    def fusion_steps(self) -> np.ndarray:
+        """Step each segment fused at, indexed by segment id; -1 for never."""
+        return np.asarray(self.fused_step, dtype=np.int32)
+
+    def founders_of(self) -> np.ndarray:
+        """Founding spore per segment id."""
+        return np.asarray(self.founder_of, dtype=np.int32)
 
 
 class Cleavage:
@@ -704,6 +831,408 @@ class Condensate:
                 radius = np.sqrt(areas / np.pi) / self.reference_radius
                 shade = np.clip(radius, 0.0, 1.0)[labelled].astype(np.float32) * dense
         return density, shade
+
+
+class Sector:
+    """A colony spreading on a plate, and the genealogy it leaves behind it.
+
+    Only cells at the edge of a colony have anywhere to divide into. Everything
+    inland is jammed against its neighbours and stops, so the interior is not a
+    population at all -- it is a frozen record of who happened to be at the
+    front when that ring was laid down. Label the founders and the plate turns
+    into a picture of its own descent: wedges radiating from the inoculum, each
+    one a clone, their boundaries wandering as the lineage on either side gains
+    or loses a few cells of frontage. A boundary that wanders into another
+    annihilates, and the lineage between them is gone from the front forever
+    even though its cells are all still alive inland. That is genetic drift,
+    with no selection in it and nothing deciding anything.
+
+    Drift alone would be over in a second. Boundaries diffuse as sqrt(t) while
+    the circumference grows as t, so after the first coarsening they never meet
+    again and the picture stops developing. Mutation is what keeps it running:
+    every division has a small chance of founding a new lineage, and a fraction
+    of those divide fractionally faster. A faster lineage pushes its arc of the
+    front out ahead of its neighbours, and a front that bulges captures more of
+    the circumference as it goes, so the advantage compounds into a wedge.
+    Nothing about the wedge is drawn. It is the growth rate.
+
+    Colour is hue as accumulated descent: each mutation displaces its lineage a
+    short way along the ramp from its parent, so a wedge's colour measures how
+    far it has drifted from the founder it came from, and a nested sub-wedge is
+    a mutation that happened inside a clone that was already winning.
+
+    Two things make the front honest. Cells only ever appear one lattice cell
+    outside the colony, so a lineage boundary stays pixel-sharp; but *whether*
+    one appears is weighted by a Gaussian measure of how much colony surrounds
+    the site, which has no preferred direction. Asking instead the obvious
+    question -- is any of my eight neighbours occupied -- lets the diagonals
+    grow sqrt(2) too fast and the plate comes out as a diamond. Measured as the
+    cos(4*theta) component of the front radius: 7.4% of the mean radius on the
+    eight-neighbour rule, 1.0% here.
+    """
+
+    NEIGHBOURS = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+
+    def __init__(
+        self,
+        size: int,
+        radius: float | None = None,
+        founders: int = 16,
+        sigma: float = 2.0,
+        rate: float = 0.45,
+        mutation: float = 0.0022,
+        beneficial: float = 0.16,
+        advantage: float = 0.10,
+        hue_step: float = 0.075,
+        inoculum: float = 4.0,
+        pacing: float = 0.5,
+        seed: int = 20260901,
+    ) -> None:
+        self.size = size
+        self.radius = float(radius if radius is not None else size * 0.49)
+        self.sigma = sigma
+        self.rate = rate
+        self.mutation = mutation
+        self.beneficial = beneficial
+        self.advantage = advantage
+        self.hue_step = hue_step
+        self.pacing = pacing
+        self.rng = np.random.default_rng(seed)
+
+        self.label = np.zeros((size, size), dtype=np.int32)
+        self.arrival = np.full((size, size), -1, dtype=np.int32)
+        self.step_index = 0
+
+        middle = size // 2
+        grid_y, grid_x = np.mgrid[0:size, 0:size]
+        self.offset = np.hypot(grid_y - middle, grid_x - middle)
+        self.dish = self.offset <= self.radius
+
+        # The inoculum: a drop of mixed culture, cut into equal wedges so the
+        # founders start with equal frontage and nothing is favoured by where it
+        # was put down. Hue is shuffled across them on purpose -- founders sit in
+        # angular order, and giving neighbours neighbouring hues would draw a
+        # tidy colour wheel that says nothing, where the drift boundaries are the
+        # only thing worth looking at.
+        angle = np.arctan2(grid_y - middle, grid_x - middle)
+        seed_spot = self.offset < inoculum
+        wedge = (((angle + math.pi) / (2 * math.pi)) * founders).astype(np.int32) % founders
+        self.label[seed_spot] = wedge[seed_spot] + 1
+        self.arrival[seed_spot] = 0
+
+        capacity = 4096
+        self.hue = np.zeros(capacity, dtype=np.float32)
+        self.fitness = np.ones(capacity, dtype=np.float32)
+        self.founded = np.zeros(capacity, dtype=np.int32)
+        self.parent = np.zeros(capacity, dtype=np.int32)
+        order = self.rng.permutation(founders)
+        self.hue[1 : founders + 1] = (order + 0.5) / founders
+        self.count = founders
+
+    # -- growth ----------------------------------------------------------
+
+    def step(self, times: int = 1) -> None:
+        for _ in range(times):
+            self.step_index += 1
+            occupied = self.label > 0
+            # A Gaussian measure of surrounding colony. At a flat front it sits
+            # at one half, which is what the acceptance is normalised against.
+            potential = ndimage.gaussian_filter(
+                occupied.astype(np.float32), self.sigma, mode="constant"
+            )
+            candidates = ndimage.binary_dilation(occupied) & ~occupied & self.dish
+            rows, columns = np.nonzero(candidates)
+            if rows.size == 0:
+                return
+
+            parent = self._pick_parent(rows, columns)
+            alive = parent > 0
+            rows, columns, parent = rows[alive], columns[alive], parent[alive]
+            if rows.size == 0:
+                return
+
+            crowding = np.clip(potential[rows, columns] / 0.5, 0.0, 1.0)
+            chance = self.rate * crowding * self.fitness[parent]
+            taken = self.rng.random(rows.size) < chance
+            rows, columns, parent = rows[taken], columns[taken], parent[taken]
+            if rows.size == 0:
+                continue
+
+            parent = self._mutate(parent)
+            self.label[rows, columns] = parent
+            self.arrival[rows, columns] = self.step_index
+
+    def _pick_parent(self, rows: np.ndarray, columns: np.ndarray) -> np.ndarray:
+        """One occupied neighbour, drawn with weight 1/distance.
+
+        Weighting by distance matters for the same reason the Gaussian above
+        does: treat a diagonal neighbour as being as close as an axial one and
+        the lineage boundaries acquire the lattice's diagonals.
+        """
+        weights = np.zeros((rows.size, len(self.NEIGHBOURS)), dtype=np.float32)
+        labels = np.zeros((rows.size, len(self.NEIGHBOURS)), dtype=np.int32)
+        limit = self.size - 1
+        for index, (dy, dx) in enumerate(self.NEIGHBOURS):
+            value = self.label[np.clip(rows + dy, 0, limit), np.clip(columns + dx, 0, limit)]
+            labels[:, index] = value
+            weights[:, index] = (value > 0) / math.hypot(dy, dx)
+        total = weights.sum(axis=1)
+        cumulative = np.cumsum(weights, axis=1)
+        draw = self.rng.random(rows.size).astype(np.float32) * total
+        choice = (cumulative < draw[:, None]).sum(axis=1).clip(0, len(self.NEIGHBOURS) - 1)
+        picked = labels[np.arange(rows.size), choice]
+        return np.where(total > 0, picked, 0)
+
+    def _mutate(self, parent: np.ndarray) -> np.ndarray:
+        """Found new lineages, some of them fitter, on a fraction of divisions."""
+        mutated = self.rng.random(parent.size) < self.mutation
+        number = int(mutated.sum())
+        if number == 0 or self.count + number >= len(self.hue):
+            return parent
+        new = np.arange(self.count + 1, self.count + 1 + number, dtype=np.int32)
+        ancestor = parent[mutated]
+        # Reflected at the ends rather than wrapped: the ramp is a line, not a
+        # circle, and wrapping would jump violet to gold in one mutation.
+        drifted = self.hue[ancestor] + self.rng.normal(0.0, self.hue_step, number).astype(np.float32)
+        drifted = np.abs(drifted)
+        drifted = np.where(drifted > 1.0, 2.0 - drifted, drifted)
+        self.hue[new] = np.clip(drifted, 0.0, 1.0)
+        lucky = self.rng.random(number) < self.beneficial
+        self.fitness[new] = self.fitness[ancestor] * np.where(lucky, 1.0 + self.advantage, 1.0)
+        self.founded[new] = self.step_index
+        self.parent[new] = ancestor
+        self.count += number
+        parent = parent.copy()
+        parent[mutated] = new
+        return parent
+
+    # -- what the renderer asks for ---------------------------------------
+
+    def metric(self) -> float:
+        """Colonised area raised to `pacing`, which decides what runs evenly.
+
+        At 0.5 this is the front's distance from the inoculum, and the front
+        advances at a steady speed. At 1.0 it is the area, and the number of
+        newly lit pixels per frame is constant instead. The two are not
+        interchangeable and the difference is measurable: see the edition's
+        README for what each one did to the frozen-frame count.
+        """
+        return float((self.label > 0).sum()) ** self.pacing
+
+    def front_lineages(self, share: float = 0.005) -> int:
+        """Lineages holding more than `share` of the growing edge."""
+        occupied = self.label > 0
+        front = ndimage.binary_dilation(occupied) & ~occupied & self.dish
+        rows, columns = np.nonzero(front)
+        if rows.size == 0:
+            return 0
+        limit = self.size - 1
+        values = []
+        for dy, dx in self.NEIGHBOURS:
+            value = self.label[np.clip(rows + dy, 0, limit), np.clip(columns + dx, 0, limit)]
+            values.append(value[value > 0])
+        values = np.concatenate(values)
+        _, counts = np.unique(values, return_counts=True)
+        return int((counts / counts.sum() > share).sum())
+
+    def fields(self, upto: int, base: float = 0.45, tip_boost: float = 2.2, tip_decay: float = 120.0):
+        """Density and hue for the colony as it stood at simulation step `upto`.
+
+        The lattice is written once and never rewritten, so a state is not
+        banked -- it is recovered exactly by taking the cells that had arrived
+        by then. One array holds the whole clip.
+
+        Brightness falls off inland from the edge, over a decay long enough to
+        reach most of the way back to the inoculum. That is the same argument
+        the mycelium's tips are lit on, and it is what a growing colony looks
+        like: the rim is the only part of the plate still dividing, and a flat
+        fill reads as a printed disc rather than as something alive. It also
+        keeps the apex of every wedge dark, which is where they are narrowest
+        and would otherwise smear into one bright spot.
+        """
+        here = (self.arrival >= 0) & (self.arrival <= upto)
+        age = np.where(here, upto - self.arrival, 0).astype(np.float32)
+        density = here * (base + tip_boost * np.exp(-age / tip_decay))
+        shade = self.hue[self.label] * here
+        return density.astype(np.float32), shade.astype(np.float32)
+
+
+class Culture:
+    """Dissociated cortical neurons on a coverslip, wiring themselves up.
+
+    Plated as a soup of single cells, a cortical culture spends its first weeks
+    growing neurites and making synapses, and its electrical behaviour changes
+    while it does: isolated cells twitch on their own, then small patches go
+    together, and by the third week the whole culture fires in dish-wide bursts
+    that nobody wired and nobody triggers (Wagenaar, Pine & Potter 2006). That
+    developmental arc is the clip -- weeks of it, in eight seconds.
+
+    The rule is the smallest one that has all three ingredients. Integrate and
+    fire: a cell charges, crosses threshold, empties and sits refractory. A
+    synapse switches on when the growing neurite reach passes its length, which
+    is the only thing in here that changes with time. Short-term depression is
+    what *stops* a burst -- a cell that has just fired has less to give -- and a
+    weak spontaneous drive is what starts one. Nothing is fitted, trained or
+    searched; the wiring is where the cells happen to have landed.
+
+    The states are banked one per frame and never re-timed. Every other process
+    in this file is paced by measurement, because a mycelium creeps and then
+    floods; this one carries a beat, and re-timing a clock is the one thing that
+    would destroy the thing worth watching.
+    """
+
+    def __init__(
+        self,
+        height: int,
+        width: int,
+        neurons: int = 35_000,
+        reach: float = 36.0,
+        growth: float = 0.35,
+        weight: float = 0.030,
+        drive: float = 6e-4,
+        depression: float = 0.45,
+        recovery: float = 0.010,
+        refractory: int = 4,
+        delay: int = 2,
+        afterglow: float = 12.0,
+        trace: float = 150.0,
+        maturity: float = 1.0,
+        seed: int = 7,
+    ) -> None:
+        self.height, self.width = height, width
+        self.reach, self.growth = float(reach), float(growth)
+        self.weight, self.drive = float(weight), float(drive)
+        self.depression, self.recovery = float(depression), float(recovery)
+        self.refractory, self.delay = int(refractory), int(delay)
+        self.decay = float(0.5 ** (1.0 / max(afterglow, 1e-6)))
+        # How far into the outgrowth the clip stops. Below 1.0 the network is
+        # still wiring when the last frame lands, which is what keeps the
+        # finished frame a field of separate lit territories instead of the
+        # even fog a saturated network settles into.
+        self.maturity = float(maturity)
+        self.rng = np.random.default_rng(seed)
+
+        self.positions = np.stack(
+            [self.rng.random(neurons) * width, self.rng.random(neurons) * height], axis=1
+        ).astype(np.float64)
+        pairs = cKDTree(self.positions).query_pairs(self.reach, output_type="ndarray")
+        # Both directions: a synapse is one-way, and the pair list is not.
+        source = np.concatenate([pairs[:, 0], pairs[:, 1]])
+        target = np.concatenate([pairs[:, 1], pairs[:, 0]])
+        length = np.linalg.norm(self.positions[source] - self.positions[target], axis=1)
+        order = np.argsort(length)
+        # Sorted by length once, so "which synapses exist yet" is a prefix of the
+        # array rather than a mask over it -- the reach only ever grows.
+        self.source = source[order].astype(np.int32)
+        self.target = target[order].astype(np.int32)
+        self.length = length[order]
+
+        self.neurons = neurons
+        self.potential = self.rng.random(neurons)
+        self.refractory_left = np.zeros(neurons, dtype=np.int32)
+        self.resource = np.ones(neurons)
+        self.arriving = np.zeros((self.delay, neurons))
+        self.activation = np.zeros(neurons, dtype=np.float32)
+        self.step_index = 0
+        self.total_steps = 1
+        self.spikes = 0
+        self.ever_fired = np.zeros(neurons, dtype=bool)
+        self.live = 0
+
+        # What fired the cell: how much synaptic input it was holding at the
+        # moment it last crossed threshold. This is what the colour means. Near
+        # zero is a cell that got there on its own leak; large is one shoved
+        # over by a wave that had already recruited half the frame.
+        #
+        # The *last* spike and not the average over all of them, which is what
+        # the first cut used and why it came out as hue confetti: averaged, the
+        # quantity is a per-cell idiosyncrasy and neighbouring cells disagree by
+        # the width of the ramp. Taken at the last spike it is a property of the
+        # event rather than of the cell, so everything a wave recruited carries
+        # one colour and holds it until the next wave arrives -- which is also
+        # what makes the finished frame a map of which event each patch of
+        # tissue last belonged to.
+        #
+        # It is deliberately not "recruitment order inside a burst": at these
+        # parameters the culture never goes silent between events, so there is
+        # no burst to be early in, and a quantity that needs one would have been
+        # measuring nothing.
+        self.driven_last = np.zeros(neurons, dtype=np.float32)
+        self.driven_count = np.zeros(neurons, dtype=np.int32)
+        # A second, slow decay. `activation` is the spike itself and is gone in
+        # a few frames; this is how long the tissue stays visible after it, and
+        # it is the layer the colour map is actually read off.
+        self.trace = np.zeros(neurons, dtype=np.float32)
+        self.trace_decay = float(0.5 ** (1.0 / max(trace, 1e-6)))
+
+    # -- the rule ---------------------------------------------------------
+    def step(self, count: int = 1) -> None:
+        for _ in range(count):
+            fraction = (self.step_index + 1) / max(self.total_steps, 1)
+            self.live = int(np.searchsorted(self.length, self.reach * fraction ** self.growth))
+            slot = self.step_index % self.delay
+            incoming = self.arriving[slot]
+            self.potential += incoming + self.drive
+
+            fired = (self.potential > 1.0) & (self.refractory_left == 0)
+            if fired.any():
+                self.driven_last[fired] = incoming[fired]
+                self.driven_count[fired] += 1
+                sending = fired[self.source[: self.live]]
+                if sending.any():
+                    landing = self.target[: self.live][sending]
+                    charge = self.weight * self.resource[self.source[: self.live][sending]]
+                    self.arriving[(self.step_index + self.delay - 1) % self.delay] += np.bincount(
+                        landing, weights=charge, minlength=self.neurons
+                    )
+                self.potential[fired] = 0.0
+                self.refractory_left[fired] = self.refractory
+                self.resource[fired] *= self.depression
+                self.spikes += int(fired.sum())
+                self.ever_fired |= fired
+            # Zeroed only after it has been read, and it is the other slot that
+            # the spikes just posted into, so nothing is dropped.
+            self.arriving[slot] = 0.0
+
+            self.resource += (1.0 - self.resource) * self.recovery
+            self.refractory_left = np.maximum(self.refractory_left - 1, 0)
+            # The ceiling stops a silent cell charging up an unbounded credit it
+            # would spend the instant the network reaches it.
+            self.potential = np.clip(self.potential, 0.0, 1.6)
+            self.activation *= self.decay
+            self.activation += fired
+            self.trace *= self.trace_decay
+            self.trace = np.maximum(self.trace, fired)
+            self.step_index += 1
+
+    # -- what the renderer needs -----------------------------------------
+    def push(self) -> np.ndarray:
+        """The synaptic input each cell was holding at its last spike.
+
+        Raw, not ranked: ranking it frame by frame would re-normalise every
+        frame and delete the one thing the piece is about, since a clip whose
+        events grow by two orders of magnitude would show the same spread of
+        colour throughout. The renderer ranks it once, against every spike in
+        the clip, so early frames genuinely sit at the low end of the ramp.
+        """
+        return self.driven_last.copy()
+
+    def record(self, frames: int, steps_per_frame: int) -> list[tuple[np.ndarray, np.ndarray, np.ndarray]]:
+        """One banked state per frame: the spike, the tissue behind it, the push.
+
+        Three layers rather than one composite, because which of them carries
+        the brightness and which the colour is a decision for the renderer and
+        it was changed twice before the picture read.
+        """
+        self.total_steps = int(frames * steps_per_frame / max(self.maturity, 1e-6))
+        states = []
+        for _ in range(frames):
+            self.step(steps_per_frame)
+            states.append((self.activation.copy(), self.trace.copy(), self.push()))
+        return states
+
+    def metric(self) -> float:
+        return float(self.ever_fired.mean())
 
 
 class Packing:

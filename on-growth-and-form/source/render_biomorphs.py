@@ -60,6 +60,15 @@ STRUT_T = [(4, 0, 30), (74, 0, 190), (0, 172, 245), (176, 250, 255)]
 # is the green the other growing piece already owns, and not `SYNAPSE`, which
 # ends cold -- an apex is the warm end of this account, not the cold one.
 MERISTEM = [(8, 0, 26), (72, 0, 140), (190, 0, 170), (255, 70, 150), (255, 170, 120), (255, 240, 210)]
+# Shipped on phyllotaxis 2026-08-31, replacing MERISTEM. Same
+# violet-to-magenta arms -- the account's colour vocabulary for age
+# doesn't change -- but the last two stops swap the warm coral/cream core
+# for the cyan the account already uses (SYNAPSE, on `turing`), so the
+# youngest primordia at the centre pop as a complementary accent against
+# the magenta arms instead of blending into them. Only the brightest few
+# percent of the ramp is affected, since colour is age and the newest
+# organs are the smallest ring.
+APEX = [(8, 0, 26), (72, 0, 140), (190, 0, 170), (255, 60, 190), (80, 230, 255), (215, 255, 255)]
 
 # Violet through magenta into gold. The account has a green growing piece and
 # a cold one already; this is the warm one, and the gold end is where the tips
@@ -76,6 +85,86 @@ LAMINA = [(16, 0, 22), (110, 0, 92), (222, 20, 96), (250, 104, 36), (255, 186, 9
 # indigo up to white and the contrast does the work of making a streak read as
 # a streak.
 ACTIN = [(8, 0, 24), (78, 0, 120), (198, 0, 132), (255, 72, 116), (255, 176, 150), (255, 246, 235)]
+
+# Deep plum through hot magenta into acid lime. Colour is how far the signal has
+# carried a cell, so the unrecruited lawn sits in the plum at the bottom -- dark
+# enough to keep the black field -- and a mound is the lime at the top, which
+# makes the rarest colour mark the rarest thing.
+#
+# Chosen against three alternatives on the same frame. `neon` (magenta into pale
+# white) is the restrained one; `acid` and `xenon` bridge magenta to lime through
+# a pale pink, which works but spends the top of the ramp on a colour that means
+# nothing in particular. `circuit` has no white at all and is the most
+# artificial of the four, which is the whole point of the re-cut: the first
+# version of this piece shipped a plum-to-gold ember ramp and read as glowing
+# biomass rather than as a signal network.
+#
+# There is one trap in this direction. Interpolating straight from magenta to
+# lime in RGB passes through a muddy salmon at the midpoint, which is exactly
+# the earthy register being got rid of; `circuit` avoids it by going through a
+# saturated violet low down and jumping to lime only at the very top, where the
+# band is narrow and bright.
+CIRCUIT = [(3, 0, 12), (46, 0, 86), (140, 0, 170), (255, 40, 190), (170, 250, 80), (226, 255, 180)]
+
+# `folding` 2.0's first palette, replaced by VENOM below on 2026-09-01 and
+# kept for the comparison, the way MERISTEM is. Plum through crimson into amber
+# and bone -- deliberately the opposite end of the account from CULTURE, which
+# the first cut owns and which is the whole reason this one exists. Colour is still age, so the oldest
+# tissue is the plum in the middle of the dish and the youngest is the bright
+# rim pressed against the wall, which is where the eye should go.
+#
+# It sits in LAMINA's region of the ramp, and that region is free: LAMINA is on
+# `venation`, which was rejected and is off the disk. The one difference is
+# deliberate. LAMINA stops short of white because its bright end is a growing
+# margin that sweeps up through the hook and took the background behind that
+# line to 151. Here the bright end is a rim pinned at radius 475 px -- 445 px
+# clear of the hook strip and it never moves -- so white is affordable, and the
+# curve needs it: the point of the last two seconds is tissue crushing against
+# bone, and bone is the brightest thing in the frame.
+# The bottom two stops are lifted off black on purpose, and it is the one
+# palette decision here that was measured rather than chosen. Colour is age and
+# the dish's oldest tissue is in the middle, which is also the sparsest part of
+# the form -- the seed circle expands outwards and leaves a hole -- so a dark
+# low end darkens the core twice over and the 200 px thumbnail collapses into a
+# ring. Lifting them takes the mean luminance inside r<120 from 17.3 to 22.2
+# (+29%) and moves the rim by 0.03 and the black field by nothing, with no
+# clipped pixels either way. It does not fully fix the thumbnail, because the
+# hole is real and no ramp can fill it.
+SULCUS = [(40, 2, 34), (132, 6, 74), (198, 30, 58), (242, 106, 38), (255, 190, 100), (255, 240, 214)]
+
+# Shipped on `folding` 2.0, replacing SULCUS, chosen 2026-09-01 off a
+# four-way render of the same settled frame. Bruise-violet core, acid rim:
+# colour is
+# still age, so the violet is the old sparse middle and the poison is the
+# youngest tissue, which is exactly the part pressed against the wall.
+#
+# Two measured reasons it wins over the warm SULCUS it replaces. Core-to-rim
+# contrast goes 3.4:1 -> 4.4:1, which is the one number this piece was weak on:
+# the dish has a genuinely empty middle and the 200 px thumbnail was collapsing
+# into a ring. And the violet->green crossing is placed at stop 2, low on the
+# ramp, where it desaturates by 0.05 at luminance 29 -- dark enough that nobody
+# sees it.
+#
+# That placement is the whole trick and it is not optional. `build_palette`
+# spaces stops evenly and colour here is *ranked*, so every stop-to-stop band
+# carries an equal share of the curve: a desaturated midpoint is a fifth of the
+# picture, not a sliver. The rejected HALOGEN alternative (magenta body, cyan
+# rim) is what that costs when the crossing sits high instead -- it lands on
+# rgb(123, 127, 183) at luminance 130, a pale lavender grey washing out the
+# whole middle annulus.
+#
+# The third alternative, SULPHUR, came out a flat yellow-green with the violet
+# invisible -- which is CULTURE's family, i.e. the palette of the cut this one
+# exists to get away from.
+# The spindle. Colour is how long a filament has survived, so the low end is
+# most of the frame -- a population being torn down and rebuilt -- and the top
+# end is the few fibres that found a chromosome and stopped being disposable.
+# Cyan sits mid-ramp rather than at the bright end: house rule 6 allows blue as
+# an accent, and the bright end has to be hot so the k-fibres separate from the
+# search that made them.
+ASTER = [(4, 2, 26), (46, 0, 112), (126, 0, 188), (0, 172, 226), (255, 170, 110), (255, 248, 236)]
+
+VENOM = [(18, 2, 30), (58, 0, 96), (14, 46, 34), (86, 172, 0), (198, 246, 0), (238, 255, 170)]
 
 # Two pigment cells, so two palettes that sum where a stripe border falls --
 # the same two-channel answer as `physarum` and `trabecula`. The split is the
@@ -152,6 +241,64 @@ EDITIONS: dict[str, dict] = {
             "and may not touch itself",
         ),
     },
+    # `folding` 2.0 -- same rule, put in a box, and named for what it makes
+    # rather than for the rule it shares. `folding` stays the parent; a second
+    # reel titled FOLDING off the same engine reads as a repost on the grid,
+    # and the biomorph set already settled this the other way (one wave trick,
+    # three names). Two changes carry it: the shape moves field -> dish (the
+    # confinement is the subject, not a crop) and the piece gains a hook,
+    # which the DejaVu-era original had nowhere to put.
+    # The palette moves with them, and the scale comes out 1.33x coarser than
+    # the original because the wall, not the frame, now fixes the magnification.
+    #
+    # The wall radius is not a taste decision. Measured over the same 956-step
+    # run the original shipped: at wall 200/215/230 the curve reaches the
+    # boundary 48-61% through and the last quarter of the clip contributes
+    # 3.3/4.7/5.5% of the total change -- the "it stops" failure, three times
+    # over. Only wall 250 holds, at 12.6%. Growth here is stretch-driven, so
+    # jamming the curve does not redirect it, it stops it, and the wall
+    # therefore has to arrive late.
+    "gyrus": {
+        "kind": "curve",
+        "title": "Gyrus",
+        "slug": "gyrus_differential-growth_venom",
+        "palette": VENOM,
+        "exposure": 1.20,
+        "boost": 1.25,
+        "steps_per_frame": 4,
+        "settle": 0,
+        # Model units. 250 -> the house dish radius of 0.44 x the short side.
+        #
+        # It briefly shipped at 0.40, and the reason is worth keeping because
+        # it was the wrong fix. A *two-line* hook starts at row 1425 and this
+        # dish's outermost ink lands on 1439, so the top line sat on the
+        # glowing rim -- 14 px of overlap before bloom, about 30 after. Every
+        # dish shipped before this one (`hyphae`, `reentry`) has a one-line
+        # hook and never met it. Shrinking the dish clears it, but so does
+        # putting the hook on one line, and that costs no picture: measured,
+        # 0.44 with a one-line hook and a three-line block clears by 65 px
+        # against 0.40's 30. Cut the text, not the subject.
+        "wall": 250.0,
+        "dish": 0.44,
+        # Three lines, not four. The node count was the fourth and it is the
+        # least load-bearing thing here; the contact frame stays, because it
+        # is the event the hook is about.
+        "caption": (
+            "differential growth, confined",
+            "attract · repel · subdivide · press",
+            "free until frame 165 of 239",
+        ),
+        # The parent cut is the control for this line: `folding` is the same
+        # rule with no wall in it, and it folds just as hard. So the wall is
+        # not what makes the folds -- it only decides where they land, which
+        # is the opposite of what a viewer assumes on seeing a circle.
+        # One line, and it has to be: the two-line version measures 1000 px
+        # against the 952 px limit anyway, and a two-line hook is what put the
+        # text on the rim. Dropping "only" brings it to 900 px. The limiting
+        # sense survives in the first clause -- "would fold anyway" already
+        # says the wall is not the cause.
+        "hook": ("It would fold anyway. The wall decides where.",),
+    },
     "trabecula": {
         "kind": "bone",
         "title": "Trabecula",
@@ -217,8 +364,14 @@ EDITIONS: dict[str, dict] = {
     "phyllotaxis": {
         "kind": "spiral",
         "title": "Phyllotaxis",
-        "slug": "phyllotaxis_primordia_meristem",
-        "palette": MERISTEM,
+        "slug": "phyllotaxis_primordia_apex",
+        # APEX, not MERISTEM -- chosen 2026-08-31 over a side-by-side
+        # render of both. Same violet-to-magenta arms; the youngest few
+        # percent of the ramp (the newest primordia, the smallest ring, right
+        # at the centre) swap the old warm coral/cream for the cyan the
+        # account already uses on `turing` (SYNAPSE), so the core reads as a
+        # complementary accent against the arms instead of blending into them.
+        "palette": APEX,
         "exposure": 1.16,
         "boost": 1.24,
         "steps_per_frame": 5,
@@ -250,6 +403,105 @@ EDITIONS: dict[str, dict] = {
             "clock and wavefront, Cooke & Zeeman 1976",
         ),
         "hook": ("Your spine was counted, not measured.",),
+    },
+    "aggregation": {
+        "kind": "swarm",
+        "title": "Aggregation",
+        "slug": "aggregation_camp-relay_synapse",
+        # SYNAPSE, not CIRCUIT, and the two differ in exactly one stop: CIRCUIT
+        # is SYNAPSE with the cyan (0,225,255) swapped for a lime (170,250,80).
+        # That single substitution is what broke the cut. Magenta and lime are
+        # complementary, so at equal saturation they fight, and the mounds read
+        # as flowers rather than as cells -- dahlias to anyone not told what
+        # they are looking at, which is house rule 10 outright. House rule 7
+        # says the bright end of the family is cyan. It is not a preference:
+        # `turing` runs SYNAPSE and sits on the grid without arguing.
+        "palette": SYNAPSE,
+        # Back to `bloom`, and it is the same decision as the palette rather
+        # than a second one. `sharp` was chosen because the subject is hundreds
+        # of thousands of thin trails and that is the case the reel skill names
+        # -- but with no halo to fuse them, 150,000 cell-scale strokes stay
+        # separate and the plate comes out furred rather than dense. Bloom over
+        # a log-density map is what turns strokes into mass, which is the whole
+        # reason this pipeline exists.
+        "look": "bloom",
+        "exposure": 1.22,
+        "boost": 1.28,
+        "steps_per_frame": 2,
+        # Straight from step 0 the plate is dark and nothing is moving -- the
+        # first wave has not reached anybody yet -- and the clip reads 13.4%
+        # frozen with 29 of those frames inside the first second, which is
+        # exactly where the check skill says a freeze costs most.
+        #
+        # 90 steps fixed that under `bloom`. Under `sharp` it was not enough: on
+        # the trail render the opening frames differ by 0.165 against a 0.15
+        # threshold, so they pass before encoding and 17 of them fall under it
+        # afterwards. That one is genuinely the encoder -- H.264 at crf 16
+        # quantises a change that marginal out of a frame this dark -- but the
+        # honest reading is that the opening had almost no change to protect.
+        # 200 steps triples the margin (median frame delta 0.205 -> 0.339) and
+        # costs nothing on T1: 16.8% / 27.5% against 19.6% / 26.5%.
+        "settle": 200,
+        "cell_radius": 1.15,
+        "cell_samples": 3,
+        # A cell that has not stepped recently is still a cell and still has
+        # mass. Without a floor the lawn disappears between waves and the plate
+        # flashes black; too much of one and 150,000 dots carpet the frame in
+        # grain, which is what the first cut did. At 0.18 the plate is 42.5%
+        # true black and 14.2% of the pixels in an unrecruited patch are still
+        # lit, so the lawn is there and is not the subject.
+        "floor": 0.18,
+        "colour_reference": 98.0,
+        "caption": (
+            "Dictyostelium discoideum  ·  cAMP relay",
+            "starve · pulse · relay · crawl",
+            "150,000 cells  ·  7 pacemakers  ·  a pulse every 1.4 s",
+            "excitable medium, Barkley 1991",
+        ),
+        # The block deliberately does not mention the adaptation. That is the
+        # hook's, and a hook may not restate the block.
+        "hook": ("Every wave would carry them back.", "So they only answer half of it."),
+    },
+    "spindle": {
+        "kind": "spindle",
+        "title": "Spindle",
+        "slug": "spindle_search-capture_aster",
+        "palette": ASTER,
+        # `sharp`, and it is the case the reel skill names outright: the
+        # subject is 760 thin lines and the halo smears them into haze. Side
+        # by side on the same end state, bloom puts a grey veil between the
+        # asters where sharp holds genuine black, and the k-fibres stop
+        # reading as separate fibres.
+        "look": "sharp",
+        "bloom_threshold": 0.55,
+        "bloom_strength": 0.25,
+        "exposure": 1.00,
+        "boost": 1.05,
+        "steps_per_frame": 3,
+        # 40 steps, not 0: at step 0 every filament is a stub and the poles
+        # have not separated, so frame one of the clip is a dot rather than
+        # two asters. 40 is the point where the search is visibly running and
+        # nothing has been captured yet.
+        "settle": 40,
+        # Weight follows survival as well as hue, so the disposable majority
+        # is present without carpeting the frame and a k-fibre reads as a
+        # fibre rather than as one more ray.
+        "taper": 0.8,
+        # A microtubule spans the frame, so the 32-sample ceiling that suits a
+        # vein draws it as a dotted rule. Measured: 40,404 samples against
+        # 380,000 at 0.6 px spacing.
+        "sample_limit": 4000,
+        # The body is filled by the model, so the renderer's blob splat is
+        # switched down to one sample per point and only carries the weight.
+        "head": 1.0,
+        "head_samples": 1,
+        "head_weight": 1.00,
+        "caption": (
+            "Homo sapiens  ·  mitotic spindle",
+            "grow · give up · shrink · guess again",
+            "46 chromosomes  ·  92 kinetochores  ·  760 filaments",
+            "search and capture, Kirschner & Mitchison 1986",
+        ),
     },
     "stripe": {
         "kind": "skin",
@@ -485,6 +737,88 @@ def cell_samples(model, args, spec=None) -> tuple[np.ndarray, np.ndarray, np.nda
     return samples, np.repeat(shade, per_cell), weights
 
 
+def trail_samples(start: np.ndarray, end: np.ndarray, target: float = 0.6):
+    """Sample each trail along its own length, and say where on it each sample fell.
+
+    `tree_samples` does the sampling and throws the fraction away; a trail needs
+    it, because the weight has to fall off towards the tail. Sampled by length
+    rather than a fixed count per segment, or the long trails come out as dotted
+    rules and it reads as a layout bug.
+    """
+    delta = end - start
+    length = np.linalg.norm(delta, axis=1)
+    counts = np.clip(np.ceil(length / target), 1, 48).astype(np.int64)
+    total = int(counts.sum())
+    segment = np.repeat(np.arange(counts.size, dtype=np.int64), counts)
+    offsets = np.zeros(counts.size + 1, dtype=np.int64)
+    np.cumsum(counts, out=offsets[1:])
+    fraction = ((np.arange(total, dtype=np.int64) - offsets[segment]) / counts[segment]).astype(np.float32)
+    return (start[segment] + fraction[:, None] * delta[segment]).astype(np.float32), segment, fraction
+
+
+def swarm_samples(model, spec, colour_reference: float):
+    """Draw a lawn of amoebae as the paths they have just walked.
+
+    The first cut splatted every cell as a round blob on a flat weight floor,
+    and 150,000 blobs on a floor is a carpet of grain: the streams read as
+    texture rather than as anything going anywhere. Drawing each cell's recent
+    path instead fixes both ends of that at once -- a recruited cell becomes a
+    short luminous streak pointing where it is going, and a cell that has not
+    moved collapses to the point it always was. That difference is the picture,
+    and it is also the honest difference between a recruited amoeba and one
+    still sitting where it starved.
+
+    Three quantities, three jobs, unchanged: position places the sample, the
+    phosphor is the weight so a wave crossing the plate reads as a wave, and
+    hue is how far the signal has carried the cell.
+    """
+    path, travel, lit = model.trails()
+    legs, cells = path.shape[0] - 1, path.shape[1]
+    floor = spec.get("floor", 0.12)
+    weight = (floor + (1.0 - floor) * lit).astype(np.float32)
+    # Scaled, not ranked: the distribution is only mildly skewed (0.88) and
+    # ranking would spread a full ramp across a lawn that has not moved yet,
+    # which is a rainbow of noise on the frames that matter most. Referenced to
+    # the finished state so the colour has the same arc the process does.
+    shade = np.clip(travel / max(colour_reference, 1e-6), 0.0, 1.0).astype(np.float32)
+
+    # Every cell gets a head, so nothing disappears on the frame it happens to
+    # wrap and the lawn stays a lawn of individuals rather than of trails.
+    radius, per_head = spec.get("cell_radius", 1.15), spec.get("cell_samples", 3)
+    index = (np.arange(cells, dtype=np.int64)[:, None] * per_head
+             + np.arange(per_head, dtype=np.int64)[None, :]) % len(DISC)
+    samples = [(path[-1][:, None, :] + DISC[index] * radius).reshape(-1, 2)]
+    shades = [np.repeat(shade, per_head)]
+    weights = [np.repeat(weight / per_head, per_head)]
+
+    # Then the path, leg by leg. A leg shorter than half a pixel is a cell that
+    # was not going anywhere over that stretch and is already covered by the
+    # head; a leg longer than the ceiling is a wrap, and the line between a
+    # cell's two sides of the frame is a stripe nothing walked.
+    ceiling = spec.get("trail_ceiling", 40.0)
+    taper, gain = spec.get("trail_taper", 1.4), spec.get("trail_weight", 0.62)
+    for leg in range(legs):
+        a, b = path[leg], path[leg + 1]
+        span = np.linalg.norm(b - a, axis=1)
+        keep = (span > 0.5) & (span < ceiling)
+        if not keep.any():
+            continue
+        trail, segment, fraction = trail_samples(a[keep], b[keep])
+        # Where this sample sits along the whole path, 0 at the oldest point
+        # and 1 at the cell. The streak is faintest where the cell has been and
+        # brightest where it is, so it reads as motion rather than as a dash.
+        along = ((leg + fraction) / legs).astype(np.float32)
+        samples.append(trail)
+        shades.append(shade[keep][segment])
+        weights.append((weight[keep][segment] * gain * along ** taper).astype(np.float32))
+
+    return (
+        np.concatenate(samples).astype(np.float32),
+        np.concatenate(shades).astype(np.float32),
+        np.concatenate(weights).astype(np.float32),
+    )
+
+
 def skin_samples(model, args, spec=None) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """`cell_samples`, plus which of the two pigment cells each blob is.
 
@@ -505,16 +839,24 @@ def skin_samples(model, args, spec=None) -> tuple[np.ndarray, np.ndarray, np.nda
     return samples, np.repeat(shade, per_cell), weights, np.repeat(species, per_cell)
 
 
-def tree_samples(start: np.ndarray, end: np.ndarray, target: float = 0.6) -> tuple[np.ndarray, np.ndarray]:
+def tree_samples(
+    start: np.ndarray, end: np.ndarray, target: float = 0.6, limit: int = 32
+) -> tuple[np.ndarray, np.ndarray]:
     """Sample every vein segment along its own length.
 
     By length, not a fixed count per segment: a fixed count turns the long
     segments into dotted rules across the frame, and it reads as a layout bug
     rather than a sampling one. It cost real time in `descent`.
+
+    The ceiling is the same trap one level up. A vein or a comet tail is a few
+    dozen pixels and never reaches 32 samples, but a microtubule crosses the
+    frame: capped at 32 it is drawn as one dot every 56 px, which is the same
+    dotted rule and cost the first spindle cover 40,404 samples where the
+    honest count is 380,000. An edition that draws long segments says so.
     """
     delta = end - start
     length = np.linalg.norm(delta, axis=1)
-    counts = np.clip(np.ceil(length / target), 1, 32).astype(np.int64)
+    counts = np.clip(np.ceil(length / target), 1, limit).astype(np.int64)
     total = int(counts.sum())
     segment = np.repeat(np.arange(counts.size, dtype=np.int64), counts)
     starts = np.zeros(counts.size + 1, dtype=np.int64)
@@ -571,6 +913,8 @@ def build(name: str, args: argparse.Namespace):
             tail_end=args.tail_end,
             densify=args.densify,
         )
+    if spec["kind"] == "swarm":
+        return morphogens.Aggregation(args.height, args.width, cells=args.amoebae)
     if spec["kind"] == "skin":
         # The disc has to arrive at the dish radius on the last frame and not
         # before, so the growth increment is solved from the clip length rather
@@ -593,6 +937,10 @@ def build(name: str, args: argparse.Namespace):
         return morphogens.Physarum(args.height, args.width, agents=args.agents, band=band)
     if spec["kind"] == "comet":
         return morphogens.Comet(args.height, args.width, speed=args.comet_speed)
+    if spec["kind"] == "spindle":
+        # Everything the search is tuned by was measured at the gate and is in
+        # the model, not here: the one number this side owns is the clip pace.
+        return morphogens.Spindle(args.height, args.width)
     if spec["kind"] == "vein":
         # Stride and blade schedule are set together, and what they buy is
         # pacing: the veins reach the top of the frame around frame 155 and
@@ -619,12 +967,19 @@ def build(name: str, args: argparse.Namespace):
             sensing=args.bone_sensing, setpoint=args.bone_setpoint,
         )
     return morphogens.DifferentialGrowth(
-        (args.width * 0.5, args.height * 0.5), 55.0, nodes=200, spacing=2.5, repulsion_radius=11.0
+        (args.width * 0.5, args.height * 0.5), 55.0, nodes=200, spacing=2.5, repulsion_radius=11.0,
+        wall=spec.get("wall"),
     )
 
 
 def render_edition(name: str, args: argparse.Namespace) -> Path:
     spec = EDITIONS[name]
+    # A `sharp` piece carries its own bloom settings so the cut is reproducible
+    # from the edition alone. `venation` is the cautionary case: it ships sharp,
+    # its filename does not say so, and re-rendering it from the name silently
+    # changes the cut.
+    bloom_threshold = spec.get("bloom_threshold", args.bloom_threshold)
+    bloom_strength = spec.get("bloom_strength", args.bloom_strength)
     width, height = args.width, args.height
     frames = round(args.duration * args.fps)
     caption = build_overlay(width, height, spec, args)
@@ -640,10 +995,25 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
 
     if spec["kind"] == "curve":
         final_points = model.points.copy()
-        span = final_points.max(axis=0) - final_points.min(axis=0)
-        centre = (final_points.max(axis=0) + final_points.min(axis=0)) * 0.5
-        scale = min(args.fill * width / span[0], args.fill * height / span[1])
-        print(f"  {name}: {len(final_points):,} nodes, {scale:.2f} px/unit", flush=True)
+        if spec.get("wall"):
+            # Confined: the wall fixes the magnification, not the frame. Fitting
+            # the bounding box instead would let the dish breathe by a pixel or
+            # two per frame as the rim fills in, and the one thing a dish must
+            # do is sit still.
+            centre = np.array(
+                [width * 0.5, height * 0.5], dtype=np.float32
+            )
+            scale = spec["dish"] * min(width, height) / spec["wall"]
+        else:
+            span = final_points.max(axis=0) - final_points.min(axis=0)
+            centre = (final_points.max(axis=0) + final_points.min(axis=0)) * 0.5
+            scale = min(args.fill * width / span[0], args.fill * height / span[1])
+        radius = np.linalg.norm(final_points - centre, axis=1).max() * scale
+        print(
+            f"  {name}: {len(final_points):,} nodes, {scale:.2f} px/unit, "
+            f"outermost ink at {radius:.0f} px",
+            flush=True,
+        )
 
         def draw(points: np.ndarray, age: np.ndarray) -> np.ndarray:
             samples, segment = curve_samples((points - centre) * scale + np.array([width * 0.5, height * 0.5]))
@@ -656,7 +1026,7 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
                 width, height, samples, colours, np.ones(len(samples), dtype=np.float32)
             )
             linear = glow.flame_map(colour_sum, density, reference, boost=spec["boost"])
-            linear = glow.bloom(linear, threshold=args.bloom_threshold, strength=args.bloom_strength)
+            linear = glow.bloom(linear, threshold=bloom_threshold, strength=bloom_strength)
             return glow.compose(glow.to_bytes(glow.tone_map(linear, exposure=spec["exposure"])), caption)
 
         samples, _ = curve_samples((final_points - centre) * scale + np.array([width * 0.5, height * 0.5]))
@@ -666,11 +1036,13 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
         )
         reference = float(np.percentile(probe[probe > 0], 92.0))
         cover = draw(final_points, model.age)
-    elif spec["kind"] in ("vein", "comet"):
+    elif spec["kind"] in ("vein", "comet", "spindle"):
+
+        limit = spec.get("sample_limit", 32)
 
         def draw_veins(state) -> np.ndarray:
             start, end, shade = state.segments()
-            samples, segment = tree_samples(start, end)
+            samples, segment = tree_samples(start, end, limit=limit)
             carried = shade[segment]
             taper = spec.get("taper", 0.0)
             weights = (carried ** taper if taper else np.ones(len(samples))).astype(np.float32)
@@ -679,11 +1051,11 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
             colours = glow.sample_palette(palette, carried)
             colour_sum, density = glow.splat(width, height, samples, colours, weights)
             linear = glow.flame_map(colour_sum, density, reference, boost=spec["boost"])
-            linear = glow.bloom(linear, threshold=args.bloom_threshold, strength=args.bloom_strength)
+            linear = glow.bloom(linear, threshold=bloom_threshold, strength=bloom_strength)
             return glow.compose(glow.to_bytes(glow.tone_map(linear, exposure=spec["exposure"])), caption)
 
         start, end, shade = model.segments()
-        samples, segment = tree_samples(start, end)
+        samples, segment = tree_samples(start, end, limit=limit)
         taper = spec.get("taper", 0.0)
         probe_weights = (shade[segment] ** taper if taper else np.ones(len(samples))).astype(np.float32)
         if spec.get("head"):
@@ -694,9 +1066,40 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
         reference = float(np.percentile(probe[probe > 0], 92.0))
         if spec["kind"] == "comet":
             print(f"  {name}: {model.count:,} bacteria, {len(samples):,} samples", flush=True)
+        elif spec["kind"] == "spindle":
+            print(f"  {name}: {model.bioriented()}/{model.chromosomes} bi-oriented, "
+                  f"{model.attached()}/{2 * model.chromosomes} kinetochores held, "
+                  f"{len(samples):,} samples", flush=True)
         else:
             print(f"  {name}: {model.count:,} tips, {len(model.sources):,} sources left", flush=True)
         cover = draw_veins(model)
+    elif spec["kind"] == "swarm":
+        # Two references, both read off the finished plate. Density calibrates
+        # the tone map the way it does everywhere else; the colour reference is
+        # the extra one this kind needs, because hue carries a quantity that
+        # grows over the clip and a per-frame normalisation would flatten the
+        # arc it is there to show.
+        _, final_travel, _ = model.swarm()
+        colour_reference = float(np.percentile(final_travel, spec.get("colour_reference", 98.0)))
+
+        def draw_swarm(state) -> np.ndarray:
+            samples, shade, weights = swarm_samples(state, spec, colour_reference)
+            colours = glow.sample_palette(palette, shade)
+            colour_sum, density = glow.splat(width, height, samples, colours, weights)
+            linear = glow.flame_map(colour_sum, density, reference, boost=spec["boost"])
+            linear = glow.bloom(linear, threshold=bloom_threshold, strength=bloom_strength)
+            return glow.compose(glow.to_bytes(glow.tone_map(linear, exposure=spec["exposure"])), caption)
+
+        samples, _, weights = swarm_samples(model, spec, colour_reference)
+        _, probe = glow.splat(
+            width, height, samples, np.zeros((len(samples), 3), dtype=np.float32), weights
+        )
+        reference = float(np.percentile(probe[probe > 0], args.cell_reference))
+        grid = model.density()
+        print(f"  {name}: {model.count:,} cells, {len(samples):,} samples, "
+              f"peak/mean density {np.percentile(grid, 99.9) / grid.mean():.2f}, "
+              f"travel reference {colour_reference:.1f} px", flush=True)
+        cover = draw_swarm(model)
     elif spec["kind"] == "skin":
 
         def draw_skin(state) -> np.ndarray:
@@ -732,7 +1135,7 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
             colours = glow.sample_palette(palette, shade)
             colour_sum, density = glow.splat(width, height, samples, colours, weights)
             linear = glow.flame_map(colour_sum, density, reference, boost=spec["boost"])
-            linear = glow.bloom(linear, threshold=args.bloom_threshold, strength=args.bloom_strength)
+            linear = glow.bloom(linear, threshold=bloom_threshold, strength=bloom_strength)
             return glow.compose(glow.to_bytes(glow.tone_map(linear, exposure=spec["exposure"])), caption)
 
         samples, _, weights = cell_samples(model, args, spec)
@@ -753,13 +1156,12 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
         cover = compose_field(channels, reference, spec, args, caption)
 
     stem = f"{spec['slug']}_{width}x{height}_{args.duration:g}s_{args.fps}fps"
+    if spec.get("look"):
+        # Name the look in the filename. `venation` does not, and re-rendering
+        # it from the filename alone changes the cut.
+        stem += f"_{spec['look']}"
     if args.hook and spec.get("hook"):
         stem += "_hook_plex"
-    # `venation` shipped on `sharp` and its filename does not say so, which
-    # means re-rendering it without the flags silently changes the cut. An
-    # edition that names its look gets it recorded; the others are untouched.
-    if spec.get("look"):
-        stem += f"_{spec['look']}"
     if args.tag:
         # A variant cut written alongside the original rather than over it.
         stem += f"_{args.tag}"
@@ -782,8 +1184,10 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
                 frame = draw(model.points, model.age)
             elif spec["kind"] == "skin":
                 frame = draw_skin(model)
-            elif spec["kind"] in ("vein", "comet"):
+            elif spec["kind"] in ("vein", "comet", "spindle"):
                 frame = draw_veins(model)
+            elif spec["kind"] == "swarm":
+                frame = draw_swarm(model)
             elif spec["kind"] in ("cells", "spiral"):
                 frame = draw_cells(model)
             else:
@@ -856,6 +1260,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--cell-samples", type=int, default=10)
     parser.add_argument("--cell-radius", type=float, default=3.1)
     parser.add_argument("--cell-reference", type=float, default=92.0)
+    parser.add_argument("--amoebae", type=int, default=150_000)
     parser.add_argument("--band-top", type=float, default=330.0)
     parser.add_argument("--band-bottom", type=float, default=1400.0)
     return parser.parse_args()

@@ -21,7 +21,81 @@ cost to get right, kept so nobody re-learns it.
 ## Folding
 
 Differential growth, four closed curves. **Posted.** `field`, no hook,
-DejaVu-era layout.
+DejaVu-era layout. Carries a 2.0, `Gyrus`, below.
+
+**The shipped cut is four curves and the code is one.** The caption in the mp4
+says `4 curves`; `build()` in `render_biomorphs.py` returns a single
+`DifferentialGrowth`. The four-curve state is not in the tree any more, so the
+posted cut cannot be reproduced from this repo — only re-derived. Worth knowing
+before anyone tries.
+
+## Gyrus
+
+`folding` 2.0 — the same rule inside a circle it may not grow past. Built
+2026-09-01, `dish` (0.44) + one-line hook, three-line block, 8 s, `VENOM`.
+Hook *"It would fold anyway. The wall decides where."* Ready to post, not
+posted.
+
+- **It is named rather than numbered, and that was a decision.** Two reels
+  titled FOLDING off one engine read as a repost on the grid. The biomorph set
+  had already settled the same question the other way round — one wave trick,
+  three names, and `PLAN.md` says the escalation is the point.
+
+- **The wall is a spring, not a clamp.** `DifferentialGrowth` carries neither a
+  velocity nor a heading, so neither of the `reel` skill's two mechanisms
+  applies literally; what works is a restoring force that switches on only
+  outside the radius. A hard clamp puts every arriving node on the same circle
+  and draws a bright rim the rule never made. Soft, the boundary presses flat
+  but stays ragged — about 8 px of spread on the outermost shell, which is what
+  keeps it from reading as a vignette or a crop.
+
+- **The confinement has to arrive late, and this is the finding.** Growth here
+  is *stretch-driven*: an edge subdivides when something pulls it past
+  `spacing`. So jamming the curve does not redirect the growth, it stops it.
+  Measured over the same 956-step run the parent shipped, with the wall at
+  200 / 215 / 230 / 250 model units, contact lands 48 / 54 / 61 / 69% through
+  the clip and the last quarter contributes **3.3 / 4.7 / 5.5 / 12.6%** of the
+  total change. Only the last one clears T1's 10% floor. The piece is therefore
+  5.5 s of free growth and 2.3 s of collision — the wall is the last beat, not
+  the body, and pitching it as the body was wrong.
+
+- **The hook is true because the parent is the control.** `folding` is this
+  rule with no wall in it and it folds just as hard, so the wall demonstrably
+  does not cause the folds. That is the only reason the line is allowed to
+  claim it.
+
+- **A `0.44` dish and a two-line hook do not fit, and the first fix was the
+  wrong one.** At the house radius the outermost ink lands on row 1439 and a
+  two-line hook starts at 1425 — 14 px of overlap before bloom, about 30 after.
+  Every dish shipped before this one (`hyphae`, `reentry`) has a one-line hook
+  and never met it. Shrinking the dish to 0.40 clears it by 30 px and costs 10%
+  of the subject; putting the hook on one line and the block on three clears it
+  by **65 px** and costs two words and a line of data. Measured both ways
+  before choosing. **Cut the text, not the subject** — and note the two-line
+  hook was over the width limit anyway: 1000 px against 952, so it could never
+  have been one line as written. Dropping *only* brings it to 900.
+
+- **The dish's middle is genuinely empty**, because the seed circle expands and
+  leaves a hole, so colour-is-age puts the darkest end of the ramp on the
+  sparsest part of the form and the 200 px thumbnail collapses into a ring.
+  Lifting a ramp's bottom stops off black buys about 29% of core luminance and
+  no more; the hole is real and no palette fixes it. This is the piece's
+  weakest number and it is a thumbnail problem, not a full-size one.
+
+- **`VENOM` over `SULCUS`, chosen off a four-way render of the same settled
+  frame.** Core-to-rim contrast 4.4:1 against 3.4:1, which matters here for the
+  reason above. The rejected `HALOGEN` (magenta body, cyan rim) is the useful
+  negative: `build_palette` spaces stops evenly and colour is *ranked*, so
+  every stop-to-stop band carries an equal share of the curve — a desaturated
+  midpoint is a fifth of the picture, not a sliver, and magenta→cyan lands on
+  rgb(123, 127, 183) at luminance 130 and washes out the whole middle annulus.
+  `VENOM` puts its violet→green crossing at stop 2, where it desaturates by
+  0.05 at luminance 29 and nobody sees it.
+
+- **Still open:** it puts a second green piece on the grid next to `folding`,
+  which is the same question `sandpile`'s `LATTICE` raises. Acid green on a
+  violet mass in a dish is not culture green edge to edge, but it is the same
+  decision.
 
 ## Physarum
 
@@ -182,7 +256,7 @@ A shoot apex placing organs where the ones already there object least. One
 rule per plastochrone: look round the rim and start the next primordium at
 whatever angle is furthest, in the inhibitory sense, from the primordia
 already down; then let the tissue underneath expand, which carries everything
-outwards and clears the rim for the next. Douady & Couder 1992. Built
+outwards and clears the rim for the next. Douady & Couder 1992. Colour is age on the `APEX` palette — violet-to-magenta arms with a cyan core, chosen 2026-08-31 over the original `MERISTEM` (a flat warm ramp) because the youngest ring needs to pop against the arms rather than blend into them; only the top of the ramp changed, so the palette swap cost nothing on the model or the measurements. Built
 2026-08-29, `field` (a disc that fills the frame width), 8 s. Hook *"The plant
 is not counting. You are."* Not posted.
 
@@ -344,6 +418,177 @@ Not posted.
 - Colour is when it grew, ranked: magenta at the base, gold at the tips.
   Ranked rather than scaled because the tip count grows with the front's
   length, so raw age piles most of the network into the top of the ramp.
+
+## Aggregation
+
+A hundred and fifty thousand separate animals deciding to become one. A starving
+*Dictyostelium* amoeba is a whole organism; starve a lawn of them and a few begin
+to pulse cAMP, every cell that smells a pulse relays it and crawls a step towards
+where it came from, and the pulses become waves that sweep the plate. Because a
+cell is both receiver and transmitter, a line of cells carries the signal better
+than bare agar does, so the streams recruit and thicken instead of dissolving.
+Built 2026-08-30 from the half-finished `morphogens.Aggregation`, `field` + hook,
+8 s, **`sharp`**. Hook *"Every wave would carry them back. / So they only answer
+half of it."* Not posted.
+
+- **The four-pointed stars were real, and no statistic found them.** This was the
+  blocker the piece had been parked on, and it is worse than the note suggested:
+  every aggregate came out as a four-armed X, the square grid's diagonals showing
+  straight through. The four-fold anisotropy statistic written to detect it read
+  **0.039** — near-isotropic — because the artefact sits on the diagonals and the
+  measure was too crude to care. **The greyscale still caught it in one look.**
+  The fix is the documented one, the isotropic nine-point Mehrstellen stencil
+  `(1/6)[[1,4,1],[4,−20,4],[1,4,1]]`, which has the same normalisation as the
+  five-point so nothing else had to be retuned. Worth remembering as the general
+  case: a summary statistic can be silent about a defect a picture makes obvious,
+  and the picture is cheaper.
+
+- **A cell is a path, not a dot, and that is the whole re-cut.** The first
+  version splatted every cell as a round blob on a flat 0.30 weight floor.
+  150,000 blobs on a floor is a carpet of grain: it read as glowing biomass —
+  old wood, embers, texture — rather than as a signal network, and no palette
+  change touches that, because the grain is the geometry. Drawing each cell's
+  recent path instead fixes both ends at once: a recruited cell becomes a
+  luminous streak pointing where it is going, and a cell that has not moved
+  collapses to the point it always was. That difference is also the honest
+  difference between a recruited amoeba and one still sitting where it starved.
+
+- **The trail had to be sized by measurement, and the first attempt was
+  invisible.** A single lagging ghost point at ~8 steps gives a median trail of
+  **0.26 px** — sub-pixel, 15.2% of cells with anything at all. The lag needed is
+  far longer than it looks, because these cells only move on the rising edge of a
+  wave: at 8 steps the median displacement is 0.36 px, at 96 it is 2.78 px with a
+  90th percentile of 12.2. The shipped trail spans 96 steps as **six legs of a
+  real path**, not a chord — a chord between the endpoints would draw a straight
+  journey nobody took. It measures a median 6.95 px, 90th percentile 10.65, with
+  **64.7% of cells carrying a streak over 3 px**, at 13.1 samples per cell.
+
+- **A sampled path stutters unless it is resampled.** Storing a point every 16
+  steps means the polyline jumps once a stride and holds still in between, and
+  the render shows exactly that: **15.1% frozen, every one of those frames inside
+  the opening two seconds.** Sliding the whole trail along itself by the phase
+  between samples — resampling the stored path at a continuously advancing offset
+  — takes the geometry to a change every single frame. This is the same class of
+  bug as `condensate`'s scheduler and it arrived from the opposite direction: not
+  a scheduler repeating a state, but a *model* that only had a new state every
+  eighth frame.
+
+- **And then it really was the encoder.** With the trail sliding, the opening
+  frames differ by **0.165 against a 0.15 threshold** — they pass before
+  encoding, and 17 of them fall under it after H.264 at crf 16 quantises a change
+  that marginal out of a frame this dark. The honest reading is not "the encoder
+  is at fault" but "the opening had almost no change to protect": settling **200
+  steps instead of 90** triples the margin, median frame delta 0.205 → 0.339, and
+  costs nothing on T1. The cut ships at **1.3% frozen, longest run 2**, against a
+  house norm of 4%.
+
+- **The model changed after the gate, twice, so T1 was re-run each time.**
+  `relay` 0.035 → 0.045 and `crowd` 3.4 → 4.5 first, then the settle. On the
+  shipped configuration the profile is peak/mean density **5.7 / 8.5 / 11.7 /
+  14.6 / 20.2 — 19.1% in the first quarter, 38.4% in the last**, and share of
+  cells in the densest 5% of the plate 0.122 / 0.142 / 0.170 / 0.211 / 0.262,
+  14.0% and 36.3%. A gate result does not survive a parameter change by itself.
+
+- **The lawn has to be as periodic as the medium.** The laplacian rolls, so the
+  signal wraps; the cells were clamped. Cells pushed outward stacked against the
+  frame edge and drew a bright vertical rim — the `reel` skill's hard-wall
+  failure, arriving from the population rather than from the confinement.
+  Wrapping the positions fixes it, clamped after the modulus because float32
+  `np.mod` returns the modulus itself for a value a hair below zero. The trail
+  inherits the problem and drops any leg over 40 px: 1,003 of 750,000 legs are
+  wraps, and the line between a cell's two sides of the frame is a stripe nothing
+  walked.
+
+- **Colour is net drift, and the wander is deliberately excluded.** How far the
+  signal has carried each cell, summed as a vector rather than as path length, so
+  it is where the cell got to rather than how much it wriggled; the random walk
+  is left out because every cell has the same amount of it and including it
+  floods the measurement. Scaled rather than ranked — the skew is only 0.88, and
+  ranking would spread a full ramp across a lawn that has not moved yet, which is
+  a rainbow of noise on the frames that matter most. Referenced to the finished
+  state's 98th percentile, 51.3 px.
+
+- **A third of the plate never moves.** 33.6% of cells finish with under a pixel
+  of drift. The dark field is not empty and is not a margin — it is the amoebae
+  that were never recruited, which is the honest picture and also what keeps the
+  black field. The weight floor is the one number that trades that against grain:
+  at **0.18** the plate is 42.5% true black and 14.2% of the pixels in an
+  unrecruited patch are still lit, so the lawn is there and is not the subject.
+
+- **`CIRCUIT` is the piece's second palette and the first cut is why.** Deep plum
+  through hot magenta into acid lime, no white and no warm end at all. Chosen
+  against `neon` (magenta into pale white), `acid` and `xenon` (both bridging
+  magenta to lime through a pale pink) on the same frame. There is one trap in
+  this direction: interpolating straight from magenta to lime in RGB passes
+  through a muddy salmon at the midpoint, which is exactly the earthy register
+  being got rid of. `CIRCUIT` avoids it by staying in saturated violet low down
+  and jumping to lime only at the top, where the band is narrow and bright — and
+  that also puts the rarest colour on the rarest thing, the mound.
+
+- **The look is recorded in the edition, not in the flags.** `venation` is the
+  standing warning: it ships `sharp` and its filename does not say so, so
+  re-rendering it from the filename silently changes the cut. This one carries
+  `bloom_threshold`, `bloom_strength`, `exposure` and `boost` in its `EDITIONS`
+  entry and puts `_sharp` in the stem.
+
+- **The cut is 36 MB against 6–14 MB for its siblings.** A hundred and fifty
+  thousand independent trails is close to the worst case for an inter-frame
+  codec, and at `crf 16 preset slow` there is little to predict. Not a defect,
+  but worth knowing before wondering where the size came from — and it is also
+  why the encoder tipped the opening over, above.
+
+- **Still open:** where the seven pacemakers land is a seed lottery, and this seed
+  leaves the top-left corner of the frame empty. The longer settle filled much of
+  it, but the title still sits on black by luck rather than by design. Reseeding
+  or changing the pacemaker count would redistribute them; neither has been
+  tried.
+
+## Spindle
+
+Mitotic search and capture — two poles guessing until every chromosome is
+held. Built and **rejected** 2026-09-02, on sight, as the finished cut:
+ugly, and no process visible in it. `field`, `sharp`, 8 s, `ASTER`. The render
+is deleted; `morphogens.Spindle` and the edition entry stay.
+
+**It is the cleanest set of numbers anything in this account has failed on.**
+Gate: bi-orientation 0 / 13 / 23 / 34 / 42 of 46, first quarter 31.0%, last
+19.0%, holding across three seeds. Cut: **0.0% still frames**, 0 of 239, none
+in any second; minimum inter-frame delta 2.760 against a 0.15 threshold, median
+3.565; loop seam 6.67 against mid-clip adjacent pairs of 4.69 and 5.05. None of
+that is worth anything, and the piece is the third — after `somite` and
+`sector` — to say so.
+
+- **T4 was run wrong, and that is the finding.** The gate still was shown with
+  the subject named on it, which asks whether it is a good drawing of a spindle
+  rather than what it is. The rule is now in BRIEF's T4: show it unnamed, and
+  count "not worth looking at" as a fail. A test you administer to yourself is
+  not the test.
+
+- **The chromosomes took four drawings and none of them worked.** Disc samples
+  scattered along the body draw stubble; a filled grid draws white dominoes; a
+  filled ellipse draws a cloud, and 46 overlapping ellipses draw one cloud with
+  no chromosomes in it; two sister chromatids lying across the axis, coiled and
+  seamed, finally read as bodies — and the plate still comes out looking like a
+  row of typographic marks. **The object was never the problem.** What is on
+  screen is two starbursts and a white band, and no amount of drawing the band
+  better makes 760 straight lines from two points into a process anyone can see
+  happening.
+
+- **Three things the model needed before it did anything real**, all of them
+  real biology and all measured: kinetochores that can only be bound from the
+  face they present (without it capture is ~20× too fast and the search is over
+  inside the first quarter); congression of singly-attached chromosomes to the
+  midplane (without it 2 of 18 ever bi-orient, because a chromosome sitting on
+  its own pole hides the free sister from the other one); and RanGTP
+  stabilisation of microtubules near chromatin, which is the published answer
+  to the standing objection that blind search-and-capture is too slow — without
+  it the run stalls at 27 of 92 kinetochores held.
+
+- **One renderer bug found here outlives the piece.** `tree_samples` capped
+  every segment at 32 samples, which suits a vein and draws a frame-crossing
+  microtubule as one dot every 56 px: the first cover came out at 40,404
+  samples against an honest 380,000. Editions that draw long segments now
+  declare `sample_limit`, and the ceiling is commented at the function.
 
 ## Stripe
 

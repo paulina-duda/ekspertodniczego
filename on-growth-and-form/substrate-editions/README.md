@@ -1,6 +1,6 @@
 # Substrate Editions
 
-Eight processes on a medium, six of them alive.
+Eleven cuts of ten processes on a medium, eight of them alive.
 
 `substrate-editions/` is about *where* a process happens. The sibling set in
 [`../source/`](../source/) runs two mathematical processes against one
@@ -18,10 +18,10 @@ walks along them, the fuel — with the organism taken away and the motors left
 running. One has no biology in it at all and one is made of nothing else, and
 neither is alive.
 
-Six of the eight make something out of nothing; **Condensate** only rearranges
-what is already in the dish, and **Defect** rearranges nothing at all — the
-film has all its material from the first step and spends the clip destroying
-its own order.
+Nine of the eleven make something out of nothing; **Condensate** only
+rearranges what is already in the dish, and **Defect** rearranges nothing at
+all — the film has all its material from the first step and spends the clip
+destroying its own order.
 
 | Edition | Field | What it is |
 | --- | --- | --- |
@@ -30,6 +30,9 @@ its own order.
 | `reentry_excitable-medium_substrate` | biology | spiral waves in excitable tissue (Barkley) |
 | `condensate_phase-separation_substrate` | biology | liquid-liquid phase separation (Cahn-Hilliard) — **rejected**, T1/T2 |
 | `sandpile_abelian-lattice_substrate` | mathematics | grains toppling on a lattice |
+| `sector_range-expansion_substrate` | biology | a colony spreading on a plate, drawing its own genealogy |
+| `syncytium_hyphal-fusion_substrate` | biology | `hyphae` 2.0 — six spores fusing into one network |
+| `culture_cortical-network_substrate` | biology | dissociated cortical neurons wiring themselves up (Wagenaar 2006) — **rejected**, T4 |
 | `packing_monolayer-verticalisation_substrate` | biology | a flat colony that runs out of plane |
 | `plaque_luria-delbruck_substrate` | biology | phage clearing a lawn, and the mutants already in it |
 | `defect_active-nematic_substrate` | biology, not alive | a film of microtubules and motors tearing itself apart |
@@ -69,6 +72,7 @@ equal intervals of *that* rather than of time:
 | `hyphae` | pixels ever colonised | the picture is the colonised area |
 | `cleavage` | √(cell count) | wall length at fixed area rises with the root |
 | `sandpile` | grains ∝ t² | area rises with grains, so the radius rises linearly |
+| `sector` | colonised area | equal area per frame is equal newly-lit pixels per frame |
 | `packing` | covered area + cells standing up | two phases, and neither scalar paces both |
 | `plaque` | lawn biomass + cleared area + colony area | three phases, weighted 0.6 / 2.2 / 0.7 |
 | `defect` | order lost + defect count + total sliding | two phases, and the defect count is an integer |
@@ -469,6 +473,194 @@ preference for its own company.
   the whole dish, leaving one solid disc that fades outward. Worth another
   attempt only with a model that limits the sink explicitly.
 
+
+### Sector
+
+**Rejected for the grid (T2), 2026-09-01.** The measurements are clean — a flat
+25/25/25/25% profile, 5.4% still frames — and the cut still reads as one
+coloured disc inflating: the wedge layout is set almost at once and everything
+after is the same pattern at a larger radius, because the real competition
+(boundaries wandering, lineages going extinct) plays out on a front too thin to
+see at video scale. Numbers passed; the shape never did anything the eye could
+follow. Kept because two things in it are worth reusing — see below and
+[`REJECTED.md`](../../REJECTED.md).
+
+A colony spreads on a plate and only its edge can divide. Everything inland is
+jammed against its neighbours and has stopped, so the interior is not a
+population — it is a record of who was at the front when that ring was laid
+down. Label the founders and the plate draws its own genealogy: the wedges are
+clones, their boundaries wander as one side or the other gains a few cells of
+frontage, and when two boundaries meet the lineage between them is gone from
+the front forever while every one of its cells is still alive inland. Mutation
+is what stops the picture settling — a few new lineages divide fractionally
+faster, push their arc of the front ahead of their neighbours, and a bulging
+front captures more of the circumference as it goes. Hook *"Not one cell moved.
+Every border did."*
+
+- **The eight-neighbour rule grows a diamond, not a plate.** Asking "is any of
+  my eight neighbours occupied" lets the diagonals advance √2 too fast, and the
+  colony comes out square with its corners on the diagonals. Measured as the
+  cos(4θ) component of the front radius, as a fraction of the mean radius:
+  **7.43% on eight neighbours, 4.80% on four, 2.99% on a disc of radius 1.9,
+  1.35% on a disc of radius 6.0 — and 0.98% here.** What ships asks a different
+  question: how much colony *surrounds* this site, measured with a Gaussian at
+  σ 2.0, which has no preferred direction. Cells still only ever appear one
+  lattice cell outside the colony, so lineage boundaries stay pixel-sharp; a
+  fat structuring element buys isotropy by letting cells jump six pixels from
+  their parent, which blurs the one structure the piece is about. Same lesson
+  as the isotropic nine-point laplacian in
+  [`../source/CLAUDE.md`](../source/CLAUDE.md).
+
+- **Nothing is banked.** The lattice is written once and never rewritten, so a
+  state is not stored — it is recovered exactly by taking the cells whose
+  arrival step is at or below the one wanted. One `int32` array holds the whole
+  clip, against the 184 MB banking every labelled state would have cost.
+
+- **Radius pacing is the prettier idea and the wrong one.** Paced by equal
+  radius increments the front advances at a steady speed and the change profile
+  comes out comet-shaped — **9.5% of the growth in the first quarter and 40.4%
+  in the last**, which is the profile the account explicitly values. It also
+  spends the opening two seconds on a dot, and a dot advancing one cell of
+  radius changes almost no pixels: **22.6% frozen frames, 52 of the 54 inside
+  the first two seconds**, longest run 21. Equal *area* per frame is equal
+  newly-lit pixels per frame, which is the thing the frozen-frame test actually
+  measures: **5.4%, and 1.3% once the 11-frame cover hold is discounted**, at
+  the cost of a flat 25.1 / 24.7% profile. The intermediate, area^0.75, splits
+  it at 7.9%. The comet profile was worth giving up; a stall in the first two
+  seconds is not recoverable.
+
+- **The default bloom made a pastel sticker of it.** A colony is a solid mass,
+  so `bloom` is the nominal choice, and it bleached every wedge towards white
+  and lifted the black into a mid-tone veil. This ships on **`sharp`**, and the
+  look is recorded in the edition's `EDITIONS` entry as well as in the
+  filename — `venation` shipped on `sharp` with nothing recording it and
+  re-rendering silently changed the cut.
+
+- **`LINEAGE` is the one palette in the set that does not darken at its low
+  end**, and that is deliberate. Hue here is an identity, not an amount, so
+  dimming the first stop would say a wedge was less of something. Brightness is
+  carried by the density channel instead, which is why the plate is still black
+  where nothing has grown and why the rim is the brightest part of it. The arc
+  runs violet to gold and never reaches cyan or green: `cleavage` owns the cold
+  end of this edition.
+
+- **A mutation moves its lineage 0.26 of the ramp from its parent.** At the
+  honest 0.075 the sub-wedges were invisible — everything descending from one
+  founder read as a single flat colour. At 0.26 relatives still look related
+  and a wedge inside a wedge is legible as what it is: a mutation that happened
+  inside a clone that was already winning.
+
+- **Drift alone does not carry eight seconds, and this was measured before any
+  render code existed.** Neutral founders coarsen and then stop: 21 lineages on
+  the front at the start, 9 by the quarter mark, and **9 / 9 / 9 for the rest
+  of the clip — 12 extinctions in the first quarter and zero after**. Sector
+  boundaries diffuse as √t while the circumference grows as t, so once they are
+  apart they never meet again; this is physics, not tuning. Mutation is the
+  external clock the brief calls for, and with it the front holds 48 / 31 / 33 /
+  34 lineages across the quarters. 444 lineages are founded over the run, 46
+  reach the rim, and 38 of those did not exist when it started. Of the 48
+  founders in the drop, **8**.
+
+### Syncytium — `hyphae` 2.0
+
+Built 2026-09-02. Same engine as `hyphae`, four things changed: the look
+(`bloom` → `sharp`), the scale of the mesh, the shape (`dish` → `field`) and
+what the colour means (age → which spore). Hook *"A tree only branches apart. /
+These branched into each other."*, a deliberate second half to the first cut's
+*"A tree branches. A fungus branches back."*
+
+- **The shipped `hyphae` never shows the fusion its hook is about.** At
+  `sensor 7` and `branch_rate 0.030` the colony fills **72.1% of the dish with
+  1.4 px between filaments** — finer than a pixel, so the mesh tone-maps into a
+  lamp and every loop in it is gone. Opening the avoidance radius to 20 and
+  cutting the branch rate to 0.009 gives **8% coverage at ~14 px spacing**,
+  which is what makes the network legible as a network. Measured on the way:
+  `sensor 16` → 8.2% / 12.3 px, `sensor 20 branch 0.010` → 10.7% / 9.3 px
+  (solid again once the grid downscales it), `sensor 28` → 3.7% and the fusion
+  rate *falls* in the last quarter, which would have failed T2.
+
+- **The dish was never the fix; the density was.** The note further down this
+  file says the mycelium had to be given a plate because unbounded it ran off
+  every edge, filled the frame corner to corner, blew out to white and put the
+  caption on a bright field. All three of those are consequences of 72%
+  coverage. At 8% the frame keeps its black and `bound="frame"` is safe, so
+  this cut is the same colony let out to the frame edge.
+
+- **`field` still costs what the `reel` skill says it costs.** On the finished
+  frame the title band is **42.5% covered**, the hook band 57.7%, the data
+  block 48.4% — but at mean luminance 0.12–0.16 under each. The scrim and the
+  hook's stroke carry it and the text reads; this is mitigated, not solved, and
+  it is the reason `slide` exists.
+
+- **One spore is a disc for half the clip whatever it is bounded to.** Six
+  spores on a jittered grid fix that and buy the piece its event: colonies meet.
+  Random scatter was not used — it clumps, and a clump merges before either
+  colony has visibly been a colony.
+
+- **The event is measured, not asserted.** First fusion joining two different
+  spores at simulation step 347, which is **frame 78 — 2.60 s**. Grafts per
+  quarter of the clip after the cover hold: **0 / 31 / 104 / 271**, i.e. 0 →
+  16.2 → 54.5 → 142.0 per second. The first quarter is six organisms and the
+  last is one. 1,520 segments over the run, 1,312 fuse, 407 of those join two
+  spores.
+
+- **Colour is identity, so the palette has one stop per spore.** Six stops,
+  six spores, a segment lands exactly on its own and there are no in-between
+  colours to go muddy — the same argument as `LATTICE`'s four stops for four
+  states. Brightness is carried by density instead, as in `LINEAGE`. `FLUORO`
+  is the reading a fluorescence microscope gives with strains on separate
+  channels and the channels summed; two calmer candidates were rendered
+  alongside it and turned down for less impact.
+
+- **`sharp` at `venation`'s exposure, not `sector`'s.** A frame 8% covered by
+  one-pixel filaments has a fraction of the density a solid plate has, and at
+  the nominal `1.00 / 1.05` the mesh came out bone-white and lost most of its
+  colour to the 200 px downscale. Ships at `1.10 / 1.20`.
+
+- **The model change is transparent to the parent cut.** `Hyphae` now carries
+  segment identity, a fusion step, a founder and a pixel-ownership map, and
+  none of it draws from the generator, so `hyphae` re-renders to md5
+  `69e8f4e86a5882b5c4589531ba66d6f1` — byte-identical to the posted cover.
+
+### Culture
+
+**Rejected for the grid (T4), 2026-09-04.** Shown cold, it reads as blinking
+dots — the wiring-up and the burst it develops into, which is the entire
+point of the piece, never becomes visible. Kept below because the model and
+the splatting fix are real; see [`REJECTED.md`](../../REJECTED.md).
+
+A cortical culture is plated as a suspension of single dissociated cells, every
+connection they had destroyed in the process, and left to wire itself: over
+the days that follow each cell puts out neurites, and a synapse switches on
+wherever one cell's reach passes another's — nobody specifies the wiring, it
+is a consequence of where each cell happened to land (Wagenaar, Pine & Potter
+2006). The rule per cell is integrate-and-fire with short-term depression: a
+cell charges, fires, empties, and a cell that just fired has less to give,
+which is what stops a wave rather than letting it burn across the whole field.
+Nothing is fitted, trained or searched. Eight seconds here stand for roughly
+the first three weeks of a real culture — isolated spikes at the start, then
+patches firing together, then dish-wide bursts nobody wired and nobody
+triggers, as the neurites simply get long enough to reach further.
+
+- **A neuron is one point, and a point is one pixel — the mistake that sank
+  `aggregation` and `nematic`.** At 12,000 neurons the mean spacing is 7.7 px,
+  so cells drawn a pixel wide stay separate specks at any size and tone-map
+  into grey speckle at the grid thumbnail. Splatted as a small disc of samples
+  instead, so neighbours fuse into mass wherever the tissue is actually active.
+- **No floor under a cell that has never fired.** A flat floor over all 12,000
+  covers three quarters of the frame in dust — the first cut's mistake — and
+  buries the structure it was meant to sit under. Brightness is spike plus a
+  slow decaying trace, and nothing else.
+- **Colour is recency, ranked over every spike in the clip rather than per
+  frame** — a long thin tail of cells go over on almost nothing, so a linear
+  map would put four spikes in five on one palette stop. Ranking once, over
+  the whole run, is what keeps an early frame genuinely sitting at the cold
+  end of the ramp (house rule 2's case for ranking a skewed scalar).
+- **Banked one state per frame and played straight through, not paced by
+  measurement.** Every other process in this edition is paced because it
+  creeps and then floods; this one carries its own beat — the developmental
+  arc from isolated spikes to dish-wide bursts — and re-timing that clock
+  would destroy the thing worth watching.
 
 ## Rendering
 

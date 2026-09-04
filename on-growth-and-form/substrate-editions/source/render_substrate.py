@@ -31,6 +31,7 @@ are equal steps of the process, and it is banked one state per frame.
 from __future__ import annotations
 
 import argparse
+import copy
 import math
 import os
 import pickle
@@ -40,6 +41,7 @@ from pathlib import Path
 from typing import Callable
 
 import numpy as np
+from scipy import ndimage
 from PIL import Image, ImageDraw, ImageFont
 
 import glow
@@ -105,6 +107,40 @@ FILAMENT = [(44, 66, 86), (72, 104, 128), (134, 140, 140), (206, 160, 108), (252
 # the default. Same rule -- no dark stop.
 TEAR = [(30, 70, 72), (54, 108, 106), (118, 150, 138), (206, 160, 108), (252, 186, 96), (255, 246, 224)]
 
+# HYPHAE 2.0. Colour here is not age and not an amount -- it is which spore the
+# strand grew from, so the ramp has exactly one stop per spore and a segment
+# lands on its own. No in-between colours means nothing to go muddy, and it is
+# the same argument as LATTICE's four stops for four states. Brightness is
+# carried by density instead, as in LINEAGE: a colony is not less of anything
+# for being the first stop, which is why the frame is still black where nothing
+# has grown. Six hues at full chroma, the reading a fluorescence microscope
+# gives when strains are imaged on separate channels and the channels are
+# summed. Retuned for `sharp` rather than ported from MYCELIUM -- with the halo
+# down, amber cores come out pastel.
+FLUORO = [(255, 0, 150), (0, 225, 255), (170, 255, 0), (255, 120, 0), (150, 60, 255), (0, 255, 160)]
+
+# Hue is a lineage here, not an amount, so this ramp is the one in the set that
+# does *not* darken towards its low end: a wedge landing on the first stop is
+# not less of anything, and dimming it would say it was. Brightness is carried
+# by the density channel instead, which is why the plate is still black where
+# nothing has grown. The arc runs violet to gold and deliberately never reaches
+# cyan or green -- CLEAVAGE owns the cold end of this edition.
+LINEAGE = [(120, 20, 255), (200, 0, 230), (255, 0, 130), (255, 24, 40), (255, 100, 0), (255, 200, 20)]
+
+# Colour here is what fired the cell -- how much synaptic input it was holding
+# when it crossed threshold, ranked across the population -- so the ramp is an
+# ordering in time, not an identity and not an amount. Five stops for the five
+# fifths a rank divides the population into, the same argument as LATTICE's four
+# stops for four states. It runs warm to cold because that is the order the
+# reading goes in: a cell that got there on its own leak, through the shove of a
+# small local wave, to one carried over by a front that had already recruited
+# half the frame. Held at roughly one luminance across all five, unlike
+# CYTOSOL's ramp: brightness in this piece is how recently a cell fired, and a
+# palette that darkens at one end would fight that for the same pixels. Indigo
+# is one fifth of the frame and the only cold stop, which is house rule 6's
+# accent rather than a blue piece.
+IGNITION = [(255, 246, 214), (255, 168, 78), (255, 84, 148), (198, 74, 255), (110, 96, 255)]
+
 EDITIONS: dict[str, dict] = {
     "hyphae": {
         "kind": "points",
@@ -119,6 +155,52 @@ EDITIONS: dict[str, dict] = {
             "fusion makes a network, not a tree",
         ),
         "hook": ("A tree branches. A fungus branches back.",),
+    },
+    # HYPHAE 2.0, and it changes four things rather than the two the rule asks
+    # for: the look (bloom -> sharp), the scale of the mesh (sensor 7 -> 20,
+    # branch_rate 0.030 -> 0.009), the shape (dish -> field), and what the colour
+    # means (age -> which spore). It lands alongside the original, never on top
+    # of it: --tag v2.
+    "syncytium": {
+        "kind": "points",
+        "title": "Syncytium",
+        "slug": "syncytium_hyphal-fusion_substrate",
+        "palette": FLUORO,
+        "look": "sharp",
+        # sharp at a lifted exposure, which is `venation`'s setting rather than
+        # `sector`'s: a frame 8% covered by one-pixel filaments has a fraction of
+        # the density a solid colony has, and at the nominal 1.00/1.05 the mesh
+        # came out bone-white and lost most of its colour to the grid downscale.
+        "exposure": 1.10,
+        "boost": 1.20,
+        "bloom_threshold": 0.55,
+        "bloom_strength": 0.25,
+        "model": {
+            # A wide avoidance radius and a third of the branching open the mesh
+            # from 1.4 px between filaments to 14. That number is what retires
+            # the objection recorded in the edition README -- the mycelium was
+            # given a dish because unbounded it filled the frame, blew out to
+            # white and put the caption on a bright field, and all three of those
+            # are consequences of 72% coverage, not of the missing rim. At 8%
+            # the frame keeps its black and `bound="frame"` is safe.
+            "sensor": 20.0,
+            "branch_rate": 0.009,
+            "max_tips": 1750,
+            "bound": "frame",
+            # Six spores rather than one, because a single inoculum is a disc for
+            # the first half of the clip whatever shape it is bounded to -- and
+            # because fusion between two colonies is a stronger event than a
+            # colony fusing with itself. One spore per palette stop.
+            "seeds": 6,
+            "tips": 5,
+        },
+        "colour": "founder",
+        "caption": (
+            "fungal mycelium · anastomosis",
+            "extend · branch · fuse · stop",
+            "six spores · 407 fusions joined two of them",
+        ),
+        "hook": ("A tree only branches apart.", "These branched into each other."),
     },
     "cleavage": {
         "kind": "field",
@@ -161,6 +243,46 @@ EDITIONS: dict[str, dict] = {
             "nucleolus · stress granule · P granule",
         ),
         "hook": ("Nothing was built. It only stopped mixing.",),
+    },
+    "culture": {
+        "kind": "points",
+        "title": "Culture",
+        "slug": "culture_cortical-network_substrate",
+        "palette": IGNITION,
+        "colour": "recency",
+        "exposure": 1.15,
+        "boost": 1.20,
+        "caption": (
+            "dissociated cortical culture · Wagenaar et al. 2006",
+            "charge · fire · deplete · recover",
+            "colour is how long ago a cell fired · gold is now",
+            "12,000 neurons · 570,560 synapses, none of them chosen",
+        ),
+        "hook": ("Every connection was cut.", "It is firing again."),
+    },
+    "sector": {
+        "kind": "field",
+        "title": "Sector",
+        "slug": "sector_range-expansion_substrate",
+        "palette": LINEAGE,
+        # The sharp look, and named here rather than left to the command line.
+        # The default bloom turned a solid plate into a pastel disc inside a
+        # mid-tone veil: every wedge bleached towards white and the halo lifted
+        # the black the whole account is composed on. venation shipped on sharp
+        # without recording it anywhere and re-rendering changed the cut; this
+        # does not repeat that.
+        "look": "sharp",
+        "exposure": 1.00,
+        "boost": 1.05,
+        "bloom_threshold": 0.55,
+        "bloom_strength": 0.25,
+        "caption": (
+            "microbial range expansion · Hallatschek & Nelson 2007",
+            "divide at the edge · drift · mutate · sweep",
+            "colour is descent · hue drifts with each mutation",
+            "48 founders · 8 of them still on the rim",
+        ),
+        "hook": ("Not one cell moved. Every border did.",),
     },
     "packing": {
         "kind": "points",
@@ -289,7 +411,13 @@ def build_overlay(width: int, height: int, spec: dict, args) -> Image.Image:
     a few points above the block so it reads as the louder of the two and no
     louder than that: every pixel it takes is a pixel the organism gives up.
     Plex regular throughout, per house rule 5.
+
+    `--no-text` returns an empty layer. That is what a T4 legibility still is
+    rendered with: a title names the subject, and a still captioned with its own
+    name asks "is this a good drawing of X" rather than "what is this".
     """
+    if not args.text:
+        return Image.new("RGBA", (width, height), (0, 0, 0, 0))
     overlay = glow.make_caption(
         width,
         height,
@@ -322,6 +450,76 @@ def build_overlay(width: int, height: int, spec: dict, args) -> Image.Image:
         stroke_fill=(0, 0, 0, 165),
     )
     return overlay
+
+
+def text_keepout(width: int, height: int, spec: dict, args) -> np.ndarray:
+    """Ground the colony is not allowed onto: a ragged margin, and a halo of
+    clear substrate around every glyph.
+
+    The halo is taken from the text layer's own alpha, not from hand-measured
+    boxes, so it follows the actual letterforms and stays correct if the copy or
+    the type size changes. The scrim is switched off while measuring it -- it is
+    a soft wash over most of the frame, and dilating that would forbid half the
+    picture.
+
+    **Both edges are perturbed by one smooth noise field, and that is not
+    decoration.** A straight inset reads as a UI panel with the mycelium poured
+    into it: the colony stops dead on a horizontal line, which no colony does.
+    Letting the boundary wander by roughly its own depth costs nothing and the
+    edge goes back to looking like the limit of a substrate.
+
+    Cropping the render would slice filaments mid-stride. Forbidding the ground
+    means the black is black because nothing was ever allowed to grow there, and
+    because `Hyphae` senses the mask, tips turn away from it rather than dying
+    on it.
+    """
+    ink_only = copy.copy(args)
+    ink_only.scrim = 0.0
+    alpha = np.asarray(build_overlay(width, height, spec, ink_only).split()[-1])
+    options = spec["keepout"]
+
+    generator = np.random.default_rng(options.get("seed", 20260902))
+    noise = ndimage.gaussian_filter(
+        generator.normal(size=(height, width)).astype(np.float32), sigma=options.get("sigma", 90.0)
+    )
+    noise = noise / max(float(np.abs(noise).max()), 1e-9)
+
+    # The bottom margin is not a number anyone chose -- it is measured off the
+    # copy block itself, so the hook and the data block always sit on black and
+    # stay there if the copy changes length. Everything above is a halo around
+    # the title only, which reads as the word stamped into the mat.
+    lower_ink = np.flatnonzero((alpha[height // 2 :] > 8).any(axis=1))
+    copy_top = height // 2 + int(lower_ink[0]) if len(lower_ink) else height
+    bottom = height - copy_top + options.get("copy_clearance", 34.0)
+
+    rows, columns = np.indices((height, width))
+    rough = options.get("roughness", 0.0) * noise
+    forbidden = (
+        (rows < options["top"] + rough)
+        | (height - 1 - rows < bottom + rough)
+        | (np.minimum(columns, width - 1 - columns) < options["side"] + rough)
+        | (ndimage.distance_transform_edt(alpha <= 8)
+           < options["clearance"] + options.get("halo_roughness", 0.0) * noise)
+    )
+
+    # Open the growable region by a disc, then drop what is left over as small
+    # islands. Without this the mask leaves slivers -- between a halo and the
+    # margin, or along the bottom edge where the noise thins it -- and a sliver
+    # narrower than the sensor is a trap: tips inside it cannot smell a way out,
+    # mill around, and pile density into a strip that tone-maps to solid white
+    # directly under the data block. Measured on the first cut of this variant.
+    # Two distance transforms rather than binary_opening with a 61 x 61
+    # structure, which is the same result and far cheaper.
+    reach = options.get("throat", 30.0)
+    allowed = ~forbidden
+    eroded = ndimage.distance_transform_edt(allowed) >= reach
+    allowed = ndimage.distance_transform_edt(~eroded) <= reach
+    labels, found = ndimage.label(allowed)
+    if found:
+        areas = ndimage.sum(allowed, labels, range(1, found + 1))
+        survivors = 1 + np.flatnonzero(areas >= options.get("min_patch", 40_000))
+        allowed = np.isin(labels, survivors)
+    return ~allowed
 
 
 def even_schedule(metric: np.ndarray, frames: int) -> np.ndarray:
@@ -371,19 +569,78 @@ def tone(colour_sum: np.ndarray, density: np.ndarray, reference: float, spec: di
 
 def hyphae_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], np.ndarray]:
     height, width = args.height, args.width
-    model = growths.Hyphae(height, width)
+    model_options = dict(spec.get("model", {}))
+    if spec.get("keepout"):
+        forbidden = text_keepout(width, height, spec, args)
+        model_options["keepout"] = forbidden
+        print(f"  keepout: {1.0 - forbidden.mean():.1%} of the frame is growable", flush=True)
+    model = growths.Hyphae(height, width, **model_options)
     progress = [model.metric()]
     while len(model.x) and model.step_index < args.hyphae_steps:
         model.step(1)
         progress.append(model.metric())
     points, ages = model.samples()
-    print(f"  hyphae: {model.step_index} steps, {len(points):,} samples, {model.metric()/(height*width):.0%} lit", flush=True)
+    print(f"  {spec['title'].lower()}: {model.step_index} steps, {len(points):,} samples, {model.metric()/(height*width):.0%} lit", flush=True)
 
-    schedule = even_schedule(np.asarray(progress), args.duration_frames)
+    # `pace` bends how the frames are distributed over the run. 1.0 is equal
+    # newly-lit pixels per frame, which is right when the colony has open black
+    # to fill. Once it is growing into ground that is already bright, a newly
+    # lit pixel changes the tone-mapped picture less, so equal pixels per frame
+    # stops being equal change per frame and the last two seconds go still.
+    # Below 1.0 the schedule advances further per frame late and less early.
+    # Measured on the inset cut: 14.5% frozen frames at 1.0, 6.1% at 0.80,
+    # 5.3% at 0.65 -- but 0.65 pushes six of them into the opening second,
+    # which is the one place a freeze is unrecoverable, and 0.50 puts 29 there.
+    schedule = even_schedule(np.asarray(progress) ** spec.get("pace", 1.0), args.duration_frames)
     palette = glow.build_palette(spec["palette"])
     caption = build_overlay(width, height, spec, args)
-    span = max(float(ages[-1]), 1.0)
-    colours = glow.sample_palette(palette, (ages / span).astype(np.float32))
+
+    if spec.get("colour", "age") == "fate":
+        # Colour is what happened to the segment's tip, and it arrives when it
+        # happens: a filament is slate while its tip is still running, and warms
+        # to ember over `--fuse-warm` steps at the moment that tip fuses into an
+        # older hypha. A segment whose tip reached the wall instead never warms,
+        # so the finished frame separates the network from its dead ends.
+        # Colouring by the *final* fate from the first frame would be a spoiler
+        # and, worse, would throw away the only discrete event the piece has.
+        fused_at = model.fusion_steps()[model.segments()].astype(np.float32)
+        fused_at[fused_at < 0.0] = np.inf
+        cold, hot = float(spec.get("unfused", 0.28)), float(spec.get("fused", 0.96))
+        segments = len(model.fusion_steps())
+        fused_segments = int((model.fusion_steps() >= 0).sum())
+        print(
+            f"    {segments:,} segments · {fused_segments:,} fused into the network "
+            f"· {segments - fused_segments:,} ran to the wall",
+            flush=True,
+        )
+
+        def colours_for(count: int, now: float) -> np.ndarray:
+            warm = np.clip((now - fused_at[:count]) / args.fuse_warm, 0.0, 1.0)
+            return glow.sample_palette(palette, (cold + (hot - cold) * warm).astype(np.float32))
+    elif spec.get("colour") == "founder":
+        # Hue is an identity, not an amount, so the palette has one stop per
+        # spore and a segment lands exactly on its own -- no ramp, no in-between
+        # colours to go muddy. Brightness is carried by density, as in LINEAGE:
+        # a colony is not less of anything for being the first stop.
+        per_sample = model.founders_of()[model.segments()]
+        stops = len(spec["palette"])
+        value = (per_sample % stops) / max(stops - 1, 1)
+        by_founder = glow.sample_palette(palette, value.astype(np.float32))
+        grafts = len(model.grafts)
+        print(
+            f"    {model.founders} spores · {len(model.fusion_steps()):,} segments · "
+            f"{int((model.fusion_steps() >= 0).sum()):,} fused · {grafts:,} of those joined two spores",
+            flush=True,
+        )
+
+        def colours_for(count: int, now: float) -> np.ndarray:
+            return by_founder[:count]
+    else:
+        span = max(float(ages[-1]), 1.0)
+        by_age = glow.sample_palette(palette, (ages / span).astype(np.float32))
+
+        def colours_for(count: int, now: float) -> np.ndarray:
+            return by_age[:count]
 
     def weights_for(count: int, now: float) -> np.ndarray:
         # The advancing front is the only part of the picture that is doing
@@ -397,7 +654,7 @@ def hyphae_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], np
         step = float(schedule[min(int(u * (len(schedule) - 1)), len(schedule) - 1)])
         count = max(int(np.searchsorted(ages, step, side="right")), 2)
         weight = weights_for(count, step)
-        colour_sum, density = glow.splat(width, height, points[:count], colours[:count], weight)
+        colour_sum, density = glow.splat(width, height, points[:count], colours_for(count, step), weight)
         return glow.compose(tone(colour_sum, density, reference, spec, args), caption)
 
     ones = np.ones(len(points), dtype=np.float32)
@@ -622,6 +879,63 @@ def condensate_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray]
     return draw, draw(1.0)
 
 
+def sector_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], np.ndarray]:
+    height, width = args.height, args.width
+    # Simulated at half the frame and block-upsampled twofold. The lattice is
+    # the model -- one cell is one cell -- so this is the one edition where the
+    # simulation size is not a speed compromise but the answer to how coarse the
+    # colony should look. At 474 px of radius the dish lands on the house
+    # figure, 0.44 of the short side.
+    model = growths.Sector(
+        args.sector_size,
+        radius=args.sector_size * 0.494,
+        founders=args.sector_founders,
+        mutation=args.mutation,
+        beneficial=args.beneficial,
+        advantage=args.advantage,
+        hue_step=args.hue_step,
+        inoculum=args.inoculum,
+        pacing=args.pacing,
+    )
+    progress = [model.metric()]
+    fronts = [model.front_lineages()]
+    while model.step_index < args.sector_steps:
+        before = int((model.label > 0).sum())
+        model.step(1)
+        if int((model.label > 0).sum()) == before:
+            break
+        progress.append(model.metric())
+        fronts.append(model.front_lineages())
+    print(
+        f"  sector: {model.step_index} steps, {int((model.label > 0).sum()):,} cells, "
+        f"radius {math.sqrt(int((model.label > 0).sum()) / math.pi):.0f} lattice cells, "
+        f"{model.count} lineages founded, "
+        f"{max(fronts[len(fronts)//4:])} holding the front at the quarter mark",
+        flush=True,
+    )
+
+    schedule = even_schedule(np.asarray(progress), args.duration_frames)
+    palette = glow.build_palette(spec["palette"])
+    caption = build_overlay(width, height, spec, args)
+    reference = 1.0
+
+    def fields_at(index: int) -> tuple[np.ndarray, np.ndarray]:
+        density, shade = model.fields(int(index), tip_boost=args.tip_boost_front, tip_decay=args.tip_decay_front)
+        return (
+            place_square(density, height, width, args.sector_factor),
+            place_square(shade, height, width, args.sector_factor),
+        )
+
+    def draw(u: float) -> np.ndarray:
+        density, shade = fields_at(schedule[min(int(u * (len(schedule) - 1)), len(schedule) - 1)])
+        colour_sum = glow.sample_palette(palette, shade) * density[:, :, None]
+        return glow.compose(tone(colour_sum, density, reference, spec, args), caption)
+
+    final_density, _ = fields_at(schedule[-1])
+    reference = float(np.percentile(final_density[final_density > 0], 92.0))
+    return draw, draw(1.0)
+
+
 def packing_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], np.ndarray]:
     height, width = args.height, args.width
     model = growths.Packing(
@@ -750,7 +1064,7 @@ def plaque_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], np
     model = growths.Plaque(
         args.plaque_size,
         args.plaque_size * 0.469,
-        founders=args.founders,
+        founders=args.plaque_founders,
         landings=args.landings,
         decay=args.phage_decay,
         resistant_rate=args.resistant_rate,
@@ -852,6 +1166,91 @@ def plaque_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], np
 
     _, final_density = buffers(len(states) - 1)
     reference = float(np.percentile(final_density[final_density > 0], 92.0))
+    return draw, draw(1.0)
+
+
+def culture_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], np.ndarray]:
+    height, width = args.height, args.width
+    model = growths.Culture(
+        height,
+        width,
+        neurons=args.neurons,
+        reach=args.culture_reach,
+        growth=args.culture_growth,
+        weight=args.culture_weight,
+        drive=args.culture_drive,
+        depression=args.culture_depression,
+        recovery=args.culture_recovery,
+        afterglow=args.culture_afterglow,
+        trace=args.culture_trace,
+        maturity=args.culture_maturity,
+        seed=args.culture_seed,
+    )
+    # Banked one state per frame and played straight through. Every other
+    # process here is paced by `even_schedule` because it creeps and then
+    # floods; this one carries a beat, and equal steps of the clock are the
+    # only schedule that leaves a beat where the model put it.
+    states = model.record(args.duration_frames, args.culture_steps)
+    print(
+        f"  culture: {model.neurons:,} neurons, {len(model.source):,} synapses "
+        f"({model.live:,} grown by the end), {model.spikes:,} spikes",
+        flush=True,
+    )
+
+    # A neuron is one point and a point is one pixel, which is the mistake that
+    # sank `aggregation` and `nematic`: at this density the mean spacing is
+    # 7.7 px, so cells drawn a pixel wide stay separate specks at any size and
+    # come out as grey speckle in the grid thumbnail. Splatting each cell as a
+    # small disc of samples lets neighbours fuse into mass where the tissue is
+    # active, which is the only reason the additive pipeline has anything to
+    # work on.
+    rng = np.random.default_rng(args.culture_seed + 1)
+    count = args.cell_samples
+    angle = rng.random((model.neurons, count)) * (2.0 * math.pi)
+    radius = np.sqrt(rng.random((model.neurons, count))) * args.cell_radius
+    points = np.empty((model.neurons * count, 2), dtype=np.float64)
+    points[:, 0] = (model.positions[:, 0:1] + np.cos(angle) * radius).ravel()
+    points[:, 1] = (model.positions[:, 1:2] + np.sin(angle) * radius).ravel()
+    owner = np.repeat(np.arange(model.neurons), count)
+
+    # Ranked once, over every spike in the clip rather than frame by frame, so
+    # that a frame early on genuinely sits at the low end of the ramp. Ranked at
+    # all because the raw quantity is badly skewed -- a long thin tail of cells
+    # go over on almost nothing -- and a linear map puts four spikes in five on
+    # one stop, which is house rule 2's case for ranking a skewed scalar.
+    pool = np.concatenate([state[2] for state in states[::4]])
+    pool = np.sort(pool[pool > 0.0])
+    print(f"    push at the last spike: {pool[0]:.4f} .. {pool[-1]:.4f} thresholds "
+          f"over {len(pool):,} sampled spikes", flush=True)
+
+    def ranked(push: np.ndarray) -> np.ndarray:
+        return (np.searchsorted(pool, push).astype(np.float32) / max(len(pool), 1))
+
+    palette = glow.build_palette(spec["palette"])
+    caption = build_overlay(width, height, spec, args)
+    share = np.float32(1.0 / count)
+    reference = 1.0
+
+    def draw(u: float) -> np.ndarray:
+        spike, trace, push = states[min(int(u * (len(states) - 1)), len(states) - 1)]
+        lit = spike + args.cell_trace * trace
+        shade = ranked(push) if spec.get("colour", "push") == "push" else 1.0 - spike
+        # `lit` already carries the spike and the slow trace behind it. There is
+        # no floor under the cells that have never fired: a flat floor over all
+        # 12,000 of them covers three quarters of the frame in dust, which is
+        # what the first cut did, and it buried the structure it was meant to
+        # sit under.
+        weight = (lit * share)[owner]
+        colours = glow.sample_palette(palette, shade)[owner]
+        colour_sum, density = glow.splat(width, height, points, colours, weight)
+        return glow.compose(tone(colour_sum, density, reference, spec, args), caption)
+
+    _, probe = glow.splat(
+        width, height, points,
+        np.zeros((len(points), 3), dtype=np.float32),
+        ((states[-1][0] + args.cell_trace * states[-1][1]) * share)[owner],
+    )
+    reference = float(np.percentile(probe[probe > 0], 92.0))
     return draw, draw(1.0)
 
 
@@ -1003,10 +1402,13 @@ def defect_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], np
 
 TIMELINES = {
     "hyphae": hyphae_timeline,
+    "syncytium": hyphae_timeline,
     "cleavage": cleavage_timeline,
     "sandpile": sandpile_timeline,
     "reentry": reentry_timeline,
     "condensate": condensate_timeline,
+    "sector": sector_timeline,
+    "culture": culture_timeline,
     "packing": packing_timeline,
     "plaque": plaque_timeline,
     "defect": defect_timeline,
@@ -1018,12 +1420,17 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
     draw, finished = TIMELINES[name](spec, args)
 
     stem = f"{spec['slug']}_{args.width}x{args.height}_{args.duration:g}s_{args.fps}fps"
-    if args.tag:
-        stem += f"_{args.tag}"
+    if spec.get("look"):
+        stem += f"_{spec['look']}"
     if args.hook and spec.get("hook"):
         # Same suffix the cleavage re-render carries, so the hooked Plex cut and
         # the older DejaVu one sit side by side in the folder without ambiguity.
         stem += "_hook_plex"
+    if args.tag:
+        # How a 2.0 lands alongside the cut it descends from instead of on top
+        # of it. Same mechanism as the biomorph renderer, which is how `gyrus`
+        # was written out next to `folding`.
+        stem += f"_{args.tag}"
     args.output_dir.mkdir(parents=True, exist_ok=True)
     Image.fromarray(finished).save(args.output_dir / f"{stem}.cover.png")
     if args.preview:
@@ -1055,7 +1462,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--edition", choices=sorted(EDITIONS), action="append")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--preview", action="store_true", help="Save the cover still and stop.")
-    parser.add_argument("--tag", type=str, default=None, help="suffix, so a variant lands beside the original")
     parser.add_argument("--width", type=int, default=1080)
     parser.add_argument("--height", type=int, default=1920)
     parser.add_argument("--duration", type=float, default=8)
@@ -1074,7 +1480,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hook-gap", type=int, default=82, help="hook ink down to the data block's ink")
     parser.add_argument("--bloom-threshold", type=float, default=0.30)
     parser.add_argument("--bloom-strength", type=float, default=0.60)
+    parser.add_argument("--tag", help="suffix appended to the filename, e.g. v2")
+    parser.add_argument("--no-text", dest="text", action="store_false",
+                        help="render the form with no title, hook or data block — a T4 legibility still")
     parser.add_argument("--hyphae-steps", type=int, default=1400)
+    parser.add_argument("--fuse-warm", type=float, default=22.0,
+                        help="steps a segment takes to warm from slate to ember once its tip fuses")
     parser.add_argument("--tip-boost", type=float, default=2.2)
     parser.add_argument("--tip-decay", type=float, default=26.0)
     parser.add_argument("--cleavage-steps", type=int, default=300)
@@ -1088,6 +1499,55 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epsilon", type=float, default=0.05, help="how brief the excited state is")
     parser.add_argument("--roughness", type=float, default=0.016, help="spread of the excitability field")
     parser.add_argument("--afterglow", type=float, default=45.0, help="half-life of the phosphor, in steps")
+    parser.add_argument("--neurons", type=int, default=12_000)
+    parser.add_argument("--culture-reach", type=float, default=62.0,
+                        help="how far a neurite reaches by the end of the clip, in pixels")
+    parser.add_argument("--culture-growth", type=float, default=0.35,
+                        help="exponent on neurite outgrowth; below 1 puts most of it early")
+    parser.add_argument("--culture-weight", type=float, default=0.030, help="one synapse, in thresholds")
+    parser.add_argument("--culture-drive", type=float, default=4e-4, help="spontaneous charging per step")
+    parser.add_argument("--culture-depression", type=float, default=0.45, help="what a spike leaves behind")
+    parser.add_argument("--culture-recovery", type=float, default=0.010, help="how fast that comes back")
+    parser.add_argument("--culture-afterglow", type=float, default=8.0, help="half-life of a spike, in steps")
+    parser.add_argument("--culture-trace", type=float, default=150.0,
+                        help="half-life of the tissue behind it, in steps")
+    parser.add_argument("--culture-maturity", type=float, default=0.60,
+                        help="how far into the outgrowth the last frame lands")
+    parser.add_argument("--culture-steps", type=int, default=5, help="simulation steps per frame")
+    parser.add_argument("--culture-seed", type=int, default=7)
+    parser.add_argument("--cell-samples", type=int, default=48, help="splat samples per neuron")
+    parser.add_argument("--cell-radius", type=float, default=6.5, help="radius of one neuron, in pixels")
+    # Zero, and pinned here rather than left on the command line: the cut that
+    # was judged was rendered with the trace off. At 0.20 and above the slow
+    # layer lights every cell that has fired in the last second, which by the
+    # end of the clip is all of them, and the frame fills with an even carpet
+    # that buries the structure the layer was meant to sit under. `venation`
+    # shipped a look it did not record and re-rendering changed the cut; this
+    # does not repeat that.
+    parser.add_argument("--cell-trace", type=float, default=0.0,
+                        help="how bright tissue stays after the spike has gone")
+    parser.add_argument("--sector-size", type=int, default=480)
+    parser.add_argument("--sector-factor", type=int, default=2)
+    parser.add_argument("--sector-steps", type=int, default=900, help="cap; the colony stops at the dish wall")
+    parser.add_argument("--sector-founders", type=int, default=48, help="labelled strains in the inoculum")
+    parser.add_argument("--mutation", type=float, default=0.0022, help="chance a division founds a lineage")
+    parser.add_argument("--beneficial", type=float, default=0.16, help="fraction of those that divide faster")
+    parser.add_argument("--advantage", type=float, default=0.10, help="how much faster")
+    # Area, not radius, and this was decided by measurement rather than taste.
+    # Paced by radius the front advances at a steady speed and the change
+    # profile comes out comet-shaped -- 9.5% of the growth in the first quarter
+    # and 40.4% in the last -- but the colony spends the opening two seconds as
+    # a dot, and a dot advancing one cell of radius per frame changes almost no
+    # pixels. That cut measured 22.6% frozen frames with 52 of the 54 inside the
+    # first two seconds, which is the worst place a freeze can land. Equal area
+    # per frame is equal newly-lit pixels per frame, which is the thing the
+    # frozen-frame test actually measures: 5.4%, and 1.3% once the cover hold is
+    # discounted. The intermediate, area^0.75, splits the difference at 7.9%.
+    parser.add_argument("--pacing", type=float, default=1.0, help="0.5 paces by radius, 1.0 by area")
+    parser.add_argument("--inoculum", type=float, default=22.0, help="radius of the drop, in lattice cells")
+    parser.add_argument("--hue-step", type=float, default=0.26, help="how far a mutation moves along the ramp")
+    parser.add_argument("--tip-boost-front", type=float, default=1.35)
+    parser.add_argument("--tip-decay-front", type=float, default=26.0)
     parser.add_argument("--packing-dish", type=float, default=54.0, help="dish radius in cell widths")
     # Nothing tips over below this: measured contact load during free growth
     # tops out near 0.33, so a threshold of 0.45 keeps the monolayer intact
@@ -1108,7 +1568,7 @@ def parse_args() -> argparse.Namespace:
     # Stopped while a colony is still a dot inside its plaque. Left to 5% they
     # fill the clearing they grew in and the picture becomes blobs again.
     parser.add_argument("--plaque-until", type=float, default=0.035, help="stop once colonies cover this much")
-    parser.add_argument("--founders", type=int, default=200, help="resistant cells present before the phage")
+    parser.add_argument("--plaque-founders", type=int, default=200, help="resistant cells present before the phage")
     parser.add_argument("--landings", type=int, default=130)
     parser.add_argument("--landing-span", type=int, default=560, help="steps over which phage arrive")
     # The latent period sets how wide the bursting ring is, and the ring is

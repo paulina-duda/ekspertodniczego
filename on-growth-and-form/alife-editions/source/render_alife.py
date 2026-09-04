@@ -43,10 +43,12 @@ from typing import Callable
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+import automata
 import evolution
 import glow
 import lenia
 import loops as langton
+import motion
 import swarm
 
 
@@ -165,6 +167,22 @@ LINEAGE = [
 # the background, it is one of the two ways of failing and has to be visible.
 LADDER = [(96, 44, 208), (176, 40, 200), (255, 62, 138), (255, 150, 62), (255, 242, 214)]
 
+# How long ago an ant last stood on this cell, which is the only thing that
+# tells a road being laid right now from one abandoned four seconds ago. Like
+# LADDER it never reaches black, and for the same kind of reason: the far end
+# of this ramp is not empty grid, it is everything the colony has already
+# built, and a palette that fades it out would throw away the record and leave
+# two dozen bright points on a black field. Violet is the past, white is now.
+TRAFFIC = [(104, 38, 196), (178, 44, 186), (238, 66, 138), (255, 158, 66), (255, 246, 226)]
+
+# How many neighbours a particle has inside its own radius, ranked. This is the
+# only quantity the rule reads and the only one it acts on, so it is also the
+# whole anatomy of a cell: loose particles in the soup sit near the bottom of
+# the ramp, the ring that closes a cell in the middle, the core at the top.
+# Ranked rather than scaled because the count runs 0 to about 100 with a median
+# of 12 -- scaled, everything but a few cores would be one flat violet.
+MEMBRANE = [(22, 10, 52), (96, 40, 186), (214, 62, 156), (255, 162, 72), (255, 248, 232)]
+
 EDITIONS: dict[str, dict] = {
     "affinity": {
         "title": "Affinity",
@@ -193,6 +211,46 @@ EDITIONS: dict[str, dict] = {
             "twelve creatures, found by search",
         ),
         "hook": ("Every one of these was stable on its own.",),
+    },
+    "highway": {
+        "title": "Highway",
+        "slug": "highway_langtons-ant_alife",
+        "palette": TRAFFIC,
+        "exposure": 1.02,
+        "boost": 1.08,
+        # Where the log-density map is anchored. Visit counts are heavily
+        # skewed -- most cells that have been touched at all were touched once
+        # or twice, and a cell in the middle of a core is in the hundreds -- so
+        # this number decides how bright a road is, not how bright the frame
+        # is. Measured at the end of the run and printed by the timeline.
+        "reference_percentile": 92.0,
+        "caption": (
+            "Langton's ant (1986) · 24 of them, one grid",
+            "right on white · left on black · flip · step forward",
+            "about 10,000 steps of chaos, then a 104-step loop",
+            "colour is how long ago an ant stood here",
+        ),
+        "hook": (
+            "Every one of them builds the same road.",
+            "Nobody has proved why.",
+        ),
+    },
+    "protocell": {
+        "title": "Protocell",
+        "slug": "protocell_particle-motion_alife",
+        "palette": MEMBRANE,
+        "exposure": 1.06,
+        "boost": 1.12,
+        "caption": (
+            "primordial particle system (Schmickl 2016)",
+            "count the neighbours · turn · step forward",
+            "2,016 particles · three more every ten steps",
+            "colour is how many neighbours a particle has",
+        ),
+        "hook": (
+            "The rule has no membrane in it.",
+            "Everything on screen has one.",
+        ),
     },
     "cohort": {
         "title": "Cohort",
@@ -582,6 +640,172 @@ def soliton_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], n
 
     final_density, _ = fields_at(len(states) - 1)
     reference = float(np.percentile(final_density[final_density > 0], 92.0))
+    return draw, draw(1.0)
+
+
+def protocell_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], np.ndarray]:
+    """The primordial particle system, filmed at the scale a cell is legible at.
+
+    The piece has one real constraint and it pulls both ways. A cell is about
+    four interaction radii across, so the radius alone decides how big it is on
+    screen -- and the two tests want opposite things from that number. Filmed
+    small, the world holds dozens of cells and the profile is fine, but at
+    200 px they are specks (the first pitch of this failed exactly there).
+    Filmed large enough to read, the world holds so few that nothing
+    accumulates and the profile goes flat, which is `shoal`.
+
+    At radius 30 a cell is roughly 120 px on a 1080 px frame -- legible in the
+    grid thumbnail -- and the world holds about twenty of them. What makes that
+    scale work is the drive: a trickle of new particles keeps material arriving,
+    so cells keep condensing all the way through instead of in the first two
+    seconds. Measured over the clip: 3 / 8 / 13 / 15 / 22 cells, 26% of the
+    change in the first quarter and 37% in the last.
+    """
+    height, width = args.height, args.width
+    model = motion.PrimordialParticles(
+        width,
+        height,
+        args.soup_count,
+        radius=args.soup_radius,
+        seed=args.soup_seed,
+        seeds=args.soup_seeds,
+    )
+
+    frames = args.duration_frames - args.hold
+    rate = args.soup_total / frames
+    states: list[tuple[np.ndarray, np.ndarray]] = []
+    advanced = 0
+    for frame in range(frames):
+        target = int(round(rate * (frame + 1)))
+        model.step(target - advanced, inject=args.soup_inject)
+        advanced = target
+        states.append(
+            (model.position.astype(np.float32), model.neighbours.astype(np.int16))
+        )
+
+    print(
+        f"  protocell: {len(model.position):,} particles "
+        f"({args.soup_count:,} to start, {args.soup_inject} a step after that), "
+        f"{advanced:,} steps at {rate:.1f} per frame, "
+        f"{model.cells()} cells at the end, "
+        f"neighbours median {np.median(model.neighbours):.0f} / max {model.neighbours.max()}",
+        flush=True,
+    )
+
+    # The rank, built once off the last frame and applied to every frame, so a
+    # particle's colour moves when its own neighbourhood changes and not
+    # because the rest of the world did. Ranking per frame would make the
+    # colour a property of the camera.
+    final = states[-1][1]
+    span = int(final.max()) + 1
+    ladder = np.cumsum(np.bincount(np.clip(final, 0, span - 1), minlength=span)) / len(final)
+
+    offsets, stamp_weights = stamp(args.soup_body)
+    palette = glow.build_palette(spec["palette"])
+    caption = build_overlay(width, height, spec, args)
+    reference = 1.0
+
+    def frame_at(index: int) -> tuple[np.ndarray, np.ndarray]:
+        points, neighbours = states[index]
+        shade = ladder[np.clip(neighbours, 0, span - 1)].astype(np.float32)
+        colours = glow.sample_palette(palette, shade)
+        screen = (points[:, None, :] + offsets[None, :, :]).reshape(-1, 2)
+        return glow.splat(
+            width,
+            height,
+            screen,
+            np.repeat(colours, len(offsets), axis=0),
+            np.tile(stamp_weights, len(points)),
+        )
+
+    def draw(u: float) -> np.ndarray:
+        index = min(max(int(round(u * len(states))) - 1, 0), len(states) - 1)
+        colour_sum, density = frame_at(index)
+        return glow.compose(tone(colour_sum, density, reference, spec, args), caption)
+
+    _, final_density = frame_at(len(states) - 1)
+    reference = float(np.percentile(final_density[final_density > 0], 92.0))
+    return draw, draw(1.0)
+
+
+def highway_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], np.ndarray]:
+    """Langton's ants: a cellular automaton, so the grid is the picture.
+
+    Simulated at half resolution and doubled on the way out, like `soliton`.
+    One cell is a 2x2 block of pixels, which is what keeps a highway -- a line
+    exactly one cell wide -- a crisp two-pixel rule across the frame instead of
+    a dotted one.
+
+    **Paced by the clock**, which is the same exception `soliton` takes and for
+    a plainer reason: an ant takes one step per step. There is no scalar that
+    accelerates or stalls, so equal counts of steps already are equal amounts
+    of process, and a schedule built on anything else would only invent stutter
+    to fix a problem this model does not have.
+    """
+    height, width = args.height, args.width
+    grid_height, grid_width = height // 2, width // 2
+    colony = automata.Ants(
+        grid_width, grid_height, args.ants, seed=args.ant_seed, spread=args.ant_spread
+    )
+
+    # One banked state per played frame, indexed one to one below. The opening
+    # hold is the finished frame, so the growing part of the clip is what needs
+    # states and nothing has to be resampled.
+    frames = args.duration_frames - args.hold
+    decay = float(args.ant_recency)
+    states: list[tuple[np.ndarray, np.ndarray]] = []
+    # Travel has to be measured over a window, not over the run: the grid is a
+    # torus 540 cells across, so displacement from the start saturates and says
+    # nothing. A highway moves 2.83 cells per 104 steps -- 0.027 a step -- and
+    # an ant churning inside its own core covers a fraction of that.
+    window = 4 * args.ant_steps
+    was_at = colony.positions()
+    rolling: list[int] = []
+    for frame in range(frames):
+        colony.step(args.ant_steps)
+        if frame % 4 == 3:
+            rolling.append(int((colony.travelled(was_at) > 0.55 * 0.027 * window).sum()))
+            was_at = colony.positions()
+        age = colony.steps - colony.last_seen.astype(np.float64)
+        recency = np.exp(-age / decay)
+        recency[colony.last_seen == 0] = 0.0
+        states.append(
+            (
+                np.minimum(colony.visits, 65535).astype(np.uint16),
+                (recency * 255.0).astype(np.uint8),
+            )
+        )
+
+    touched = colony.touched()
+    counts = colony.visits[colony.visits > 0]
+    reference = float(np.percentile(counts, spec["reference_percentile"]))
+    print(
+        f"  highway: {args.ants} ants, {colony.steps:,} steps, "
+        f"{touched:,} cells touched ({touched / (grid_height * grid_width):.0%} of the grid), "
+        f"visits median {np.median(counts):.0f} / p92 {reference:.0f} / max {counts.max()}, "
+        f"ants on a road {np.mean(rolling[:4]):.1f} at the start -> "
+        f"{np.mean(rolling[-4:]):.1f} at the end of {args.ants}",
+        flush=True,
+    )
+
+    palette = glow.build_palette(spec["palette"])
+    caption = build_overlay(width, height, spec, args)
+
+    def fields_at(index: int) -> tuple[np.ndarray, np.ndarray]:
+        visits, recency = states[index]
+        return (
+            np.repeat(np.repeat(visits.astype(np.float32), 2, axis=0), 2, axis=1)[:height, :width],
+            np.repeat(np.repeat(recency.astype(np.float32) / 255.0, 2, axis=0), 2, axis=1)[
+                :height, :width
+            ],
+        )
+
+    def draw(u: float) -> np.ndarray:
+        index = min(max(int(round(u * len(states))) - 1, 0), len(states) - 1)
+        density, recency = fields_at(index)
+        colour_sum = glow.sample_palette(palette, recency) * density[:, :, None]
+        return glow.compose(tone(colour_sum, density, reference, spec, args), caption)
+
     return draw, draw(1.0)
 
 
@@ -1379,6 +1603,8 @@ def replicator_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray]
 TIMELINES = {
     "affinity": affinity_timeline,
     "soliton": soliton_timeline,
+    "highway": highway_timeline,
+    "protocell": protocell_timeline,
     "cohort": cohort_timeline,
     "shoal": shoal_timeline,
     "descent": descent_timeline,
@@ -1479,6 +1705,35 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--matrix-rank", type=int, default=0, help="which of the ranked tables to use")
     parser.add_argument("--candidates", type=int, default=24)
     parser.add_argument("--search-seed", type=int, default=7)
+    # 2,016 particles is 0.035 a square radius, the density the sweep settled
+    # on: thinner and the world never accumulates cells, thicker and it has
+    # organised everything it has by the end of the first quarter.
+    parser.add_argument("--soup-count", type=int, default=2016)
+    # The radius is the whole scale of the picture: a cell comes out about four
+    # radii across, so 30 px puts a cell at roughly 120 px on a 1080 px frame.
+    parser.add_argument("--soup-radius", type=float, default=30.0)
+    parser.add_argument("--soup-total", type=int, default=3000, help="steps in the whole run")
+    # The drive. 0.3 a step is the smallest trickle that keeps cells condensing
+    # for the whole clip: at 0 the count stalls (13 at the halfway point and 13
+    # at the end), at 1.0 the world floods and the cells merge back into mush.
+    parser.add_argument("--soup-inject", type=float, default=0.3)
+    parser.add_argument("--soup-seeds", type=int, default=3, help="cells present at the start")
+    parser.add_argument("--soup-seed", type=int, default=11)
+    parser.add_argument("--soup-body", type=float, default=3.0)
+    # Twenty-four, measured rather than picked: at 60 the chaotic cores merge
+    # into one grey mass well before the clip ends and the roads have nothing
+    # to be seen against; at 24 they stay separable for the whole 8 s.
+    parser.add_argument("--ants", type=int, default=24)
+    # 260 x 229 frames = 59,540 steps. A lone ant needs about 10,000 to leave
+    # its mess and start a highway, so the first roads launch around frame 40
+    # and the rest keep launching for the length of the clip.
+    parser.add_argument("--ant-steps", type=int, default=260, help="ant steps per frame")
+    parser.add_argument("--ant-seed", type=int, default=3)
+    parser.add_argument("--ant-spread", type=float, default=0.30, help="starting band, of the frame")
+    # Steps for a trail to fade from white back into the violet of everything
+    # already built. About a second of clip: long enough to see the bright tip
+    # travelling down a road, short enough that the road behind it is history.
+    parser.add_argument("--ant-recency", type=float, default=8000.0)
     parser.add_argument("--lenia-radius", type=float, default=30.0)
     parser.add_argument(
         "--lenia-total", type=int, default=480,

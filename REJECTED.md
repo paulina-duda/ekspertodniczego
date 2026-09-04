@@ -1,20 +1,16 @@
 # Rejected, and which test it failed
 
-Tests are the four in [`BRIEF.md`](BRIEF.md), applied by `/pitch`: **T1**
-change profile · **T2** something to watch · **T3** density · **T4**
-legibility. `subject` means it failed the account's premise rather than a test.
+The four tests are in [`BRIEF.md`](BRIEF.md), applied by `/pitch`: **T1** profile · **T2** watch · **T3** density · **T4** legibility — `subject` failed the premise.
 
 **This is a record, not a brief.** `/pitch` does not read it up front — the
-failure patterns live in BRIEF's tests and the standing bans in BRIEF's
-editions section, so a growing file is not paid for on every pitch. It is
-grepped when a surviving candidate looks like a relative of something here.
+failure patterns are in BRIEF's tests — and only greps it when a survivor
+looks like a relative of something here.
 
 ### How it stays small — capped at 80 lines
 
-- **One table row per rejection**, and that row is permanent. It is cheap.
-- **Prose only for a lesson that changed a rule**, and once the rule is written
-  into `BRIEF.md` or a skill, cut the prose here down to a sentence.
-- **Never restate a test.** The tests live in `BRIEF.md`.
+One table row per rejection, permanent and cheap. Prose only for a lesson that
+changed a rule, cut to a sentence once that rule is in `BRIEF.md` or a skill.
+Never restate a test — they live in `BRIEF.md`.
 
 | Name | What it was | Failed | Why, in one clause |
 | --- | --- | --- | --- |
@@ -30,6 +26,25 @@ grepped when a surviving candidate looks like a relative of something here.
 | `liesegang` | periodic precipitation rings | **build** | eight parameter sweeps never separated into bands; first precipitate drains the dish |
 | Spirographs / harmonic roulettes | parametric curves, incl. a Venus-resonance and phyllotaxis draft | **subject** | nothing emerges — the only edition with no surprise about the world in it |
 | Conway's Life | the classic binary automaton | **T3** | sparse binary cells have no mass and no density gradient; Lenia does the job |
+| `kaleidoscope` | Nowak & May's spatial prisoner's dilemma, cooperators against defectors | **T3, T4** | two states and no gradient — the churn field is a flat grey square, the state field is static in a box |
+| `aggregation` | *Dictyostelium* cAMP relay, T1–T3 all measured clean | **T4** | first cut clashed house rule 6 (magenta vs lime); re-cut fixed the palette and it still reads as flowers, not cells — `cell_radius` too small for the strokes to fuse into mass under either look. The blocked-anisotropy fix and the model are real; the picture never was |
+| `sector` | microbial range expansion, sector boundary competition, T1 measured flat and clean | **T2** | 25/25/25/25% profile and 5.4% frozen, and it still reads as one colour wedge disc inflating — the wedge layout is set almost at once and the real competition (boundaries wandering, lineages going extinct) is a front too thin to see at video scale. Numbers passed; the shape never changed, only its radius |
+| `ripple` | *Myxococcus* counter-propagating wave trains | **T1** | ordered by step 60 of 1200 and only decays after — 0.082 / 0.734 / 0.520 / 0.424 / 0.388 |
+| `nematic` | a rod-shaped bacterial monolayer ordering itself as it grows | **T4** | coloured confetti at full size, grey-green speckle at 200 px — `aggregation`'s failure, strokes too small to fuse |
+| `stripe` | zebrafish pigment cells, Turing with cells as the morphogens | **T1, T4** | 88.1% of the change in the first quarter, 0.8% in the last; the still is a labyrinth of filaments, not stripes — **answered and shipped 2026-09-04**: growth linear in radius and inhibition at 1.70 give 22.0% / 28.0% and boundary-over-radius 1.80× against a 2.16× ceiling. This row is the first attempt, not the piece |
+| `swarm` | *Proteus mirabilis* terraced swarming, the consolidate-and-migrate cycle | **T2, T4** | two formulations and 24 parameter sets gave one flood and never a staircase — a delayed excitable front in a continuum is a travelling wave, not a beat — and the finished frame is a featureless disc, interior density p90/p10 2.85 |
+| `mega` | the MEGA-plate: a colony evolving its way across bands of rising antibiotic | **T4** | T1 is comet-clean (38.3% first quarter, 14.7% last, 0.4% frozen) and the breakthroughs are real events, but each band is founded by one mutant whose clone then sweeps it, so the finished plate is 90–100% lit in four flat colour bars; no mutation rate buys both the event and the texture |
+| `band` | Budrene-Berg chemotactic spot arrays in *E. coli* | **build** | 42 parameter sets over four formulations gave two outcomes and nothing between — one smooth disc, or 400–1,500 blobs 1–3 px across; scaling `Dn` and χ together to resolve a wavelength deletes the instability rather than widening the spots |
+| `chirality` | tilted nodal cilia rectifying rotation into a leftward flow | **T2** | T1 is clean (25.4% first quarter, 24.4% last, a driven flow) and there is no event in it — the specks drift one way at a constant rate, and the pit never changes shape |
+| `intercalation` | germband convergent extension, cells swapping neighbours | **T2** | aspect 1.14→1.76 passes T1 at 24.7/16.7%, but the median cell travels 1.80 cell diameters in 8 s and one exchange is 26 px wide — the arc is real and every event in it is smaller than the grid thumbnail |
+| `crest` | neural crest chasing placodes up a gradient the crest itself eats | **T4** | the chase is measured (placode cluster 10.3 body lengths, profile 13.5/30.3%) and both cuts fail the picture: blobs give two speckle clouds at 3.6% lit pixels, trails give a scribble field stacked against the walls |
+| `spindle` | mitotic search and capture: two poles guessing until every chromosome is held | **T4** | passed the gate on numbers (31.0/19.0% profile, 0.0% still frames, minimum delta 2.760) and Paulina rejected the finished cut cold — ugly, and no process visible in it. Four drawings of the chromosomes and none made the search legible; the picture is two starbursts and a white band |
+| `plume` | bioconvection — algae swim up until the water they have crowded falls back through them | **T1** | onset at t=1.45 of 35 and noise after it: 86% of the change in the first quarter, and the developed regime drifts less (+0.013 rms) than it fluctuates (sd 0.053) |
+| `clot` | a platelet plug built on an injured wall and torn off again by the flow that feeds it | **T2** | the plug grows cleanly (13.6% first quarter, 18.3% last) and the tear-off stays small — 195 fragments washed away, 7 of them above 2% of the clot, the largest 12.9% |
+| `ridge` | fingerprint primary ridges — a Turing pattern gated by fronts from the nail furrow, the pad apex and the crease | **subject, cut** | wrong subject for the account, and a reveal the gate could not see: T1 passes at 23.5/26.5% because crest length accumulates to the end, yet only 1.6% of the pad changes per frame — **53.1% still frames, longest run 90**, seconds 0–2 frozen solid |
+| `facet` | the morphogenetic furrow crystallising a Drosophila compound eye | **T4** | the lattice packs but never crystallises — ψ₆ 0.507–0.740 over seven parameter sets against 0.887 for a hex lattice with 6% jitter; drawn cell by cell it is speckle, and the continuum form of lateral inhibition gives stripes, not founders |
+| `cortex` | inside-out cortical lamination, 27,000 neurons climbing radial glia | **T4** | best profile of its round (17.0/29.3%, birth-to-depth correlation +0.900) and the still is a uniform grain rectangle — 76.7% lit, a grey block at 200 px, and the climbers are invisible inside the plate they climb through |
+| `culture` | dissociated cortical neurons wiring into dish-wide bursts, Wagenaar 2006 | **T4** | Paulina cold on the finished cut: reads as blinking dots, not as a network wiring itself or bursting together — the thing the piece is about never becomes visible |
 | Segment edition | `segment-editions/` | **subject** | ugly; dropped entirely |
 | Attractors, proteins | posted early, since taken down | **subject** | mathematics and structural biology, not biology-as-algorithm |
 | `sector` | neutral drift at an expanding colony frontier, lineages lost to chance | **T1** | half the lineages gone in the first quarter, then flat — 14 / 7 / 7 / 7 / 7 |
@@ -41,21 +56,17 @@ grepped when a surviving candidate looks like a relative of something here.
 | `cooperation` | Nowak-May spatial prisoner's dilemma, cooperators and defectors on a lattice | **T3, T4** | two-valued cells hand the density pipeline a flat block; frame one reads as a QR code |
 | `hypercycle` | Boerlijst-Hogeweg: five replicators in a catalytic cycle, spirals as the unit of selection | **build** | 27 parameter sets and three 3,000-step runs made confetti, never a wave — autocorrelation has no negative lobe, and the sparse settings go extinct |
 
-A dozen further candidates were dropped on **T1** alone in the 2026-08
-shortlist and are not listed: the pattern is always coarsening, filling,
-settling or remodelling.
-
-**`condensate` is the one worth remembering.** It was pushed from 146k steps to
-1.2M and given three pacing schemes; the stutter went 29% → 5% and the droplets
-really do end up fat. All of that engineering was correct and none of it changed
-what the clip is. **A T1 failure is not a bug to be fixed by working harder on
-the render** — the process is the problem.
+A dozen more went on **T1** alone in the 2026-08 shortlist: always coarsening,
+filling, settling or remodelling. **`condensate`** took 1.2M steps and three
+pacing schemes to fix its stutter, changing nothing about the clip — a gate
+failure is not a bug to work harder on. **`spindle`** passed a T4 nobody ran,
+shown with its subject named; the rule is now in `BRIEF.md`'s T4.
 
 ---
 
 ## Kept as groundwork rather than deleted
 
-A rejection is about the grid, not the code. What survived, and why:
+What survived a rejection, and why:
 
 | From | What is reusable |
 | --- | --- |
@@ -67,9 +78,11 @@ A rejection is about the grid, not the code. What survived, and why:
 | `shoal` | the sliding-lane camera and the trajectory survey. The **lane** shape stays in the `reel` skill and may yet carry a different subject |
 | `cohort` | the arithmetic: moving pixels are *creatures × body area × body-lengths travelled*, and isolated panels make that product flat |
 | `descent` | the genetic algorithm itself. The search was worth running; none of its three tellings became a reel |
+| `aggregation` | the isotropic nine-point laplacian, now in `on-growth-and-form/source/CLAUDE.md` — it fixed a real grid artefact and outlives this piece |
+| `spindle` | the search-and-capture model, and the `sample_limit` fix in `tree_samples` — the 32-sample ceiling drew any frame-crossing segment as one dot every 56 px, and that was a live bug for every long-segment edition |
+| `sector` | the Gaussian-neighbourhood isotropic growth rule and the O(1) frame recovery by arrival-step (one `int32` array for the whole clip, no per-state banking) |
 
 ## Delete the render, keep the code
 
-A rejected cut does not stay on disk. The mp4 and its cover come off; the
-model, the renderer and any weights stay, and the row above is the record. Disk
-is not an archive — `REJECTED.md` is.
+The mp4 and its cover come off; the model, the renderer and any weights stay,
+and the row above is the record. Disk is not an archive — this file is.

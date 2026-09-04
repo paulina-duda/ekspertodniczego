@@ -12,6 +12,7 @@ processes filmed as the algorithms they are.
 | cutting or re-cutting a reel | `/reel` |
 | writing the hook, data block or caption | `/hook` |
 | verifying a finished mp4 | `/check` |
+| **writing model or renderer code** | [`on-growth-and-form/source/CLAUDE.md`](on-growth-and-form/source/CLAUDE.md) — numerical and drawing gotchas |
 | finding out what exists and what is next | [`PLAN.md`](PLAN.md) |
 | checking whether an idea was already turned down | [`REJECTED.md`](REJECTED.md) |
 
@@ -34,6 +35,10 @@ Python 3.12, numpy, scipy, pillow, torch 2.11+cu128.
 | RTX 5090 | Blackwell `sm_120` | older torch wheels install fine and only fail on the first GPU call |
 | RTX 4070 Laptop | Ada `sm_89` | the smaller card of the two — a grid or particle count that fits the other may not fit here |
 
+Neither is faster in a way that changes a decision here: the renders in
+`PLAN.md` and the measurements in `REJECTED.md` are not tied to which machine
+made them, and a piece rejected on one card is rejected on the other.
+
 Check which one you are on before trusting a timing or a memory figure:
 
 ```bash
@@ -46,7 +51,8 @@ python -c "import torch; print(torch.cuda.get_device_name(0), 'sm_%d%d' % torch.
   `glow.py`, and `render_biomorphs.py`, which renders the **wetware** pieces.
 - `on-growth-and-form/<edition>-editions/` — one directory per edition, each
   with its own `README.md` (the long-form record of what each piece cost),
-  `source/`, and `instagram/phone-9x16/` for the cuts. Four are live;
+  `CAPTION.md` (the copy that goes under the post), `source/`, and
+  `instagram/phone-9x16/` for the cuts. Four are live;
   `learned-editions/` is **parked** — do not propose into it.
 - `on-growth-and-form/fonts/` — IBM Plex Mono, vendored so a clone renders
   identically without anyone installing anything.
@@ -98,8 +104,3 @@ Each of these cost real time at least once.
   have been caught by ten minutes of measurement. That is what `/pitch` is for.
 - **Say what was measured and what the number was.** If something failed, say
   so plainly with the output rather than calling it a minor issue.
-- A **variant** cut must never replace the cut it varies — `--tag` exists so it
-  lands alongside.
-- **A rejected cut comes off the disk.** Delete the mp4 and its cover; keep the
-  model, the renderer and any weights. `REJECTED.md` is the archive, not the
-  filesystem.

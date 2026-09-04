@@ -272,6 +272,14 @@ class DifferentialGrowth:
     wherever an edge stretches too far. Length has to go somewhere and the only
     direction left is sideways, so the curve folds -- the same argument that
     explains a brain's gyri, a coral's rim and the villi of a gut.
+
+    Pass `wall` to run the same rule inside a circle it may not grow past,
+    which is the cortex case rather than the coral one: growth is free until
+    the form reaches the boundary, and after that lengthening can only be paid
+    for by crowding inward. Growth here is stretch-driven -- an edge subdivides
+    when it is pulled past `spacing` -- so confinement does not just redirect
+    the growth, it slows it. That is measured and it is why the wall belongs
+    late in a clip rather than early.
     """
 
     def __init__(
@@ -285,6 +293,8 @@ class DifferentialGrowth:
         repulsion: float = 0.62,
         node_limit: int = 90_000,
         seed: int = 20260814,
+        wall: float | None = None,
+        wall_stiffness: float = 0.35,
     ) -> None:
         angle = np.linspace(0.0, 2.0 * math.pi, nodes, endpoint=False)
         generator = np.random.default_rng(seed)
@@ -299,6 +309,15 @@ class DifferentialGrowth:
         self.repulsion = repulsion
         self.node_limit = node_limit
         self.generator = generator
+        # An optional circular wall the curve may not grow past -- a skull, in
+        # effect. It is a *soft* restoring force that only switches on outside
+        # the radius: a hard clamp stacks every arriving node on the same
+        # circle and draws a bright rim the rule never made. With this the
+        # boundary presses flat but stays ragged (measured: about 8 px of
+        # spread on the outermost shell at the shipped scale).
+        self.centre = np.array(centre, dtype=np.float32)
+        self.wall = wall
+        self.wall_stiffness = wall_stiffness
         # Age in growth steps, so the render can show which folds are old.
         self.age = np.zeros(len(self.points), dtype=np.float32)
         self.step_index = 0
@@ -331,6 +350,13 @@ class DifferentialGrowth:
                 np.add.at(push, pairs[:, 1], -strength)
 
             points = points + self.attraction * pull + self.repulsion * push
+            if self.wall is not None:
+                radial = points - self.centre
+                distance = np.linalg.norm(radial, axis=1, keepdims=True)
+                excess = np.maximum(distance - self.wall, 0.0)
+                points = points - self.wall_stiffness * excess * (
+                    radial / np.maximum(distance, 1e-6)
+                )
             self.points = points.astype(np.float32)
             self._resample()
 
@@ -1600,8 +1626,8 @@ class Aggregation:
         epsilon: float = 0.05,
         diffusion: float = 1.0,
         dt: float = 0.10,
-        relay: float = 0.035,
-        crowd: float = 3.4,
+        relay: float = 0.045,
+        crowd: float = 4.5,
         sensitivity: float = 14.0,
         rising: float = 0.004,
         wander: float = 0.10,
@@ -1609,6 +1635,8 @@ class Aggregation:
         afterglow: float = 26.0,
         pacemakers: int = 7,
         period: int = 86,
+        trail_stride: int = 16,
+        trail_points: int = 6,
         seed: int = 20260830,
     ) -> None:
         from scipy.ndimage import gaussian_filter
@@ -1631,6 +1659,32 @@ class Aggregation:
         # spreading from a point; every one of them was already an animal.
         self.x = generator.uniform(0.0, width, cells).astype(np.float32)
         self.y = generator.uniform(0.0, height, cells).astype(np.float32)
+        # How far the signal has carried each cell, summed as a vector so it
+        # is net movement rather than path length. This is the piece's argument
+        # in one number: a wave passes over every cell in both directions, and
+        # a cell ends up somewhere only because it answers half of one. The
+        # wander is deliberately left out -- it is noise, every cell has the
+        # same amount of it, and including it floods the measurement.
+        self.drift = np.zeros((cells, 2), dtype=np.float32)
+        # The last stretch of each cell's actual path, kept as a handful of
+        # positions rather than one lagging point. Drawing that instead of a
+        # dot is what turns a stream into a filament instead of a heap of
+        # grain, and a cell that is not going anywhere collapses to the point
+        # it always was -- which is the honest difference between a recruited
+        # amoeba and one still sitting where it starved.
+        #
+        # It has to be a real path and not a chord. These cells move on the
+        # rising edge of a wave and stop in between, so over 96 steps a cell
+        # walks in a series of pulls and a straight line between the endpoints
+        # would draw a journey nobody took. Sized by measurement: at a lag of
+        # 8 steps the median trail is 0.36 px and invisible; at 96 it is
+        # 2.78 px with a 90th percentile of 12.2, and half the lawn has a
+        # streak over 3 px.
+        self.trail_stride = trail_stride
+        self.trail_points = trail_points
+        here = np.column_stack((self.x, self.y)).astype(np.float32)
+        self.history = np.repeat(here[None, :, :], trail_points, axis=0)
+        self.trail_phase = 0.0
         # How recently this cell last took a step, as a decaying memory. The
         # excited state passes in a moment, and without a phosphor the wave is
         # a two-pixel thread with no record of where it has been.
@@ -1649,10 +1703,24 @@ class Aggregation:
 
     @staticmethod
     def _laplacian(field: np.ndarray) -> np.ndarray:
-        return (
+        """The isotropic nine-point stencil, (1/6)[[1,4,1],[4,-20,4],[1,4,1]].
+
+        Not a refinement. A five-point laplacian carries the square grid's own
+        symmetry into the wave front, the front runs faster on the diagonals
+        than along the axes, and every aggregate comes out as a four-armed X --
+        the mesh showing through, not anything an amoeba does. It is visible at
+        a glance and it does not show up in a four-fold FFT statistic, which
+        reads 0.039 on the broken version. Look at the picture.
+        """
+        orthogonal = (
             np.roll(field, 1, 0) + np.roll(field, -1, 0)
-            + np.roll(field, 1, 1) + np.roll(field, -1, 1) - 4.0 * field
+            + np.roll(field, 1, 1) + np.roll(field, -1, 1)
         )
+        diagonal = (
+            np.roll(np.roll(field, 1, 0), 1, 1) + np.roll(np.roll(field, 1, 0), -1, 1)
+            + np.roll(np.roll(field, -1, 0), 1, 1) + np.roll(np.roll(field, -1, 0), -1, 1)
+        )
+        return (4.0 * orthogonal + diagonal - 20.0 * field) / 6.0
 
     def _bins(self) -> tuple[np.ndarray, np.ndarray]:
         row = np.clip((self.y / self.divisor).astype(np.int32), 0, self.rows - 1)
@@ -1715,8 +1783,22 @@ class Aggregation:
             np.maximum(self.lit, np.minimum(speed / self.speed_limit, 1.0), out=self.lit)
 
             jitter = self.wander * self.generator.standard_normal((2, len(self.x))).astype(np.float32)
-            self.x = np.clip(self.x + step_x + jitter[0], 0.0, self.width - 1e-3).astype(np.float32)
-            self.y = np.clip(self.y + step_y + jitter[1], 0.0, self.height - 1e-3).astype(np.float32)
+            # The medium is periodic -- the laplacian rolls -- so the lawn has
+            # to be periodic too. Clamping instead stacks cells against the
+            # frame edge and draws a bright rim there, a structure the rule
+            # never made. Clamped after the modulus because float32 `np.mod`
+            # can return exactly the modulus for a value a hair below zero.
+            self.drift[:, 0] += step_x
+            self.drift[:, 1] += step_y
+            x = np.mod(self.x + step_x + jitter[0], self.width)
+            y = np.mod(self.y + step_y + jitter[1], self.height)
+            self.x = np.clip(x, 0.0, self.width - 1e-3).astype(np.float32)
+            self.y = np.clip(y, 0.0, self.height - 1e-3).astype(np.float32)
+
+            if self.step_index % self.trail_stride == 0:
+                self.history[:-1] = self.history[1:]
+                self.history[-1] = np.column_stack((self.x, self.y))
+            self.trail_phase = (self.step_index % self.trail_stride) / self.trail_stride
 
     @property
     def count(self) -> int:
@@ -1726,6 +1808,46 @@ class Aggregation:
         """Positions, and how recently each cell last stepped."""
         points = np.column_stack((self.x, self.y)).astype(np.float32)
         return points, np.clip(self.lit, 0.0, 1.0).astype(np.float32)
+
+    def trails(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Each cell's recent path, plus its colour and its phosphor.
+
+        Returns the path as `(points + 1, cells, 2)` -- oldest first, the cell's
+        current position last -- then how far the signal has carried it and how
+        recently it stepped. Segments crossing the frame edge come back the
+        width of the plate and are the caller's to drop: the cell is one cell,
+        but the line between its two sides is a stripe nothing walked.
+        """
+        here = np.column_stack((self.x, self.y)).astype(np.float32)
+
+        # The buffer only takes a sample every `trail_stride` steps, so read
+        # straight out it is a polyline that jumps once every stride and holds
+        # still in between -- which the render shows as a stutter, 15.1% frozen
+        # with every one of those frames in the opening two seconds. Resampling
+        # the stored path at a continuously advancing offset makes the whole
+        # trail slide along itself instead, one frame at a time.
+        size = np.array([self.width, self.height], dtype=np.float32)
+        older, newer = self.history[:-1], self.history[1:]
+        step = newer - older
+        step -= np.round(step / size) * size          # shortest way round the torus
+        slid = np.mod(older + self.trail_phase * step, size).astype(np.float32)
+        path = np.concatenate((slid, here[None, :, :]), axis=0).astype(np.float32)
+
+        travel = np.linalg.norm(self.drift, axis=1).astype(np.float32)
+        return path, travel, np.clip(self.lit, 0.0, 1.0).astype(np.float32)
+
+    def swarm(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Positions, how far the signal has carried each cell, and its phosphor.
+
+        Three separate quantities because they do three separate jobs in the
+        render: where, what colour, how bright. Brightness is the phosphor, so
+        a wave sweeping the plate is a wave sweeping the plate; hue is the
+        distance travelled, so a cell that has been recruited into a stream
+        looks different from one still sitting where it starved.
+        """
+        points = np.column_stack((self.x, self.y)).astype(np.float32)
+        travel = np.linalg.norm(self.drift, axis=1).astype(np.float32)
+        return points, travel, np.clip(self.lit, 0.0, 1.0).astype(np.float32)
 
 
 class Comet:
@@ -1859,6 +1981,376 @@ class Comet:
         keep = real & jump
         shade = np.repeat(1.0 - rung / max(self.length - 2, 1), live).reshape(self.length - 1, live).T
         return head[keep], tail[keep], shade[keep].astype(np.float32)
+
+
+class Spindle:
+    """A cell finds its own chromosomes by guessing, and checks the guesses.
+
+    A chromosome has to be attached to both poles of the spindle before the
+    cell is allowed to pull it apart, and nothing in the cell knows where the
+    chromosomes are. What it does instead is guess: each pole throws out
+    microtubules in every direction, each one grows for a while, gives up at
+    random and shrinks all the way back, and the whole population is replaced
+    over and over. A filament that happens to run into a kinetochore -- the
+    plate a chromosome presents on each of its two faces -- stops being
+    disposable and becomes a fibre under tension. That is search and capture,
+    and it is a random search with a check on the answer rather than a plan.
+
+    Two things here are not decoration. The first is that the search is
+    biased: chromatin holds a gradient of RanGTP around itself that lowers the
+    catastrophe rate of any microtubule that strays close, so filaments live
+    longer exactly where the targets are. Without it a blind search does not
+    finish inside a mitosis, which is the standing objection to naive
+    search-and-capture, and it does not finish inside this clip either --
+    measured, at 27 of 92 kinetochores held after a full run.
+
+    The second is that being attached is not the same as being right. Both
+    sisters can be caught by the same pole, which would send both copies of a
+    chromosome into one daughter cell; that attachment carries no tension, and
+    an untensioned attachment is released again. So the back half of the run
+    is not more capturing, it is the cell taking wrong answers apart -- and it
+    is why the last chromosome reaches the plate as late as it does.
+
+    Colour is how long a filament has survived. Almost every microtubule in
+    the frame is seconds old; the ones that found something stop being torn
+    down, so a k-fibre lights up simply by lasting.
+    """
+
+    def __init__(
+        self,
+        height: int,
+        width: int,
+        chromosomes: int = 46,
+        per_pole: int = 380,
+        radius: float = 460.0,
+        separation: float = 250.0,
+        seed: int = 20260902,
+    ) -> None:
+        generator = np.random.default_rng(seed)
+        self.generator = generator
+        self.height, self.width = height, width
+        # The model works in its own units and is drawn through one scale, so
+        # the numbers below are the ones the gate measured rather than a set
+        # re-derived in pixels. The pole axis stands up the portrait frame:
+        # model x becomes screen y, which is the only sane way to put an
+        # object this elongated in 9:16.
+        self.scale = height / 960.0
+        self.radius = radius
+        self.separation = separation
+        self.count = per_pole * 2
+        self.chromosomes = chromosomes
+        self.step_index = 0
+
+        self.pole = np.repeat([0, 1], per_pole)
+        self.theta = generator.uniform(0.0, 2.0 * math.pi, self.count)
+        self.length = generator.uniform(0.0, 60.0, self.count)
+        self.growing = np.ones(self.count, bool)
+        self.age = np.zeros(self.count, dtype=np.int32)
+        self.held = np.full(self.count, -1)          # which kinetochore, or -1
+
+        angle = generator.uniform(0.0, 2.0 * math.pi, chromosomes)
+        spread = 0.60 * radius * np.sqrt(generator.uniform(0.02, 1.0, chromosomes))
+        self.centre = np.column_stack((spread * np.cos(angle), spread * np.sin(angle)))
+        self.phi = generator.uniform(0.0, 2.0 * math.pi, chromosomes)
+        self.arm = 26.0
+        # The drawn body: half-length across the axis, and the half-thickness
+        # of one strand. The two chromatids sit at 0.42 of the arm either side
+        # of the centre, close enough to read as one body with a seam down it
+        # and far enough that the seam is visible at 200 px.
+        self.span, self.waist = 22.0, 3.6
+        # Its own generator: the drawing must not pull numbers out of the
+        # stream the run is measured on.
+        self.coil = self._chromatids(np.random.default_rng(seed + 1))
+        self.kin_pole = np.full((chromosomes, 2), -1)
+        self.kin_mt = np.full((chromosomes, 2), -1)
+        self.events: list[tuple[int, str]] = []
+
+        # Dynamic instability, per step. Growth is slower than shrinkage
+        # because it is: a microtubule builds at a few micrometres a minute
+        # and comes apart an order faster once it starts.
+        self.grow_rate, self.shrink_rate = 3.0, 5.0
+        self.catastrophe, self.rescue, self.cortex = 0.030, 0.012, 0.35
+        # RanGTP: how close counts as near chromatin, and what it does to the
+        # catastrophe rate there. 0.22 was chosen by sweep -- at 1.0 (no
+        # gradient) the search stalls at 27 of 92, at 0.30 it finishes inside
+        # the first half of the clip.
+        self.ran, self.ran_gain = 130.0, 0.22
+        self.capture = 10.0
+        self.poleward, self.congress, self.glide = 1.2, 1.6, 1.5
+        self.release = 0.010
+        self.eject = 46.0
+
+
+    def _chromatids(self, generator) -> np.ndarray:
+        """One sampled body in local coordinates: two coiled strands.
+
+        Sampled finer than a pixel along and across, so a strand fills rather
+        than beading, and jittered a little so the two are not a printed pair.
+        """
+        step = 0.8 / self.scale
+        along = np.arange(-self.span, self.span + 1e-9, step)
+        thickness = np.arange(-self.waist, self.waist + 1e-9, step)
+        points = []
+        for side in (-1.0, 1.0):
+            offset = side * 0.42 * self.arm
+            wobble = 1.3 * np.sin(along * (math.pi / self.span) * 2.0 + generator.uniform(0, 6.2))
+            taper = np.sqrt(np.clip(1.0 - (along / self.span) ** 2, 0.0, 1.0)) ** 0.35
+            for across in thickness:
+                keep = np.abs(across) <= self.waist * taper
+                points.append(np.column_stack((
+                    along[keep], np.full(keep.sum(), offset) + wobble[keep] + across
+                )))
+        return np.concatenate(points).astype(np.float32)
+
+    # -- geometry -----------------------------------------------------------
+    def poles(self) -> np.ndarray:
+        """The centrosomes separate over the first third and then hold."""
+        travel = min(1.0, self.step_index / 300.0)
+        distance = 60.0 + (self.separation - 60.0) * (travel * (2.0 - travel))
+        return np.array([[-distance, 0.0], [distance, 0.0]])
+
+    def kinetochores(self) -> np.ndarray:
+        """Two per chromosome, back to back, facing opposite ways."""
+        facing = np.column_stack((np.cos(self.phi), np.sin(self.phi)))
+        return np.stack(
+            (self.centre + self.arm * facing, self.centre - self.arm * facing), axis=1
+        )
+
+    def tips(self) -> np.ndarray:
+        base = self.poles()[self.pole]
+        along = np.column_stack((np.cos(self.theta), np.sin(self.theta)))
+        return base + self.length[:, None] * along
+
+    def _ejection(self, point: np.ndarray, poles: np.ndarray) -> np.ndarray:
+        """The polar ejection force: an aster pushes chromosome arms away.
+
+        It is what keeps a singly-attached chromosome off its own pole, and
+        that matters mechanically -- a chromosome sitting on a pole hides the
+        free sister from the other pole, and the run deadlocks. Measured: with
+        no ejection force, 2 of 18 chromosomes ever bi-orient.
+        """
+        push = np.zeros(2)
+        for pole in poles:
+            offset = point - pole
+            distance = np.linalg.norm(offset) + 1e-6
+            push += self.eject * offset / distance / distance
+        return push
+
+    # -- the rule -----------------------------------------------------------
+    def step(self, count: int = 1) -> None:
+        generator = self.generator
+        for _ in range(count):
+            self.step_index += 1
+            poles = self.poles()
+            kinetochores = self.kinetochores()
+            self.age += 1
+
+            free = self.held < 0
+            growing = free & self.growing
+            shrinking = free & ~self.growing
+            self.length[growing] += self.grow_rate
+            self.length[shrinking] -= self.shrink_rate
+            self.length[self.length < 0.0] = 0.0
+
+            tips = self.tips()
+            outside = np.linalg.norm(tips, axis=1) > self.radius
+            near = (
+                np.linalg.norm(tips[:, None, :] - self.centre[None, :, :], axis=2).min(axis=1)
+                < self.ran
+            )
+            rate = np.where(near, self.catastrophe * self.ran_gain, self.catastrophe)
+            flip = growing & (
+                (generator.random(self.count) < rate)
+                | (outside & (generator.random(self.count) < self.cortex))
+            )
+            self.growing[flip] = False
+            back = shrinking & (generator.random(self.count) < self.rescue) & (self.length > 4.0)
+            self.growing[back] = True
+            # A filament that shrank all the way back is gone, and what
+            # replaces it is a new one pointing somewhere else. Its age starts
+            # again, which is what makes age worth colouring by.
+            spent = free & ~self.growing & (self.length <= 0.0)
+            replaced = int(spent.sum())
+            if replaced:
+                self.theta[spent] = generator.uniform(0.0, 2.0 * math.pi, replaced)
+                self.length[spent] = 0.0
+                self.growing[spent] = True
+                self.age[spent] = 0
+
+            self._capture(tips, kinetochores, free)
+            self._correct(generator)
+            self._move(poles, generator)
+            self._track(poles)
+
+    def _capture(self, tips: np.ndarray, kinetochores: np.ndarray, free: np.ndarray) -> None:
+        """A growing tip that lands on the face of a free kinetochore binds it."""
+        open_sites = np.argwhere(self.kin_pole < 0)
+        if not len(open_sites):
+            return
+        candidates = np.argwhere(free & self.growing & (self.length > 20.0)).ravel()
+        if not len(candidates):
+            return
+        reach = tips[candidates]
+        facing = np.column_stack((np.cos(self.phi), np.sin(self.phi)))
+        for chromosome, sister in open_sites:
+            site = kinetochores[chromosome, sister]
+            distance = np.linalg.norm(reach - site, axis=1)
+            # A kinetochore is a plate on one side of the centromere, not a
+            # sphere: only a microtubule arriving at that face can bind it.
+            # Without this the capture rate is roughly twentyfold too high and
+            # the whole search is over inside the first quarter of the clip.
+            normal = facing[chromosome] * (1.0 if sister == 0 else -1.0)
+            distance = np.where((reach - site) @ normal > -2.0, distance, 1e9)
+            nearest = int(np.argmin(distance))
+            if distance[nearest] < self.capture:
+                filament = candidates[nearest]
+                if self.held[filament] >= 0:
+                    continue
+                self.held[filament] = chromosome * 2 + sister
+                self.kin_pole[chromosome, sister] = self.pole[filament]
+                self.kin_mt[chromosome, sister] = filament
+                self.events.append((self.step_index, "capture"))
+
+    def _correct(self, generator) -> None:
+        """Both sisters on one pole carries no tension, so it is let go."""
+        wrong = np.argwhere(
+            (self.kin_pole[:, 0] >= 0) & (self.kin_pole[:, 0] == self.kin_pole[:, 1])
+        ).ravel()
+        for chromosome in wrong:
+            if generator.random() >= self.release:
+                continue
+            sister = int(generator.integers(2))
+            filament = self.kin_mt[chromosome, sister]
+            self.held[filament] = -1
+            self.growing[filament] = False
+            self.kin_pole[chromosome, sister] = -1
+            self.kin_mt[chromosome, sister] = -1
+            self.events.append((self.step_index, "release"))
+
+    def _move(self, poles: np.ndarray, generator) -> None:
+        holding = self.kin_pole >= 0
+        count = holding.sum(axis=1)
+        bioriented = (count == 2) & (self.kin_pole[:, 0] != self.kin_pole[:, 1])
+        single = (count == 1) | ((count == 2) & (self.kin_pole[:, 0] == self.kin_pole[:, 1]))
+        loose = count == 0
+
+        for chromosome in np.argwhere(loose).ravel():
+            self.centre[chromosome] += self._ejection(self.centre[chromosome], poles)
+            self.centre[chromosome] += generator.normal(0.0, 1.5, 2)
+            self.phi[chromosome] += generator.normal(0.0, 0.035)
+            distance = np.linalg.norm(self.centre[chromosome])
+            if distance > 0.86 * self.radius:
+                self.centre[chromosome] *= 0.86 * self.radius / distance
+
+        for chromosome in np.argwhere(single).ravel():
+            sister = int(np.argmax(holding[chromosome]))
+            target = poles[self.kin_pole[chromosome, sister]]
+            offset = target - self.centre[chromosome]
+            distance = np.linalg.norm(offset) + 1e-6
+            # Walked along its own k-fibre towards the midplane while it is
+            # pulled poleward along the same fibre. That is what puts the free
+            # sister where the far pole can reach it.
+            slide = np.array([-math.tanh(self.centre[chromosome, 0] / 90.0), 0.0]) * self.glide
+            self.centre[chromosome] += (
+                self.poleward * offset / distance
+                + self._ejection(self.centre[chromosome], poles)
+                + slide
+                + generator.normal(0.0, 0.5, 2)
+            )
+            want = math.atan2(offset[1], offset[0]) + (math.pi if sister else 0.0)
+            self.phi[chromosome] += 0.06 * math.atan2(
+                math.sin(want - self.phi[chromosome]), math.cos(want - self.phi[chromosome])
+            )
+
+        for chromosome in np.argwhere(bioriented).ravel():
+            # Held from both sides, a chromosome does not sit still on the
+            # plate; it oscillates across it for as long as the cell waits.
+            swing = 1.4 * math.sin(0.06 * self.step_index + chromosome)
+            self.centre[chromosome, 0] += (
+                -self.congress * math.tanh(self.centre[chromosome, 0] / 40.0) + swing
+            )
+            self.centre[chromosome, 1] += generator.normal(0.0, 0.35)
+            want = 0.0 if self.kin_pole[chromosome, 0] == 1 else math.pi
+            self.phi[chromosome] += 0.10 * math.atan2(
+                math.sin(want - self.phi[chromosome]), math.cos(want - self.phi[chromosome])
+            )
+
+    def _track(self, poles: np.ndarray) -> None:
+        """A bound filament is no longer searching: it spans pole to kinetochore."""
+        bound = np.argwhere(self.held >= 0).ravel()
+        if not len(bound):
+            return
+        sites = self.kinetochores().reshape(-1, 2)[self.held[bound]]
+        offset = sites - poles[self.pole[bound]]
+        self.length[bound] = np.linalg.norm(offset, axis=1)
+        self.theta[bound] = np.arctan2(offset[:, 1], offset[:, 0])
+
+    # -- what the renderer asks for ----------------------------------------
+    def _screen(self, points: np.ndarray) -> np.ndarray:
+        """Model to frame, with the pole axis standing up the portrait."""
+        return np.column_stack((
+            self.width * 0.5 + points[:, 1] * self.scale,
+            self.height * 0.5 + points[:, 0] * self.scale,
+        )).astype(np.float32)
+
+    def segments(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Every microtubule as pole-to-tip, shaded by how long it has lived.
+
+        Ranked, not scaled. Survival time here is about as skewed as a
+        quantity gets -- at the end of a run the median filament is 117 steps
+        old and the oldest is 717, because a fibre that found a chromosome
+        stops being torn down and simply keeps ageing. Divided through by any
+        reference a third of the population saturates and the cut comes out
+        white; ranked, the disposable majority spreads across the dark end of
+        the ramp and only the genuinely oldest fibres reach the top of it.
+        """
+        start = self._screen(self.poles()[self.pole])
+        end = self._screen(self.tips())
+        order = np.argsort(np.argsort(self.age))
+        shade = (order / max(self.count - 1, 1)).astype(np.float32)
+        return start, end, shade
+
+    def heads(self) -> np.ndarray:
+        """The chromosomes themselves: two sister chromatids, side by side.
+
+        Drawn as the brightest thing in the frame. Without them the picture is
+        two starbursts and the thing the whole search is *for* is invisible.
+
+        Three drawings were measured before this one. Disc samples scattered
+        along the body draw stubble; a filled grid draws a white domino; a
+        filled ellipse draws a cloud, and forty-six overlapping ellipses draw
+        one cloud with no chromosomes in it. What reads is the object itself
+        -- a chromosome at metaphase is two copies lying against each other,
+        each a condensed coil, joined where the kinetochores are. Two wavy
+        strands with a dark line between them have an edge, a texture and a
+        reason, and they lie *across* the axis, because sister kinetochores
+        sit back to back at the centromere and face opposite poles. That is
+        also what a metaphase plate looks like down a microscope: a band of
+        bodies lying across the spindle, not a row of marks standing along it.
+
+        The waveform is drawn once in the constructor and carried, so a
+        chromosome keeps its own coil instead of boiling from frame to frame.
+        """
+        facing = np.column_stack((np.cos(self.phi), np.sin(self.phi)))
+        across = np.column_stack((-facing[:, 1], facing[:, 0]))
+        body = (
+            self.centre[:, None, :]
+            + across[:, None, :] * self.coil[None, :, 0, None]
+            + facing[:, None, :] * self.coil[None, :, 1, None]
+        )
+        return self._screen(body.reshape(-1, 2))
+
+    # -- scalars ------------------------------------------------------------
+    def attached(self) -> int:
+        return int((self.kin_pole >= 0).sum())
+
+    def bioriented(self) -> int:
+        held = self.kin_pole
+        return int(((held[:, 0] >= 0) & (held[:, 1] >= 0) & (held[:, 0] != held[:, 1])).sum())
+
+    def plate(self) -> float:
+        """Mean distance from the midplane, in model units."""
+        return float(np.abs(self.centre[:, 0]).mean())
 
 
 class Stripe:

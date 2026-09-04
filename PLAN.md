@@ -33,29 +33,42 @@ edition's README.
 
 | Piece | Shape | State | Hook |
 | --- | --- | --- | --- |
-| `folding` | field | **posted** — DejaVu-era layout, needs a re-cut | — |
-| `turing` | field | **posted** — DejaVu-era layout, needs a re-cut | — |
+| `folding` | field | **posted** (1st) — DejaVu-era, staying that way by decision | — |
+| `gyrus` | dish + hook | `folding` 2.0, built 2026-09-01 — **ready to post** | *It would fold anyway. The wall decides where.* |
+| `turing` | field | **posted** (7th) — DejaVu-era, staying that way by decision | — |
 | `physarum` | slide + hook | reworked 2026-08-25 | *No brain. One cell. Still finds a way.* |
 | `somite` | field + hook | built, **rejected** — fails T4 | *Your spine was counted, not measured.* |
-| `phyllotaxis` | field + hook | built 2026-08-29 | *The plant is not counting. You are.* |
+| `phyllotaxis` | field + hook | built, `APEX` palette shipped 2026-08-31 | *The plant is not counting. You are.* |
 | `comet` | field + hook | built 2026-08-30 | *No motor. It is pushed by what it builds.* |
 | `trabecula` | field + hook | built, **rejected** — fails T1/T4 | *No one drew this. The load did.* |
 | `venation` | field | built, **rejected** — T1 confirmed on the cut, 44.4% still | *The vein is not a route. It is a leftover.* |
+| `aggregation` | field + hook | built, **rejected** — fails T4 (reads as flowers) | *Every wave would carry them back. / So they only answer half of it.* |
+| `spindle` | field, `sharp` | built, **rejected** — fails T4, judged on the cut | — |
+| `ridge` | field, `sharp` | built, **rejected** — a reveal, and the wrong subject | *It identifies you. Nobody specified it.* |
 | `stripe` | dish + hook, `bloom` | built 2026-09-04 | *Turing predicted chemicals. These are cells.* |
 
 Neither `somite` nor `trabecula` is going out, and both leave an axis behind:
 `somite` is the first piece in the account **with a beat** and `trabecula` the
 first **subtractive** one. Reuse the axes, not the cuts.
 
+`spindle` is the third piece to pass the gate on numbers and die on the
+picture, after `somite` and `sector`, and the only one to do it with a clean
+sheet — 0.0% still frames, minimum delta 2.760, profile 31.0/19.0%. **The gate
+does not measure whether a frame is worth looking at**, and three pieces now
+say the same thing: what it screens out is a bad process, not a bad picture.
+
 ### Substrate — [`README`](on-growth-and-form/substrate-editions/README.md)
 
 | Piece | Shape | State | Hook |
 | --- | --- | --- | --- |
-| `cleavage` | dish | **posted** — DejaVu-era; the Plex re-cut exists and should replace it | — |
+| `cleavage` | field + hook | **posted** (2nd), current layout | *The only kind of growth that does not grow* |
 | `hyphae` | dish + hook | **posted** | *A tree branches. A fungus branches back.* |
 | `reentry` | dish + hook | **posted** (9th) | *Nothing in the rule says spiral.* |
 | `condensate` | dish + hook | built, **rejected** — fails T1/T2 | *Nothing was built. It only stopped mixing.* |
-| `sandpile` | dish + hook | built | *One rule about integers. No biology at all.* |
+| `sandpile` | dish + hook | built, **parked** — Paulina will call when scheduling | *One rule about integers. No biology at all.* |
+| `sector` | field, `sharp` | built, **rejected** — fails T2 | *Not one cell moved. Every border did.* |
+| `syncytium` | field + hook, `sharp` | `hyphae` 2.0, built 2026-09-02, **parked** — Paulina is still deciding what to do with it | *A tree only branches apart. / These branched into each other.* |
+| `culture` | field | built, **rejected** — fails T4 (reads as blinking dots) | *Every connection was cut. / It is firing again.* |
 | `packing` | dish + hook | built 2026-08-31 | *Room runs out. Growth does not.* |
 | `packing` (orientation) | dish + hook | variant of the above, `--tag orientation` | — |
 | `plaque` | dish + hook, `sharp` | built 2026-08-31 | *Nothing here learned to survive.* |
@@ -67,6 +80,8 @@ first **subtractive** one. Reuse the axes, not the cuts.
 | --- | --- | --- | --- |
 | `affinity` | slide + hook | **posted** — the `_neon` cut, not the default | *Being alive is a matter of organization, / so it can be built from numbers* |
 | `soliton` | field + hook, 10 s | **posted** | *Every one of these was stable on its own.* |
+| `highway` | field + hook, `sharp` | built 2026-08-31, **parked** — Paulina will call when scheduling | *Every one of them builds the same road. / Nobody has proved why.* |
+| `protocell` | field + hook | built 2026-08-31 — reworked past a T1/T4 conflict | *The rule has no membrane in it. / Everything on screen has one.* |
 | `shoal` | lane + hook | built, **rejected** — fails T1/T2 | *Generation zero could only fill its world. / Forty generations later it crosses it.* |
 | `descent` | — | built, **rejected** — fails T2/T4 | *Everything at the top has one ancestor.* |
 | `cohort` | grid of panels | built, **rejected** — fails T2/T3 | *Not one of the first sixty-four was alive. / Everything alive here is a copy of one.* |
@@ -88,12 +103,30 @@ next Lenia idea has to be a different subject, not a different camera.
 | --- | --- | --- | --- |
 | `cosine-creature` | field | **posted** — inspired by **yuruyurau**, credited | — |
 | `medusa` | field + hook, 12 s | **posted** (8th) | *Nothing here swims. / One sine wave, fourteen phase delays.* |
+| `ammonite` | field + hook | built 2026-09-02, **parked** — Paulina is fine-tuning it | — |
+| `hydrocreatures` | field, no hook | **ready to post** — 3 palette variants, none picked | — |
 | `quorum` | field + hook | **parked** — a sketch, not a cut | — |
 
 The series tells one trick three times and **the escalation is the point**: the
 cosine creature is a wave pretending to be a body, the medusa the same wave
 pretending to swim, `quorum` the same wave pretending to be a society. Keep
 that order in the copy if `quorum` is ever finished.
+
+`ammonite` (equiangular-spiral shell growth) is fully worked in its own
+docstring and in `README.md` — real measurements, not hand-waving — but parked
+rather than queued: Paulina likes the animal and is tuning it further herself.
+
+`hydrocreatures` (three animals on one yuruyurau-family curve) fixes an
+earlier sketch under the same name whose loop never closed at any clip length
+(seam 1.72 body radii); the file and its on-screen title both read
+`hydrocreatures` now, the source filename is still
+`generate_hydrozoa_mp4_titled.py` from the engineering pass that fixed it. The
+loop-closure work is real and measured (1,260-genome search, seam down to
+1.3–1.9 frame steps against a p90 step) but it has not been run through the
+full gate in reported `/pitch` form and has three unresolved palette variants
+— `aurora`, `reef`, `neon`, plus the plain original — with no hook shipped on
+the base cut and a different hook per variant. **Queued, but a variant still
+needs picking before it can post.**
 
 **`quorum` is parked as a sketch.** The idea and `fish.py` are sound and the
 depth trick works, but what exists is a first pass, not a cut. It is also the
@@ -131,22 +164,42 @@ grid for two constants, the visual gain is subtle, and the cost is a
 
 ## Queued
 
-**Ready to post** — cut, measured, and judged worth posting: `sandpile`,
-`phyllotaxis`, `comet`, plus the Plex re-cut of `cleavage` that should replace
-what is on the grid.
+**Ready to post** — cut, measured, and judged worth posting: `phyllotaxis`,
+`comet`, `gyrus`, `hydrocreatures`. Paulina posts `comet` herself and will say
+when; `hydrocreatures` still needs a palette variant picked before it can go.
 
 `phyllotaxis` and `comet` were measured on the finished cut 2026-08-30: **0.0%
 still frames** each, profiles 29/23% and 12/48% across the quarters. `comet`
 puts its biggest change in the last quarter, which is what it was picked for.
+`phyllotaxis` was re-cut 2026-08-31 with a new palette (`APEX`, replacing
+`MERISTEM`) — measured clean again, 0.0% still.
+
+**Parked, not queued** — `highway`, `sandpile`, `ammonite` and `syncytium`.
+`highway` and `sandpile` are built and passing, waiting on Paulina to call
+them for scheduling. `ammonite` and `syncytium` are hers to keep editing —
+neither has a known defect, both are just not finished being worked on.
 
 This is a publication queue, not an inventory. A piece being rendered does not
-put it here — `condensate`, `descent` and `cohort` were all cut and are all in
-[`REJECTED.md`](REJECTED.md). Anything on this list that has not actually been
-looked at cold still owes **T4**.
+put it here — `condensate`, `descent`, `cohort`, `aggregation`, `sector` and
+`culture` were all cut and are all in [`REJECTED.md`](REJECTED.md). Anything
+on this list that has not actually been looked at cold still owes **T4**.
 
-**Needs a re-cut before it could go out** — `turing` and `folding`, both still
-on the pre-hook, symmetric-margin, DejaVu-era layout in the same renderer
-`physarum` has already been moved off.
+`gyrus` is `folding`'s 2.0 and was measured on the finished cut 2026-09-01:
+**0.0% still frames** inside the dish, minimum inter-frame delta 0.320 against
+a 0.15 threshold, loop seam 1.25 against an adjacent-pair 13.56. It carries a
+new name rather than a second FOLDING, on the biomorph precedent — one trick,
+three names, and the escalation is the point.
+
+`hydrocreatures` fixes an earlier sketch of the same name whose loop never
+closed at any clip length (seam 1.72 body radii). The fix is measured — a
+1,260-genome search, seam down to 1.3–1.9 frame steps against the clip's own
+p90 step — but that is loop closure alone, not the full gate, and nobody has
+looked at any of its three palette variants (`aurora`, `reef`, `neon`) cold.
+
+**`folding` and `turing` are not queued for a re-cut.** Both posted (1st, 7th)
+in the pre-hook, DejaVu-era layout, and Paulina has decided that stands: the
+two typefaces do not read as different at a glance, so a re-cut is not worth
+the render.
 
 ---
 
@@ -161,36 +214,23 @@ Ten minutes of measurement would have saved `trabecula`, `venation` and
 Run `/pitch` on anything below before building it. Ordered by what would be
 built first.
 
-1. **`spindle`** — microtubules grow from two poles and collapse at random
-   until one is captured by a chromosome. Hundreds of filaments flicker for the
-   whole clip, then the chaos snaps into a bipolar spindle with the chromosomes
-   in a plate. Constant motion **plus a clear event**. Hook draft: *"Your cells
-   find their chromosomes by guessing."* Risk: low.
-2. **`aggregation`** — 150,000 starving *Dictyostelium* becoming one animal.
-   Half built (`morphogens.Aggregation`); waves sweep every ~90 steps and
-   concentration climbs steadily (11 → 28 → 76) rather than front-loading.
-   **Blocked on grid anisotropy**: a five-point laplacian propagates faster
-   along the axes and the aggregates come out as four-pointed stars. Needs a
-   nine-point laplacian or an off-lattice signal. Hook draft: *"Every wave
-   would carry them back. So they only listen to half of it."* Risk: medium.
-3. **`chirality`** — tilted cilia in the embryonic node spin one way, the tilt
-   turns rotation into a leftward flow, and that is why the heart ends up on
-   the left. Rotation constant by construction. **Best hook of the set**, and a
-   subject nobody is doing. Risk: medium — Stokes flow, and handedness is
-   subtle to read in a frame.
-4. **`ripple`** — *Myxococcus* reverse on contact, filling the frame with
-   counter-propagating bands that **pass through each other**. Oscillatory, so
-   it runs forever. Hook draft: *"Nothing is travelling. Only the agreement
-   is."* Risk: medium-low.
-5. **`metachrony`** — a carpet of cilia coupled only through the fluid, falling
+**Four have come off this list and three did not survive:** `spindle` and
+`chirality` in the 2026-09-02 round, `ripple` and `stripe` earlier. Those three
+are in [`REJECTED.md`](REJECTED.md) and none may be re-proposed. `stripe` is the
+exception and the reason the rule is worth stating precisely: it was rebuilt on
+2026-09-04 against the two defects that rejected it, measured past both, and
+shipped — its row in `REJECTED.md` records the first attempt. Being on this list
+has meant very little; treat it as a source of subjects, not of verdicts.
+
+1. **`metachrony`** — a carpet of cilia coupled only through the fluid, falling
    out of random phase into travelling waves. Would be the **true version of
    what `medusa` and `quorum` fake parametrically**, which closes that series
    properly. Hook draft: *"None of them can see the others. The water is
    enough."* Risk: medium.
-6. **`vortex`** — a dense suspension of flagellated swimmers, hydrodynamically
+2. **`vortex`** — a dense suspension of flagellated swimmers, hydrodynamically
    coupled, self-organising into a drifting lattice of vortices. Active matter:
    a steady state that never stops moving. Risk: medium-high.
-7. **`epithelium`** — a proliferating sheet where every division hands edges to
+3. **`epithelium`** — a proliferating sheet where every division hands edges to
    its neighbours, and the polygon-class distribution converges to the same one
    in a fly, a frog and a hydra. Dozens of division events per second. Hook
    draft: *"Six is not a plan. Six is an average."* Risk: medium — real chance

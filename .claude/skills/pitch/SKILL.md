@@ -79,6 +79,34 @@ A fail here is not always fatal: **an external clock rescues it** — a drive
 that keeps injecting material, or a beat. If you propose one, it is a different
 candidate and it goes through test 1 again with the clock in.
 
+### Then measure how much of the frame is live
+
+**The profile measures accumulation, and a reveal accumulates.** `shoal` is the
+warning in one direction — motion passes, only the profile sees the failure.
+`ridge` is the warning in the other, and it cost a full build: 23.5% first
+quarter against 26.5% last, a textbook pass, and the cut came out **53.1%
+frozen with the first three seconds solid**, because the only thing changing was
+a front creeping across a picture that was finished behind it.
+
+So ask where the change *is*, not just how much of it there is. On the same run,
+record the fraction of the frame that differs between consecutive rendered
+steps:
+
+```python
+live = np.mean([(np.abs(state[i + 1] - state[i]) > eps).mean()
+                for i in range(len(state) - 1)])
+```
+
+`ridge` reads **1.6%**. Everything behind the front was final, and nothing paces
+that away — the timestep only moves where the live band sits, measured at
+1.6 / 1.9 / 1.8% over three values while the print stopped finishing.
+
+**If the live fraction is a thin front and the rest of the frame is done, it is
+a reveal: reject it here.** The threshold is not yet calibrated against shipped
+pieces — `ridge` is the only measurement in this units so far — so until a
+second candidate is measured, treat a moving front with a finished wake as a
+fail on the structure rather than on a number.
+
 ## Test 2 — something to watch
 
 Write the honest one-line description of what happens over eight seconds, as
@@ -129,9 +157,14 @@ kind of motion next to `folding` and `turing` — that is `trabecula`.
 
 ## The `2.0` path
 
-When Paulina asks for a **`2.0`** by name — *"I want `reentry` 2.0"* — the
+When Paulina asks for a **`2.0`** by name — *"I want `reentry` 2.0"* — she is
+naming the engine, not the changes. **Propose three different directions**
+before building any of them, the same way a fresh pitch proposes candidates,
+and let her pick. Only skip this and cut straight to one direction if she names
+it herself — that is her creative call to make, not a default to assume. The
 engine has already proven **T1** and **T3**, so skip them. Run **T2** and
-**T4** afresh, plus one test that only applies here:
+**T4** afresh on whichever direction is picked, plus one test that only applies
+here:
 
 ### T5 — is it a different experience?
 
@@ -174,6 +207,13 @@ Rules for the verdict:
 - **A REJECT is written down.** Append one line to [`REJECTED.md`](../../../REJECTED.md):
   name, one clause of what it was, and **which test it failed**. That line is
   what stops the same class of idea coming back in a month.
+- **Only touch `BRIEF.md` or a skill when the piece defeats the test itself** —
+  it passed every check and still failed, the way `sector` (flat T1 profile,
+  still just a growing disc) and `spindle` (clean T4 run, shown named rather
+  than cold) did. An ordinary rejection — a test caught it, or would have if
+  run right — is the `REJECTED.md` line and nothing more. Paulina saying a
+  piece is ugly is not, by itself, a reason to change a standing rule; a piece
+  that was ugly *despite passing every test as written* is.
 - **A BUILD adds one line to `PLAN.md`'s queue**, not a section. The long-form
   record is written *after* the piece exists, in its edition's `README.md`.
 - **Do not soften a fail.** If the numbers say the change crowds into the first
