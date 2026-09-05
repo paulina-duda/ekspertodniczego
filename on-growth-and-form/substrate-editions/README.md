@@ -402,13 +402,46 @@ solved spectrally, active stress `sigma = -zeta Q`.
   reference for the whole clip, so *brighter* means the same thing in every
   frame. Two channels, both measured, both intrinsic to the film.
 
-- **`FILAMENT` has no dark stop**, for `AGAR`'s reason: almost all of the drop
-  has had no tear through it lately, so the low end carries the whole film, and
-  a dark low end would black it out. Steel for the untouched film, ember for a
-  fresh tear — the temperature contrast *is* the measurement. The low end is
-  desaturated so it reads as grey rather than as a blue piece; `TEAR` swaps it
-  for petrol and is kept as the alternative, not as a variant, because it sits
-  closer to the green `PHOSPHOR` and the cyan `EPITHELIUM` already on the grid.
+- **No stop is dark**, for `AGAR`'s reason: almost all of the drop has had no
+  tear through it lately, so the low end carries the whole film, and a dark low
+  end would black it out.
+
+- **The low end is the palette, and the accent is only ever a sparkle.**
+  Roughly nine pixels in ten sit at stops 0–2, so the film's colour is the
+  entire impression the grid gives. This is why an ice-and-ember ramp reads as
+  *ice*: saturating the tear changes nothing measurable. The first draft of it
+  moved mean saturation inside the drop from 0.272 to **0.381** and still came
+  out grey. Whatever the piece looks like on a feed is decided at stop 0.
+
+- **Shipped on `SCORCH`** — deep red film, cold tear, **saturation 0.662**
+  against the steel `FILAMENT`'s 0.272. It is the one candidate that runs
+  hot-to-cold rather than cold-to-hot, so a tear reads as a cut rather than as
+  a burn, and nothing else on the substrate grid is red. The cyan is blue used
+  the way house rule 6 allows: an accent of a few percent.
+
+  **A dark red does not stay red.** The tone curve and the bloom lift it, and a
+  pixel carrying both film and tear samples averages red against cyan into the
+  same place — the first pass at `(120, 26, 38)` came out rose and sat on
+  `CYTOSOL`. Holding green and blue near zero in the low stops, `(112, 8, 10)`,
+  is what keeps it red.
+
+- **Three candidates were measured and kept in the file rather than deleted**,
+  because each was rejected for a reason. `FILAMENT`, the steel original —
+  correct, and too grey to hold a place on the grid. `REAGENT`, violet film and
+  acid tear — the widest luminance gap of the set, so its accent is the only
+  one that reads as a second colour rather than a sparkle, but the violet is
+  `STRESS`'s family and the lime is `LATTICE`'s. `QUENCH`, glacier film and
+  ember tear — **it breaks house rule 6**: at 0.602 saturation it is a whole
+  blue piece rather than blue as an accent, and it lands on `EPITHELIUM` too.
+
+- **A dark palette is penalised by the motion check**, and the number has to be
+  read with that in mind. Nothing about the pacing changed between the steel
+  cut and the red one — identical states, identical schedule — and the frozen
+  fraction went from **6.6% to 9.2%**, because the test thresholds an *absolute*
+  luminance difference and the red cut is darker (mean 33.2/255 against 43.6).
+  Scaled to the clip's own brightness the same cut measures **3.1%**, inside
+  the house norm of 4%. The norm was calibrated on `hyphae`, `reentry` and
+  `affinity_neon`, all brighter than this.
 
 - Hook *"Nothing here is alive. It still cannot rest."*
 

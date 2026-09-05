@@ -98,14 +98,48 @@ MUTANT = (255, 122, 96)
 # drop has had no tear through it lately -- so, like AGAR, **no stop is dark**.
 # Brightness here comes from how fast the film is moving, not from the ramp; a
 # dark low end would black out the quiet film, which is most of every frame.
-# Steel for the film, ember for a fresh tear: the low end is cold and
-# desaturated so it reads as grey rather than as a blue piece.
+#
+# **The low end is the palette.** Roughly nine pixels in ten sit at stops 0-2,
+# so the film's colour is the whole impression the grid gives and the tear's is
+# only ever a sparkle. Saturating the accent does nothing measurable; the first
+# ice-and-ember draft moved mean saturation inside the drop from 0.272 to 0.381
+# and still read as grey. Whatever this piece is going to look like on the feed
+# has to be decided at stop 0.
+#
+# **Shipped.** Deep red film, cold tear, and the only one of the candidates
+# that runs hot-to-cold rather than cold-to-hot -- so a tear reads as a cut
+# rather than as a burn. Saturation inside the drop 0.662, against 0.272 for
+# the steel it replaced. The cyan is blue used the way house rule 6 allows,
+# as an accent of a few percent, and nothing else on the substrate grid is red.
+# Green and blue are held near zero in the low stops on purpose: the tone curve
+# and the bloom lift a dark red towards pink, and a pixel carrying both film
+# and tear samples averages red against cyan into exactly that. The first pass
+# at (120, 26, 38) came out rose and sat on CYTOSOL.
+SCORCH = [(112, 8, 10), (168, 14, 14), (216, 34, 22), (60, 228, 244), (140, 244, 250), (232, 254, 255)]
+# Steel film, ember tear. The original cut, kept as the quiet alternative --
+# correct, and too grey to hold a place on the grid.
 FILAMENT = [(44, 66, 86), (72, 104, 128), (134, 140, 140), (206, 160, 108), (252, 186, 96), (255, 246, 224)]
-# The same ramp with a petrol film instead of a steel one, kept as the
-# alternative rather than as a variant: more saturated, and closer to the green
-# PHOSPHOR and the cyan EPITHELIUM already on the grid, which is why it is not
-# the default. Same rule -- no dark stop.
+# The same ramp with a petrol film instead of a steel one. More saturated, and
+# closer to the green PHOSPHOR and the cyan EPITHELIUM already on the grid,
+# which is why it is not the default. Same rule -- no dark stop.
 TEAR = [(30, 70, 72), (54, 108, 106), (118, 150, 138), (206, 160, 108), (252, 186, 96), (255, 246, 224)]
+# Violet film, acid tear. The widest luminance gap of the candidates, so the
+# accent is the one that genuinely reads as a second colour rather than as a
+# sparkle -- but the violet is STRESS's family and the lime is LATTICE's, which
+# would put two substrate palettes in the same quarter of the wheel.
+REAGENT = [(78, 40, 122), (120, 58, 180), (168, 108, 224), (198, 236, 76), (226, 250, 118), (250, 255, 212)]
+# Glacier film, ember tear. **Breaks house rule 6** -- at 0.602 saturation this
+# is a whole blue piece, not blue as an accent, and it lands on EPITHELIUM as
+# well. Kept because it was measured and rejected for a reason, not on taste.
+QUENCH = [(16, 86, 124), (30, 132, 180), (96, 186, 216), (255, 116, 10), (255, 164, 40), (255, 234, 190)]
+
+DEFECT_PALETTES = {
+    "scorch": SCORCH,
+    "filament": FILAMENT,
+    "tear": TEAR,
+    "reagent": REAGENT,
+    "quench": QUENCH,
+}
 
 # HYPHAE 2.0. Colour here is not age and not an amount -- it is which spore the
 # strand grew from, so the ramp has exactly one stop per spore and a segment
@@ -321,7 +355,7 @@ EDITIONS: dict[str, dict] = {
         "kind": "points",
         "title": "Defect",
         "slug": "defect_active-nematic_substrate",
-        "palette": FILAMENT,
+        "palette": SCORCH,
         "exposure": 1.12,
         "boost": 1.15,
         "caption": (
@@ -1352,7 +1386,7 @@ def defect_timeline(spec: dict, args) -> tuple[Callable[[float], np.ndarray], np
     )
     schedule = np.arange(len(states))
 
-    palette = glow.build_palette(TEAR if args.defect_palette == "tear" else FILAMENT)
+    palette = glow.build_palette(DEFECT_PALETTES[args.defect_palette])
     caption = build_overlay(width, height, spec, args)
     scale = (min(width, height) * 0.44) / model.radius
     centre = (width * 0.5, height * 0.5)
@@ -1618,7 +1652,7 @@ def parse_args() -> argparse.Namespace:
     # The continuous term. Without it the pacing rides an integer step
     # function and the cut measured 15.4% frozen after the hold.
     parser.add_argument("--defect-travel-weight", type=float, default=1.0, help="weight on how far the film has slid in total")
-    parser.add_argument("--defect-palette", choices=("filament", "tear"), default="filament")
+    parser.add_argument("--defect-palette", choices=tuple(DEFECT_PALETTES), default="scorch")
     parser.add_argument("--packing-cache", type=Path, default=None, help="bank the run here and reuse it")
     parser.add_argument("--upright-boost", type=float, default=1.5)
     parser.add_argument("--condensate-states", type=int, default=240)
