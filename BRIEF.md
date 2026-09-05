@@ -130,7 +130,7 @@ is prettier" is not an answer. Output is suffixed `_v2`, never on top.
    *only* for the data block when it needs Greek. **Greek stays Greek** — σ, ρ,
    β, α, not `s`, `r`, `b`, `a`.
 6. **Palettes stay in the family.** Neon on black, dark low end, bright only
-   where dense, not garish. **Blue is an accent, never a whole piece.**
+   where dense, not garish.
 7. **No camera turn on plane processes** — things in a plane have no far side.
 
 Numbers, margins, shapes and confinement are **not here** — the `reel` skill is

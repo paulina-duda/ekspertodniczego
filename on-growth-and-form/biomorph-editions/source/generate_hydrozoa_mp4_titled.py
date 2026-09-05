@@ -99,16 +99,12 @@ import glow
 OUTPUT_DIR = Path(__file__).parents[1] / "instagram" / "phone-9x16"
 
 TITLE = "Hydrocreatures"
-# The generator, one line at a time, each labelled with the thing it does. Four
-# bare lines of algebra was too much and three lines of prose said nothing an
-# equation says; a label per line is what makes the block readable at 27 px --
-# you can find the pulse without parsing it. Widest line measures 880 px against
-# the 952 the margins allow, and Plex carries every glyph in it, so nothing on
-# this layer falls back to DejaVu.
+# Shortened from four lines to three: the stretch/lean line (`p = d^sin(d²−t+m)
+# C = d/9 − t/24 + m`) dropped entirely rather than just its labels. `p` and
+# `C` still feed `travel` below, they just aren't spelled out on screen anymore.
 CAPTION = (
     "body     k = 9·cos(ai)·sin(bi)   e = 9·cos(ci)·sin(fi)",
     "breath   d = hypot(k,e)³/999 + 1.2 − sin(t/2+m)³/4",
-    "stretch  p = d^sin(d²−t+m)     lean  C = d/9 − t/24 + m",
     "travel   x = 99·sin(C) + k·p   y = 99·sin(4C) + e·p",
 )
 
@@ -211,12 +207,41 @@ VARIANTS = {
     # from dark to core. Only the palette changes; exposure, boost and both
     # bloom knobs are identical across the three cuts, so the comparison is of
     # colour and nothing else.
+    # Shipped 2026-09-05 with `reef`'s hook rather than its own -- the pairing
+    # picked on review was this palette's colour with that line's sense, not
+    # either variant's original coupling.
     "neon": dict(
-        hook=("They are not related. They are the same thing.",),
+        hook=("Nothing here intends anything. You do.",),
         palettes=(
             [(0, 8, 12), (0, 54, 82), (0, 148, 202), (0, 228, 255), (150, 250, 255), (240, 255, 255)],
             [(12, 0, 10), (76, 0, 48), (188, 0, 118), (255, 40, 170), (255, 150, 215), (255, 236, 248)],
             [(8, 12, 0), (44, 68, 0), (126, 178, 0), (200, 255, 40), (236, 255, 150), (250, 255, 226)],
+        ),
+    ),
+    # Review-only: all three cornflower blue, to see how one hue across every
+    # animal reads against the "hue names the genome" rule above. No hook --
+    # a colour test, not a candidate. The three ramps differ slightly in hue
+    # lean (violet-blue, canonical cornflower, cyan-blue) so they can still be
+    # told apart, but all sit in the one family the account's rule 6 calls
+    # an accent, not a piece.
+    "cornflower": dict(
+        hook=(),
+        palettes=(
+            [(4, 4, 14), (16, 18, 52), (38, 46, 110), (74, 96, 190), (130, 160, 230), (230, 238, 255)],
+            [(5, 5, 16), (20, 22, 58), (46, 58, 124), (100, 149, 237), (170, 200, 250), (235, 242, 255)],
+            [(3, 4, 18), (14, 20, 64), (34, 54, 132), (84, 120, 210), (150, 185, 245), (232, 240, 255)],
+        ),
+    ),
+    # Review-only: no hue at all, to see whether the three read apart on shape
+    # and brightness alone once colour stops doing the work. Not a candidate --
+    # a mono variant with no hook and a slight warm/cool split per animal so
+    # the three can still be told apart in a still.
+    "mono": dict(
+        hook=(),
+        palettes=(
+            [(4, 5, 6), (30, 34, 38), (80, 88, 96), (150, 158, 166), (215, 220, 224), (250, 251, 252)],
+            [(5, 5, 5), (34, 34, 34), (90, 90, 90), (160, 160, 160), (220, 220, 220), (255, 255, 255)],
+            [(6, 5, 4), (38, 34, 30), (96, 88, 80), (166, 158, 150), (224, 220, 215), (252, 251, 250)],
         ),
     ),
 }

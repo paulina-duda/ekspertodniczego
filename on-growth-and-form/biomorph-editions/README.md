@@ -132,11 +132,16 @@ data block DejaVu via `equation_face` (θ, ∝). Not posted.
 
 Three animals on one `yuruyurau`-family curve, titled and shipped as
 `Hydrocreatures` — the source file `generate_hydrozoa_mp4_titled.py` is named
-for the loop-closing fix, not for a different piece. `field`, no hook — the
-data block carries the generator itself, one labelled line per term, rather
-than a caption trying to say what an equation already says. Not posted. Three
-palette variants exist (`aurora`, `reef`, `neon`), each with its own hook, plus
-the plain original with none; **no variant has been picked yet.**
+for the loop-closing fix, not for a different piece. `field`. The data block
+carries the generator itself, one labelled line per term, rather than a
+caption trying to say what an equation already says — trimmed from four lines
+to three on 2026-09-05, the `stretch`/`lean` line (`p = d^sin(d²−t+m)`,
+`C = d/9 − t/24 + m`) dropped entirely rather than just its labels; `p` and
+`C` still drive `travel` below, they just aren't spelled out on screen.
+**Ready to post** — shipped on the `neon` palette, but with `reef`'s hook,
+*"Nothing here intends anything. You do."*, not `neon`'s own. `aurora`,
+`reef`, and the plain original remain in the source's `VARIANTS` dict as
+unshipped alternatives, each kept for a stated reason rather than deleted.
 
 - **The earlier `hydrocreatures` sketch never closed its loop, at any clip
   length.** Its `-t/48` lean term has period 96π, so eight seconds and ten

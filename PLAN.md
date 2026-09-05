@@ -73,7 +73,7 @@ screens out is a bad process, not a bad picture.
 | `packing` | dish + hook | built 2026-08-31, **rejected** 2026-09-04 — fails T4, judged on the cut | *Room runs out. Growth does not.* |
 | `packing` (orientation) | dish + hook | variant of the above, **rejected** with it | — |
 | `plaque` | dish + hook, `sharp` | built 2026-08-31, **rejected** 2026-09-04 — fails T4, judged on the cut | *Nothing here learned to survive.* |
-| `defect` | dish + hook | built 2026-09-04 | *Nothing here is alive. It still cannot rest.* |
+| `defect` | dish + hook | built 2026-09-04, `SCORCH` palette — **ready to post** | *Nothing here is alive. It still cannot rest.* |
 
 ### Artificial Life — [`README`](on-growth-and-form/alife-editions/README.md)
 
@@ -86,7 +86,7 @@ screens out is a bad process, not a bad picture.
 | `shoal` | lane + hook | built, **rejected** — fails T1/T2 | *Generation zero could only fill its world. / Forty generations later it crosses it.* |
 | `descent` | — | built, **rejected** — fails T2/T4 | *Everything at the top has one ancestor.* |
 | `cohort` | grid of panels | built, **rejected** — fails T2/T3 | *Not one of the first sixty-four was alive. / Everything alive here is a copy of one.* |
-| `replicator` | field + hook, `sharp` | built 2026-09-04 — two palette cuts, `sharp-forge` and `sharp-verdigris` | *Each was built by the one beside it. / Only the edge is still building.* |
+| `replicator` | field + hook, `sharp` | **ready to post** — `FORGE`/`VERDIGRIS` both cut, colour picked at publish | *It can only do one thing: / make another one of itself.* |
 
 **One run, told three ways, and none of them holds.** `descent` draws the
 pedigree, `cohort` panels the animals, `shoal` races them in lanes — the first
@@ -105,7 +105,7 @@ next Lenia idea has to be a different subject, not a different camera.
 | `cosine-creature` | field | **posted** — inspired by **yuruyurau**, credited | — |
 | `medusa` | field + hook, 12 s | **posted** (8th) | *Nothing here swims. / One sine wave, fourteen phase delays.* |
 | `ammonite` | field + hook | built 2026-09-02, **parked** — Paulina is fine-tuning it | — |
-| `hydrocreatures` | field, no hook | **ready to post** — 3 palette variants, none picked | — |
+| `hydrocreatures` | field + hook | `neon` palette, `reef`'s hook — **ready to post** | *Nothing here intends anything. You do.* |
 | `quorum` | field + hook | **parked** — a sketch, not a cut | — |
 
 The series tells one trick three times and **the escalation is the point**: the
@@ -124,10 +124,11 @@ earlier sketch under the same name whose loop never closed at any clip length
 `generate_hydrozoa_mp4_titled.py` from the engineering pass that fixed it. The
 loop-closure work is real and measured (1,260-genome search, seam down to
 1.3–1.9 frame steps against a p90 step) but it has not been run through the
-full gate in reported `/pitch` form and has three unresolved palette variants
-— `aurora`, `reef`, `neon`, plus the plain original — with no hook shipped on
-the base cut and a different hook per variant. **Queued, but a variant still
-needs picking before it can post.**
+full gate in reported `/pitch` form. The palette is picked: `neon`, but
+carrying `reef`'s hook rather than its own — the pairing chosen on review was
+this palette's colour with that line's sense. `aurora`, `reef`, and the plain
+original stay in the source's `VARIANTS` dict as unshipped alternatives.
+**Ready to post.**
 
 **`quorum` is parked as a sketch.** The idea and `fish.py` are sound and the
 depth trick works, but what exists is a first pass, not a cut. It is also the
@@ -166,8 +167,9 @@ grid for two constants, the visual gain is subtle, and the cost is a
 ## Queued
 
 **Ready to post** — cut, measured, and judged worth posting: `phyllotaxis`,
-`comet`, `gyrus`, `hydrocreatures`. Paulina posts `comet` herself and will say
-when; `hydrocreatures` still needs a palette variant picked before it can go.
+`comet`, `gyrus`, `hydrocreatures`, `defect`, `replicator`. Paulina posts
+`comet` herself and will say when; `replicator` still has a colour to pick
+between `FORGE` and `VERDIGRIS`, decided at publish, not before.
 
 `phyllotaxis` and `comet` were measured on the finished cut 2026-08-30: **0.0%
 still frames** each, profiles 29/23% and 12/48% across the quarters. `comet`

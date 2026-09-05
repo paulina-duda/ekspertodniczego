@@ -773,11 +773,18 @@ Colour here is how long ago a cell last moved, so the husks and the working rim
 want to be **different hues rather than neighbouring ones** -- under `FORGE` the
 diamond reads as one material with a brighter edge, and under `VERDIGRIS` the
 distinction the piece is about is the first thing visible. Both were cut with
-`--tag`, so neither replaces the other.
+`--tag`, so neither replaces the other. **Ready to post on either** — which
+one goes out is a call made at publish time, not before.
 
-Rejected on the way: `GLACIER`, blue throughout, which breaks the house rule
-that blue is an accent and never a whole piece; and `PHOSPHOR`, the brightest of
-the five, against an open question about how much green the grid already has.
+Rejected on the way: `GLACIER`, blue throughout, against an open question of
+whether a whole blue piece read as intended here; and `PHOSPHOR`, the
+brightest of the five, against an open question about how much green the grid
+already has.
+
+Hook changed 2026-09-05, from *"Each was built by the one beside it. / Only
+the edge is still building"* to *"It can only do one thing: / make another one
+of itself"* — von Neumann's question stated directly rather than through the
+colony's construction detail.
 
 ### Measured on the finished cuts
 

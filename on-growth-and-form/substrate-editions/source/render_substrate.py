@@ -125,12 +125,16 @@ FILAMENT = [(44, 66, 86), (72, 104, 128), (134, 140, 140), (206, 160, 108), (252
 TEAR = [(30, 70, 72), (54, 108, 106), (118, 150, 138), (206, 160, 108), (252, 186, 96), (255, 246, 224)]
 # Violet film, acid tear. The widest luminance gap of the candidates, so the
 # accent is the one that genuinely reads as a second colour rather than as a
-# sparkle -- but the violet is STRESS's family and the lime is LATTICE's, which
-# would put two substrate palettes in the same quarter of the wheel.
+# sparkle. Not shipped -- SCORCH read better on the motion check -- but not
+# rejected for sharing a family with STRESS/LATTICE either: TURING and
+# PHYLLOTAXIS already run the same violet-to-magenta-to-cyan ramp on two
+# published pieces, so a repeated family is not, on its own, a reason to drop
+# a palette.
 REAGENT = [(78, 40, 122), (120, 58, 180), (168, 108, 224), (198, 236, 76), (226, 250, 118), (250, 255, 212)]
-# Glacier film, ember tear. **Breaks house rule 6** -- at 0.602 saturation this
-# is a whole blue piece, not blue as an accent, and it lands on EPITHELIUM as
-# well. Kept because it was measured and rejected for a reason, not on taste.
+# Glacier film, ember tear. At 0.602 saturation this is a whole blue piece,
+# not blue as an accent -- there used to be a house rule against exactly that,
+# since dropped. Kept as a measured alternative; SCORCH shipped instead for
+# the hot-to-cold reading, not because QUENCH broke a rule.
 QUENCH = [(16, 86, 124), (30, 132, 180), (96, 186, 216), (255, 116, 10), (255, 164, 40), (255, 234, 190)]
 
 DEFECT_PALETTES = {

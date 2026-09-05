@@ -525,18 +525,18 @@ EDITIONS: dict[str, dict] = {
             "zebrafish pigment pattern  ·  Nakamasu 2009",
             "support close · suppress far · switch",
             "33,000 cells become 118,000 · 667,000 switches",
-            "the stripe's width is fixed; the skin's is not",
         ),
-        # The hook takes the Turing reversal and the block takes the mechanism,
-        # so neither says the other's sentence. `turing` is already on the grid
-        # as Gray-Scott; this piece is the correction to it.
+        # Shipped 2026-09-05 on the data block's own fourth line rather than
+        # the Turing-reversal line ("Turing predicted chemicals. These are
+        # cells.") it replaces -- that line is dropped from the block below so
+        # the fact isn't stated twice.
         #
         # One line, and that is a clearance constraint rather than a taste one.
         # A dish is centred with radius 0.44 x the short side, which puts the
         # disc's bottom at row 1435; a two-line hook starts at row 1420 and
         # overlaps it by 15 px before bloom. Every shipped dish hook is one
         # line for this reason.
-        "hook": ("Turing predicted chemicals. These are cells.",),
+        "hook": ("The stripe's width is fixed; the skin's is not.",),
     },
 }
 

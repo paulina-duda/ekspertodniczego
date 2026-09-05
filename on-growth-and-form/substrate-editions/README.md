@@ -416,8 +416,7 @@ solved spectrally, active stress `sigma = -zeta Q`.
 - **Shipped on `SCORCH`** — deep red film, cold tear, **saturation 0.662**
   against the steel `FILAMENT`'s 0.272. It is the one candidate that runs
   hot-to-cold rather than cold-to-hot, so a tear reads as a cut rather than as
-  a burn, and nothing else on the substrate grid is red. The cyan is blue used
-  the way house rule 6 allows: an accent of a few percent.
+  a burn, and nothing else on the substrate grid is red.
 
   **A dark red does not stay red.** The tone curve and the bloom lift it, and a
   pixel carrying both film and tear samples averages red against cyan into the
@@ -426,13 +425,17 @@ solved spectrally, active stress `sigma = -zeta Q`.
   is what keeps it red.
 
 - **Three candidates were measured and kept in the file rather than deleted**,
-  because each was rejected for a reason. `FILAMENT`, the steel original —
-  correct, and too grey to hold a place on the grid. `REAGENT`, violet film and
-  acid tear — the widest luminance gap of the set, so its accent is the only
-  one that reads as a second colour rather than a sparkle, but the violet is
-  `STRESS`'s family and the lime is `LATTICE`'s. `QUENCH`, glacier film and
-  ember tear — **it breaks house rule 6**: at 0.602 saturation it is a whole
-  blue piece rather than blue as an accent, and it lands on `EPITHELIUM` too.
+  not because either broke a rule. `FILAMENT`, the steel original — correct,
+  and too grey to hold a place on the grid. `REAGENT`, violet film and acid
+  tear — the widest luminance gap of the set, so its accent is the only one
+  that reads as a second colour rather than a sparkle; not shipped because
+  `SCORCH` read better on the motion check below, not because the violet
+  echoes `STRESS` and the lime echoes `LATTICE` — `turing` and `phyllotaxis`
+  already run the same ramp on two published pieces, so a repeated family
+  isn't disqualifying. `QUENCH`, glacier film and ember tear, at 0.602
+  saturation a whole blue piece rather than blue as an accent — there used to
+  be a house rule against exactly that; it's been dropped, and `QUENCH` is
+  kept here as a plain alternative, not a rejection.
 
 - **A dark palette is penalised by the motion check**, and the number has to be
   read with that in mind. Nothing about the pacing changed between the steel

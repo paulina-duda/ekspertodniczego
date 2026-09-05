@@ -303,8 +303,8 @@ EDITIONS: dict[str, dict] = {
             "colour is steps since a cell last changed",
         ),
         "hook": (
-            "Each was built by the one beside it.",
-            "Only the edge is still building.",
+            "It can only do one thing:",
+            "make another one of itself.",
         ),
     },
     "descent": {
