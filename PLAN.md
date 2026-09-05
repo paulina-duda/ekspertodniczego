@@ -46,6 +46,7 @@ edition's README.
 | `spindle` | field, `sharp` | built, **rejected** — fails T4, judged on the cut | — |
 | `ridge` | field, `sharp` | built, **rejected** — a reveal, and the wrong subject | *It identifies you. Nobody specified it.* |
 | `stripe` | dish + hook, `bloom` | built 2026-09-04 | *Turing predicted chemicals. These are cells.* |
+| `closure` | field + hook | built 2026-09-05, `SEROSA` — **ready to post** | *The patch is not saved. It is spent.* |
 
 Neither `somite` nor `trabecula` is going out, and both leave an axis behind:
 `somite` is the first piece in the account **with a beat** and `trabecula` the
@@ -167,7 +168,7 @@ grid for two constants, the visual gain is subtle, and the cost is a
 ## Queued
 
 **Ready to post** — cut, measured, and judged worth posting: `phyllotaxis`,
-`comet`, `gyrus`, `hydrocreatures`, `defect`, `replicator`. Paulina posts
+`comet`, `gyrus`, `closure`, `hydrocreatures`, `defect`, `replicator`. Paulina posts
 `comet` herself and will say when; `replicator` still has a colour to pick
 between `FORGE` and `VERDIGRIS`, decided at publish, not before.
 
@@ -186,6 +187,22 @@ This is a publication queue, not an inventory. A piece being rendered does not
 put it here — `condensate`, `descent`, `cohort`, `aggregation`, `sector` and
 `culture` were all cut and are all in [`REJECTED.md`](REJECTED.md). Anything
 on this list that has not actually been looked at cold still owes **T4**.
+
+`closure` was cut 2026-09-05 and measured on the finished mp4: **0.4% still
+frames**, longest run 1, minimum inter-frame delta 0.017 — the best motion
+figure in the account, against a house norm of 4%. Its **loop does not close**,
+and that is the one thing to know before scheduling it: seam 20.35 against an
+adjacent pair of 2.32, a ratio of 8.8x, next to `comet`'s 9.3x and
+`phyllotaxis`'s 20.7x. A hole that shuts does not reopen, so the clip cuts on
+repeat the way every one-way arc in this edition does. Five palettes were cut before one
+stuck. `SEAM` put the sheet and the pulling cells in one hue, so the hole read
+as a change of texture; `EPIBLAST` fixed that and cost a blue-green ground over
+most of the frame; `TENSION` split the tissues by temperature and was picked,
+then rejected on its ground — washed mid-blue, measured as the least saturated
+of the five at 16.2. **`SEROSA` ships**: TENSION with the ground taken to plum
+and the ember and gold untouched. `FLANK` is the near-complementary petrol
+alternative, cut alongside and not chosen. All are reachable from `--palette`
+and each writes its own filename.
 
 `gyrus` is `folding`'s 2.0 and was measured on the finished cut 2026-09-01:
 **0.0% still frames** inside the dish, minimum inter-frame delta 0.320 against

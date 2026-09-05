@@ -23,6 +23,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+from scipy.spatial import cKDTree
+
 import glow
 import morphogens
 
@@ -48,6 +50,72 @@ PULSE = [
     (6, 0, 22), (86, 0, 158), (214, 0, 150), (255, 120, 200),
     (196, 238, 255), (0, 214, 226), (34, 58, 140), (6, 0, 22),
 ]
+
+# Slate-violet through magenta into a pale rose. Colour here is the rate a cell
+# is contracting *right now*, and the sheet is two tissues: the epidermis never
+# contracts, so it sits pinned at the bottom of the ramp and reads as dark
+# tissue rather than as void, while a cell pulling hard runs to the top. The low
+# end is a cold slate rather than black on purpose -- the epidermis has to look
+# like skin, because the whole piece is about a hole in it. The first two stops
+# were (6,4,20) and (34,22,74) and that was too dark by a long way: the
+# epidermis is 84% of the cells and it vanished, so the lens read as a clump of
+# tiles floating in nothing rather than as a hole in a sheet.
+#
+# Deliberately short of white at the top. `stripe` and `gyrus` already hold the
+# warm end of the account, and a white top here would put the brightest pixels
+# on the handful of cells at peak contraction rather than on the sheet, which
+# inverts house rule 1: the amnioserosa is not the densest thing in the frame,
+# it is the most active.
+SEAM = [(18, 12, 44), (58, 32, 104), (112, 34, 152), (198, 30, 150), (255, 92, 168), (255, 214, 236)]
+
+# Two alternatives to SEAM, cut on the same frame and the same splat so only
+# the ramp differs. Both answer the same objection -- SEAM puts the sheet and
+# the pulling cells in one hue, so the hole reads as a change of texture rather
+# than as an opening.
+#
+# TENSION separates the two tissues by *temperature* instead of by lightness,
+# which is the strongest split available: a contraction reads as heat. The
+# fourth stop is a dusty rose on purpose. Interpolating slate blue straight to
+# ember in RGB passes through a grey-olive at the midpoint, which is the same
+# trap CIRCUIT's comment records for magenta-to-lime, and routing through a
+# chromatic mauve is what avoids it.
+TENSION = [(6, 8, 26), (26, 38, 84), (72, 66, 132), (168, 88, 118), (248, 146, 62), (255, 224, 168)]
+
+# EPIBLAST keeps the family's magenta at the top and cuts the ground away from
+# it, so the two tissues read as two tissues. It costs a blue-green low end
+# over roughly 84% of the frame, which is the `reel` skill's "blue is an accent,
+# never a whole piece" -- broken deliberately here, not by accident.
+EPIBLAST = [(2, 14, 22), (10, 52, 70), (38, 70, 130), (140, 40, 160), (240, 60, 170), (255, 208, 236)]
+
+# TENSION with the top stop taken from gold-white to an acid yellow, so a cell
+# at peak contraction reads as neon rather than as a bright ember. Only the last
+# stop moves: the ramp below it is TENSION unchanged, so the cell still swells
+# up through the ember on its way there and nothing switches state.
+TENSION_NEON = [(6, 8, 26), (26, 38, 84), (72, 66, 132), (168, 88, 118), (248, 146, 62), (240, 255, 70)]
+
+# TENSION's ground replaced, its ember and gold kept. The complaint TENSION
+# earned was not that it was blue but that it was *washed*: measured on the
+# darker half of the lit pixels, its ground is the least saturated of the four
+# ramps tried -- 16.2 against SEROSA's 19.5, FLANK's 17.9 and INK's 18.0 -- and a
+# mid-luminance desaturated blue is denim.
+#
+# SEROSA answers it with a hue rather than another blue, and violet is where
+# this account already lives (SYNAPSE, APEX, ACTIN), so it sits on the grid
+# without argument. Violet to gold is a long way round the wheel, so the
+# temperature split that TENSION existed for survives intact -- and the khaki
+# midtones go with it, because against plum the middle of the ramp reads as rose
+# and amber rather than as dirty gold. The cost is that it moves toward `comet`'s
+# ACTIN and `gyrus`'s VENOM and is less distinctive than TENSION was.
+SEROSA = [(12, 4, 26), (48, 12, 68), (98, 30, 96), (176, 84, 96), (248, 150, 56), (255, 230, 160)]
+
+# The other answer, and the strongest picture of the four: petrol against gold
+# is very nearly complementary. It is the greenish direction without being
+# green -- literal green would sit next to gold on the wheel and cost the peak
+# its separation, besides putting a third green on the grid beside CULTURE and
+# VENOM. What it costs instead is the `reel` skill's "blue is an accent, never a
+# whole piece": the blue-green covers most of the frame, the same objection
+# EPIBLAST carries.
+FLANK = [(2, 14, 22), (10, 54, 62), (26, 104, 104), (152, 96, 112), (246, 148, 58), (255, 228, 152)]
 
 # Two systems in one section, so two palettes that sum where they cross. The
 # split is not decorative: an element is in one or the other depending on
@@ -503,6 +571,64 @@ EDITIONS: dict[str, dict] = {
             "search and capture, Kirschner & Mitchison 1986",
         ),
     },
+    "closure": {
+        "kind": "sheet",
+        "title": "Closure",
+        "slug": "closure_dorsal-closure_serosa",
+        # TENSION, and it is the default rather than a flag for the same reason
+        # `venation` is a cautionary tale: the shipped cut has to come back from
+        # `--edition closure` alone.
+        #
+        # Fourth ramp and the one that ships. SEAM was first and lost -- it puts
+        # the sheet and the pulling cells in one hue, so the hole read as a
+        # change of texture rather than an opening. EPIBLAST fixed that and cost
+        # a blue-green ground over most of the frame. TENSION split the tissues
+        # by temperature instead and was picked, then rejected on its ground:
+        # washed mid-blue, which is denim. SEROSA is TENSION with the ground
+        # taken to plum and the ember and gold untouched. All of them are still
+        # reachable with --palette and each writes its own filename.
+        "palette": SEROSA,
+        # `bloom`, and it is the default rather than a decision fought for: the
+        # subject is 2,702 fat cells in frame with mass, which is exactly what
+        # the halo is for. `sharp` is for thin lines, and there is not one here.
+        "look": "bloom",
+        "exposure": 1.14,
+        "boost": 1.20,
+        # One step a frame. The beat is the piece -- 5.7 contraction cycles per
+        # cell over the clip, 1.4 s each, all out of phase -- and stepping
+        # faster runs the oscillation past the frame rate, at which
+        # point the sheet reads as noise rather than as cells taking turns.
+        "steps_per_frame": 1,
+        # Packing happens in `relax`, which does not advance the clock. See the
+        # comment in `build`.
+        # Twelve steps, not zero. The colour is a smoothed rate, and at t=0
+        # nothing has moved yet -- the first cut read a colour reference of
+        # exactly 1.000 because the array it took the percentile of was empty,
+        # and the cover came out flat. Twelve is where the 0.28 smoother has
+        # converged (0.72^12 = 0.02); it costs 6% of the hole and puts the beat
+        # in the thumbnail, which is the frame that has to carry the piece.
+        "settle": 12,
+        "cover": "first",
+        # Grid pitch in px, and so the sample count and the render time.
+        "sample_spacing": 2.0,
+        # How wide a junction reads, in px, and how much light the cell
+        # interior keeps. The interior floor is what stops the frame being a
+        # wireframe -- the sheet has to have body, or the hole has nothing to
+        # be a hole in.
+        "junction_width": 3.5,
+        "interior": 0.04,
+        "caption": (
+            "Drosophila melanogaster  ·  dorsal closure",
+            "contract · give back less · leave",
+            "276 amnioserosa cells  ·  232 of them ingress",
+            "ratcheted apical constriction, Solon 2009",
+        ),
+        # The block already carries the ratchet as its verb list, so the hook
+        # may not be about giving back less -- it takes the other surprise, the
+        # one the picture proves over eight seconds: every one of those large
+        # cells is spent by the end.
+        "hook": ("The patch is not saved. It is spent.",),
+    },
     "stripe": {
         "kind": "skin",
         "title": "Stripe",
@@ -737,6 +863,101 @@ def cell_samples(model, args, spec=None) -> tuple[np.ndarray, np.ndarray, np.nda
     return samples, np.repeat(shade, per_cell), weights
 
 
+def sheet_samples(model, args, spec=None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Draw the sheet as a tiling, and light it at the junctions.
+
+    Two earlier drawings of this are why it works this way.
+
+    Splatting each cell as a blob of its own radius gave loose speckle at 40
+    samples a cell -- one per 80 px^2 inside a 32 px radius, 10.6% lit -- and
+    filling the blob properly gave the next failure instead: a cloud of
+    separate round discs with black between them, because a cell that is 34%
+    into its contraction is well inside the radius it packs at. Tissue does not
+    open gaps when a cell contracts; its neighbours take up the slack.
+
+    So the sheet is sampled rather than the cells. The frame is walked on a
+    fixed grid, each sample is assigned to the cell whose *power* distance is
+    smallest -- ``|x - p|^2 - r^2``, which is the tiling a set of unequal discs
+    actually makes, and the plain nearest-cell rule puts the boundary halfway
+    between a 32 px cell and an 18 px one, which is nowhere near where it is --
+    and the sample is lit by how close it is to the junction between its cell
+    and the next. That is honest as well as legible: the junction is where the
+    actin belt is, so brightness is once again where the stuff is.
+
+    The grid is fixed frame to frame, so nothing boils.
+    """
+    spec = spec or {}
+    points, rate = model.cells()
+    radii = model.radii().astype(np.float32)
+    spacing = float(spec.get("sample_spacing", 2.4))
+    width, height = float(model.w), float(model.h)
+
+    xs = np.arange(spacing * 0.5, width, spacing, dtype=np.float32)
+    ys = np.arange(spacing * 0.5, height, spacing, dtype=np.float32)
+    grid = np.stack(np.meshgrid(xs, ys, indexing="xy"), axis=-1).reshape(-1, 2)
+    # Jittered once, from a fixed seed. A bare lattice at this pitch prints a
+    # visible halftone screen over the whole frame -- it is the first thing you
+    # see in the unjittered cut -- and jittering per frame instead would make
+    # the sheet boil. Fixed offsets do neither.
+    grid = grid + np.random.default_rng(13).uniform(
+        -0.5, 0.5, size=grid.shape).astype(np.float32) * spacing
+
+    k = min(8, len(points))
+    d, idx = cKDTree(points).query(grid, k=k)
+    # Power (Laguerre) distance: the tiling unequal discs really make.
+    power = d.astype(np.float32) ** 2 - (radii[idx] ** 2)
+    order = np.argsort(power, axis=1)
+    first = order[:, 0]
+    rows = np.arange(len(grid))
+    own = idx[rows, first]
+    p0 = power[rows, first]
+    p1 = power[rows, order[:, 1]] if k > 1 else p0 + 1e6
+
+    # Distance from the junction, in px. The power difference grows as roughly
+    # twice the separation of the two centres per px of travel, so divide it
+    # out rather than tuning a width against the cell size.
+    sep = np.maximum(np.linalg.norm(points[own] - points[idx[rows, order[:, 1]]], axis=1), 1e-3)
+    edge = np.maximum(p1 - p0, 0.0) / (2.0 * sep)
+
+    junction = float(spec.get("junction_width", 5.0))
+    floor = float(spec.get("interior", 0.16))
+    # Medial myosin. A pulse in an amnioserosa cell flares in the middle of the
+    # apical surface, not at the junctions -- it is a distinct pool from the
+    # junctional belt and it is what the ratchet actually runs on. With this at
+    # zero a pulsing cell is a bright outline; turned up, the cell fills as it
+    # pulls, so the beat is a change of *texture* as well as of hue.
+    #
+    # Driven by the same continuous scalar, never by a threshold, and that is
+    # not a stylistic preference. Measured on the beat: a hard cut at 0.70 of
+    # the reference puts 352 highlight transitions a second in the frame with a
+    # tenth of them lasting four frames or fewer, and at 0.85 it is 179 a
+    # second with a p10 dwell of two frames. That is `culture`'s rejection --
+    # blinking dots -- arrived at on purpose. Continuous, a cell takes about
+    # nine frames to cross the ramp, so it swells instead of blinking.
+    medial = float(spec.get("medial", 0.0))
+    glow_edge = np.exp(-(edge / junction) ** 2)
+    if medial > 0.0:
+        # The exponent is what keeps this from swallowing the tiling. At a
+        # linear response and medial 0.80 every amnioserosa cell fills, the
+        # junction network inside the lens disappears and the frame goes back
+        # to being a field of pastel blobs -- the thing the power diagram was
+        # brought in to fix. Cubed, only the cells actually near peak fill.
+        strength = np.clip(rate[own] / max(float(spec.get("_cref", 1.0)), 1e-9), 0.0, 1.0)
+        glow_edge = np.maximum(glow_edge, medial * strength ** float(spec.get("medial_gamma", 3.0)))
+    lit = floor + (1.0 - floor) * glow_edge
+    # Brightness is cell height, so it is still "how much stuff is there" --
+    # a contracting cell keeps its volume and gets taller. Without this the
+    # amnioserosa and the epidermis sit at the same brightness and the hole
+    # does not read at 200 px: the whole frame is one violet honeycomb.
+    # No cutoff. The sheet is confluent: cells tile the plane and a cell that
+    # constricts hands territory to its neighbours rather than opening a gap.
+    # Cutting samples at 1.7x the drawn radius punched the contracted cells
+    # out of the tissue and left the last second of the clip as scattered
+    # discs in a black void, which is not what a closing epithelium does.
+    weights = (lit * model.heights()[own]).astype(np.float32)
+    return grid, rate[own], weights
+
+
 def trail_samples(start: np.ndarray, end: np.ndarray, target: float = 0.6):
     """Sample each trail along its own length, and say where on it each sample fell.
 
@@ -932,6 +1153,13 @@ def build(name: str, args: argparse.Namespace):
             seed_radius=args.skin_seed,
             growth=(limit - args.skin_seed) / steps,
         )
+    if spec["kind"] == "sheet":
+        # `relax`, not `settle`. Settling would ratchet as well as pack, and
+        # the ratchet is the clip: 60 settle steps cost 26% of the hole before
+        # frame one, and the hole is the opening picture.
+        model = morphogens.Closure(args.height, args.width, seed=args.seed)
+        model.relax(args.sheet_relax)
+        return model
     if spec["kind"] == "physarum":
         band = (args.band_top, args.band_bottom) if args.band_top < args.band_bottom else None
         return morphogens.Physarum(args.height, args.width, agents=args.agents, band=band)
@@ -983,7 +1211,7 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
     width, height = args.width, args.height
     frames = round(args.duration * args.fps)
     caption = build_overlay(width, height, spec, args)
-    palette = glow.build_palette(spec["palette"])
+    palette = glow.build_palette(PALETTES[args.palette] if args.palette else spec["palette"])
     palette_b = glow.build_palette(spec["palette_b"]) if "palette_b" in spec else None
 
     # First pass: run the process to completion. The finished form is both the
@@ -991,7 +1219,15 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
     # brightens into its final state instead of being levelled frame by frame.
     print(f"  {name}: settling", flush=True)
     model = build(name, args)
-    model.step(spec["settle"] + spec["steps_per_frame"] * (frames - 1))
+    # `affinity`'s case, and the second in the account: the better picture is
+    # at the *start*. The hole is what the piece is of, and by the last frame
+    # it is nine tenths gone -- a thin band on black, which is a bad thumbnail
+    # and a worse first half-second. So the cover and the exposure reference
+    # are both read off the opening state and the clip plays away from it.
+    if spec.get("cover") == "first":
+        model.step(spec["settle"])
+    else:
+        model.step(spec["settle"] + spec["steps_per_frame"] * (frames - 1))
 
     if spec["kind"] == "curve":
         final_points = model.points.copy()
@@ -1128,6 +1364,37 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
         print(f"  {name}: {model.count:,} cells, {warm:,} xanthophore, "
               f"radius {model.radius:.0f} px, stripe border {model.boundary():,} px", flush=True)
         cover = draw_skin(model)
+    elif spec["kind"] == "sheet":
+        # Colour is a rate, not an accumulation, so it is mapped against a
+        # fixed reference rather than ranked per frame. Ranking would drag the
+        # resting epidermis up the ramp -- it is 84% of the cells and it never
+        # contracts -- and a per-frame normalisation would flatten the beat
+        # into a constant shimmer. The reference is read off the opening state,
+        # which is where the most cells are pulling at once.
+        _, opening_rate = model.cells()
+        live = opening_rate[opening_rate > 0.0]
+        colour_reference = float(np.percentile(live, 98.0)) if len(live) else 1.0
+
+        def draw_sheet(state) -> np.ndarray:
+            samples, rate, weights = sheet_samples(state, args, spec)
+            shade = np.clip(rate / max(colour_reference, 1e-6), 0.0, 1.0)
+            colours = glow.sample_palette(palette, shade)
+            colour_sum, density = glow.splat(width, height, samples, colours, weights)
+            linear = glow.flame_map(colour_sum, density, reference, boost=spec["boost"])
+            linear = glow.bloom(linear, threshold=bloom_threshold, strength=bloom_strength)
+            return glow.compose(glow.to_bytes(glow.tone_map(linear, exposure=spec["exposure"])), caption)
+
+        samples, _, weights = sheet_samples(model, args, spec)
+        _, probe = glow.splat(
+            width, height, samples, np.zeros((len(samples), 3), dtype=np.float32), weights
+        )
+        reference = float(np.percentile(probe[probe > 0], args.cell_reference))
+        amnio = int((model.kind == 1).sum())
+        print(f"  {name}: {model.count:,} cells, {amnio:,} amnioserosa, "
+              f"hole {model.hole() / (width * height) * 100:.1f}% of frame, "
+              f"{len(samples):,} samples, colour reference {colour_reference:.3f} px/step",
+              flush=True)
+        cover = draw_sheet(model)
     elif spec["kind"] in ("cells", "spiral"):
 
         def draw_cells(state) -> np.ndarray:
@@ -1155,7 +1422,12 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
         channels = field_channels(model, spec, palette, palette_b, height, width, reference)
         cover = compose_field(channels, reference, spec, args, caption)
 
-    stem = f"{spec['slug']}_{width}x{height}_{args.duration:g}s_{args.fps}fps"
+    # The slug ends in the palette name, so a --palette cut has to rename that
+    # segment or two ramps of one piece write to the same file.
+    slug = spec["slug"]
+    if args.palette:
+        slug = slug.rsplit("_", 1)[0] + "_" + args.palette
+    stem = f"{slug}_{width}x{height}_{args.duration:g}s_{args.fps}fps"
     if spec.get("look"):
         # Name the look in the filename. `venation` does not, and re-rendering
         # it from the filename alone changes the cut.
@@ -1188,6 +1460,8 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
                 frame = draw_veins(model)
             elif spec["kind"] == "swarm":
                 frame = draw_swarm(model)
+            elif spec["kind"] == "sheet":
+                frame = draw_sheet(model)
             elif spec["kind"] in ("cells", "spiral"):
                 frame = draw_cells(model)
             else:
@@ -1203,6 +1477,12 @@ def render_edition(name: str, args: argparse.Namespace) -> Path:
     if encoder.wait() != 0:
         raise RuntimeError(f"ffmpeg failed while rendering {name}.")
     return output
+
+
+# Named ramps a cut may be rendered against without editing its edition. Use
+# with --tag so the variant lands beside the original rather than over it.
+PALETTES = {"seam": SEAM, "tension": TENSION, "epiblast": EPIBLAST,
+            "tension-neon": TENSION_NEON, "serosa": SEROSA, "flank": FLANK}
 
 
 def parse_args() -> argparse.Namespace:
@@ -1226,6 +1506,11 @@ def parse_args() -> argparse.Namespace:
     # dish: radius 0.44 x the short side, per the reel skill. The seed is the
     # disc frame one shows, and at 220 it already holds three stripes -- small
     # enough that the growth is the piece, large enough to be a thumbnail.
+    # Packing passes before frame one. 80 is where the initial hex jitter has
+    # relaxed and the sheet has stopped moving on its own.
+    parser.add_argument("--sheet-relax", type=int, default=80)
+    parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--palette", choices=sorted(PALETTES))
     parser.add_argument("--skin-radius", type=float, default=475.0)
     parser.add_argument("--skin-seed", type=float, default=220.0)
     parser.add_argument("--bone-divisor", type=int, default=3)

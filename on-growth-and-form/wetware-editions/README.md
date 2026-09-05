@@ -97,6 +97,156 @@ posted.
   violet mass in a dish is not culture green edge to edge, but it is the same
   decision.
 
+## Closure
+
+*Drosophila* dorsal closure — a hole in the back of the embryo, pulsed shut by
+the tissue covering it and then zipped. Built 2026-09-05, `field` + one-line
+hook, 8 s, `bloom`, `SEROSA`. Hook *"The patch is not saved. It is spent."*
+Ready to post, not posted.
+
+**Passed the gate cleanly and then cost six structural rewrites of the
+picture.** The gate measured a process; none of it measured whether the process
+could be *drawn*, and every failure below was found on a frame, not a number.
+
+- **T1 on the shipped model**: 0 / 100,950 / 319,375 / 510,075 / 697,625 px²
+  of hole closed — **14.5% in the first quarter, 26.9% in the last**, which is
+  `comet`-class. Hole down to 19.4% of its starting area, amnioserosa 276 → 44
+  cells, 232 ingression events. Cells still pulsing at the quarters:
+  81 / 97 / 53 / 32 / **14**, so the frame is alive to the last one.
+- **On the finished mp4**: 0.4% still frames, longest run 1, minimum delta
+  0.017. The best motion figure in the account.
+
+### Six ways the picture failed first
+
+Each is a comment in the code with its measurement, so none of them gets
+re-derived.
+
+1. **A flat 40 samples per cell** is one sample per 80 px² inside a 32 px
+   radius — loose speckle at 10.6% lit and a mean of 4.7/255, which is
+   `aggregation`'s rejection exactly. Count samples by *area*, not per cell.
+2. **Filling the blobs** gave the next failure: a cloud of separate discs with
+   black between them, because a cell 34% into its contraction sits well inside
+   the radius it packs at. Tissue does not open gaps when a cell contracts.
+3. **Cohesion keyed to the current radius** let a contracted cell fall outside
+   its own neighbours' reach; the amnioserosa came apart into discs floating in
+   a void by the end of the clip. Key it to the *resting* radius — junctions do
+   not release because a cell pulled.
+4. **The sheet clamped to the frame** has nowhere to flow in from. Sixty-five
+   cells ended up owning enormous polygons. The sheet now runs 270 px past
+   every edge, which is also the honest geometry: the epidermis wraps the whole
+   embryo.
+5. **Soft-disc mechanics at all.** They constrain overlap, not territory, so
+   the drawn tile never agrees with the area the cell wants, and a power
+   diagram amplifies every disagreement into slivers. Twice this ended as
+   radial fans. Replaced with a **Laguerre–Lloyd relaxation with an area
+   target**, which constrains the tiling itself and cannot tear.
+6. **A real bug, and the reason the tiling would not hold still.** The seeding
+   loop rebound `pitch`, so the mechanics grid was built at 24.18 px instead of
+   5 and `_px` was 585 instead of 25 — every territory area, `hole()` and
+   `heights()` wrong by 23×, and an amnioserosa cell resolved by four grid
+   points.
+
+### Two things the gate could not have caught
+
+- **The area-target feedback rings.** A power diagram is violently sensitive to
+  weight differences: once a weight exceeds a neighbour's by more than the
+  distance between them it swallows that neighbour whole. Unbounded at gain
+  0.35, weights ran 32 → 274 and territories collapsed to three grid cells and
+  recovered to 7,600 px² every few steps. The beat was buried under the
+  ringing — **98th percentile of the pulse: 0.0000**. Bounded to
+  `[0.55, 1.7] × preferred` at gain 0.06.
+- **Colour cannot be the rate the territory changes.** The sheet jostles its
+  neighbours as it closes, so a resting epidermal tile fluctuates as fast as an
+  amnioserosa cell contracts: **0.0200 against 0.0237**, no separation to
+  colour with. Colour is the cell's *commanded* contraction instead — the
+  medial myosin channel a real closure movie is filmed in. Separation is then
+  exact: 100% of cells above half the colour reference are amnioserosa, at both
+  ends of the clip.
+
+### What the two encodings mean
+
+Brightness is **cell height**. Apical constriction conserves volume, so a cell
+that pulls gets taller and there is more of it under every pixel it covers —
+house rule 1 satisfied by the biology rather than by a choice. Colour is
+contractile effort, fractional rather than absolute, so a large cell and a
+small one pulling equally hard read the same.
+
+### The zipper is not scripted
+
+Two rules do it and neither mentions the ends of the hole. A cell contracts
+harder the more of its neighbourhood is epidermis, so the pointed ends of the
+lens — surrounded on three sides rather than two — ratchet faster and empty
+first. And two epidermal cells facing each other *across* the hole pull
+together, which bites where the gap is narrowest. `seam_range` is the number
+that decides whether the second rule happens at all: at 3.2 × the epidermal
+radius it fired **once in a whole step**, because two epidermal cells with an
+amnioserosa cell between them are at least 100 px apart and the reach was 58.
+Across-pairs per step at 58 / 144 / 252 px reach: 1 / 138 / 440 at the start,
+0 / 28 / 107 by step 180.
+
+### The loop does not close, and that is the piece
+
+Seam 20.35 against an adjacent pair of 2.32 — a ratio of 8.8×, next to
+`comet`'s 9.3× and `phyllotaxis`'s 20.7×. A hole that shuts does not reopen.
+Worth knowing that **the first seam measurement was worthless**: frames 0 and 1
+are the same state, because the cover *is* the opening frame, so `|f1 − f0|`
+measured two identical frames at 0.04. Use `|f2 − f1|` on anything rendered
+with `cover: first`.
+
+### Five palettes, and why `SEROSA`
+
+- **`SEAM`** put the sheet and the pulling cells in one hue, so the hole read
+  as a change of texture rather than as an opening.
+- **`EPIBLAST`** fixed that hardest — teal ground, magenta pulls — and cost a
+  blue-green low end over 84% of the frame, which is the `reel` skill's "blue
+  is an accent, never a whole piece".
+- **`TENSION`** separated the two tissues by *temperature* instead, was picked,
+  and was then rejected on its ground. The complaint was not that it was blue
+  but that it was **washed**: measured on the darker half of the lit pixels its
+  ground is the least saturated of the lot, 16.2 against 19.5 / 17.9 / 18.0,
+  and a mid-luminance desaturated blue is denim. Its other weakness was khaki
+  midtones.
+- **`SEROSA` ships.** TENSION's ground taken to plum, its ember and gold
+  untouched, so the temperature split the palette existed for survives — violet
+  to gold is a long way round the wheel — and the khaki goes with the ground,
+  because against plum the middle of the ramp reads as rose and amber. Violet
+  is where this account already lives (`SYNAPSE`, `APEX`, `ACTIN`), which is
+  also its cost: it is less distinctive than TENSION was and sits near
+  `comet`'s ACTIN.
+- **`FLANK`** is the alternative and the strongest picture of the five: petrol
+  against gold is very nearly complementary. It carries EPIBLAST's objection.
+
+**Green was asked for and refused, with a reason.** Green sits next to gold on
+the wheel, so a green ground would weaken the one thing this ramp is for — the
+peak separating from the sheet — and it would put a third green on the grid
+beside `CULTURE` and `VENOM`. `FLANK` is the greenish direction taken from the
+blue side, where the hue distance to gold survives.
+
+All of them are in `PALETTES`; `SEROSA` is the edition default, so
+`--edition closure` alone reproduces the shipped cut, which is the trap
+`venation` fell into.
+
+### A highlight that switches state would break it
+
+Paulina asked whether the peak cells should flip to a neon yellow and a
+different texture at the moment they light up. The colour half is safe — a ramp
+change on the same scalar, no threshold. The *switch* is not, and the beat says
+so: a hard cut at 0.70 of the reference puts **352 highlight transitions a
+second** in the frame with a p10 dwell of four frames, and at 0.85 it is 179 a
+second with a p10 dwell of **two frames**. That is `culture`'s rejection —
+blinking dots — reached on purpose. Continuous, a cell takes about nine frames
+to cross the ramp, so it swells instead. **`check` would not catch this**: its
+test counts frozen frames, and flicker improves that number.
+
+The medial-myosin term this produced is in `sheet_samples` as `medial`,
+defaulting to 0.0 and used by nothing. It is real biology — the pulse flares in
+the cell's interior, not at its junctions — and the window is narrow: at 0.80
+linear it swallows the junction network and the frame goes back to pastel
+blobs, and only around 0.50 with a sixth-power response does it fill a dozen
+cells and leave the tiling intact. `TENSION_NEON` is kept beside it the way
+`MERISTEM` is, for the comparison.
+
+
 ## Physarum
 
 Slime mould transport network, two species, 600 000 agents. Reworked

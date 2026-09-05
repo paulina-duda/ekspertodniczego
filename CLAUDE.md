@@ -63,8 +63,6 @@ own code.
 
 ## Gotchas, learned the hard way
 
-Each of these cost real time at least once.
-
 - **ffmpeg**: a conda build once lacked libx264, advertised libopenh264 and
   failed at render time. The env's current ffmpeg *does* have libx264 (checked
   2026-08-30, and again on the laptop 2026-09-03) and the renderers probe for a
@@ -73,30 +71,12 @@ Each of these cost real time at least once.
   conda one and `/usr/bin/ffmpeg`. **It is the build string that decides**:
   conda-forge's default ffmpeg is the LGPL one and has only libopenh264, so a
   rebuilt env needs `ffmpeg=*=gpl*` asked for by name.
-- **Even dimensions only.** yuv420p subsamples chroma by two; an odd width or
-  height fails with a message that says nothing about the cause.
-- **`np.roll` is wrong whenever several loops share one array** — it stitches
-  the end of one to the start of the next. The model's neighbour links and the
-  renderer's segment list both need per-loop wrapping, and the renderer has to
-  be told about it separately.
-- **float32 `np.mod`** can return exactly the modulus for a value a hair below
-  zero, landing one cell past the end of a grid — or exactly *on* the wall of a
-  half-open box, at which point `cKDTree(boxsize=...)` refuses the whole array.
-  Clamp after wrapping.
-- **Bloom pyramids need padding** to a multiple of 2^levels, or the coarse
-  levels drift out of alignment and the halo sits visibly offset.
-- **Sample lines by length, not by a fixed count per line.** A fixed count
-  turns long segments into dotted rules across the frame, and it looks like a
-  layout bug rather than a sampling one.
-- **A renderer's default output directory can point at the wrong edition.**
-  `render_biomorphs.py` wrote to `on-growth-and-form/instagram/` instead of
-  `wetware-editions/instagram/` until 2026-08-25. The render still succeeds, it
-  just lands a level too high — check `DEFAULT_OUTPUT_DIR` against where the
-  sibling cuts already are.
-- **Wrap segments have to be dropped** in anything that travels on a torus. A
-  subject leaving the right edge and arriving at the left is one object, but the
-  line between those two positions is a stripe across the frame that nothing
-  travelled.
+
+Numerical and drawing gotchas (`np.roll`, float32 `np.mod`, bloom padding, line
+sampling, wrap segments, output-directory defaults) are **only** in
+[`on-growth-and-form/source/CLAUDE.md`](on-growth-and-form/source/CLAUDE.md) —
+read that when touching model or renderer code, not here. Duplicating them here
+was previously tried and cost every session the same tokens twice.
 
 ## Working agreements
 

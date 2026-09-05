@@ -5,6 +5,85 @@ caption in English and Polish.
 
 ---
 
+# `closure_dorsal-closure_serosa`
+
+Hook, in frame: **The patch is not saved. It is spent.**
+
+Data block, in frame:
+
+```
+Drosophila melanogaster  ·  dorsal closure
+contract · give back less · leave
+276 amnioserosa cells  ·  232 of them ingress
+ratcheted apical constriction, Solon 2009
+```
+
+The citation is in-frame, so the caption does not repeat it. The block counts
+only the cells in frame; the model carries 6,517, because the sheet has to run
+past every edge for the epidermis to have somewhere to flow in from.
+
+---
+
+## English
+
+A fly embryo spends a few hours of its development with a hole in its back.
+
+There is no skin over the dorsal surface yet. What covers the gap instead is the
+amnioserosa — about two hundred enormous flat cells, the patch of large cells in
+the middle of the frame. Around it are the two sheets of epidermis that will
+eventually meet over the top.
+
+Every amnioserosa cell contracts and relaxes on its own schedule, a few minutes
+to a cycle, out of step with all of its neighbours. A cycle on its own achieves
+nothing: it takes area and then gives it back. What makes it work is that it
+gives back slightly less than it took. Nothing measures the hole and nothing
+coordinates the cells; the ratchet just runs, the epidermis takes up the slack,
+and after a few dozen cycles the tissue in the middle has been spent. A cell
+that has contracted past a point drops out of the sheet and dies.
+
+The gap is a lens, so its two ends are where the advancing sheets are already
+closest together. That is where they touch first, and the seam runs inward from
+both. Nobody had to find the corners.
+
+Colour is how hard a cell is pulling at that instant — the channel this is
+actually filmed in. The epidermis never pulls, so it stays dark on its own.
+
+One liberty, worth saying out loud: the beat is slower here than the closure. A
+real cell contracts a few dozen times over three hours; this one does it about
+six times in eight seconds, because otherwise you would not see it happen.
+
+---
+
+## Polski
+
+Zarodek muszki spędza kilka godzin rozwoju z dziurą w grzbiecie.
+
+Nie ma tam jeszcze naskórka. Lukę przykrywa amnioserosa — jakieś dwieście
+ogromnych, płaskich komórek, ta plama dużych komórek na środku kadru. Wokół niej
+dwa płaty naskórka, które w końcu spotkają się nad nią.
+
+Każda komórka amnioserosy kurczy się i rozluźnia we własnym rytmie, kilka minut
+na cykl, nie w takt z sąsiadkami. Pojedynczy cykl nie osiąga niczego: zabiera
+powierzchnię i zaraz ją oddaje. Działa dopiero to, że oddaje odrobinę mniej, niż
+zabrał. Nic nie mierzy dziury i nic nie koordynuje komórek; zapadka po prostu
+chodzi, naskórek wybiera luz, a po kilkudziesięciu cyklach tkanka na środku jest
+zużyta. Komórka, która skurczyła się poniżej pewnego progu, wypada z nabłonka
+i ginie.
+
+Luka ma kształt soczewki, więc jej dwa końce to miejsca, w których nasuwające
+się płaty są już najbliżej siebie. Tam stykają się najpierw i stamtąd szew
+biegnie do środka. Nikt nie musiał szukać rogów.
+
+Kolor to siła, z jaką komórka ciągnie w danej chwili — kanał, w którym to się
+naprawdę filmuje. Naskórek nie ciągnie nigdy, więc zostaje ciemny sam z siebie.
+
+Jedna licencja, którą warto powiedzieć wprost: bicie jest tu wolniejsze niż
+zamykanie. Prawdziwa komórka kurczy się kilkadziesiąt razy przez trzy godziny;
+ta robi to około sześciu razy w osiem sekund, bo inaczej nie dałoby się tego
+zobaczyć.
+
+---
+
 # `aggregation_camp-relay_circuit`
 
 Hook, in frame: **Every wave would carry them back. / So they only answer half of it.**

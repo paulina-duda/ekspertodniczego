@@ -2551,3 +2551,360 @@ class Stripe:
         """Positions, and how recently each cell last changed type."""
         points = np.column_stack((self.x, self.y)).astype(np.float32)
         return points, np.exp(-self.age / self.recency).astype(np.float32)
+
+
+class Closure:
+    """Dorsal closure: a hole in the epidermis pulsed shut, then zipped.
+
+    Two tissues in one sheet. Inside the hole sit the amnioserosa cells --
+    large, flat, and each one contracting and relaxing on its own phase. The
+    contraction *ratchets*: a cell gives back less than it took, so the sheet
+    loses area without any cell being told the plan. Around the hole is the
+    lateral epidermis, finer-grained and passive, which stretches to keep the
+    sheet whole and closes over whatever the amnioserosa gives up.
+
+    Nothing here scripts the shape. The zipper is one rule -- two epidermal
+    cells that face each other across the hole pull together -- and because the
+    hole is a lens, they are closest at its two ends, so it seams from the
+    canthi inward and the hole goes from a lens to a slit on its own. The
+    ingression events are the same story: a cell that has contracted past a
+    threshold leaves the sheet, and its neighbours close over the gap.
+
+    Colour is how hard a cell is pulling right now -- the rate it is
+    commanding its own apical area down, which is the myosin channel a real
+    dorsal closure movie is filmed in. That is what makes the beat visible:
+    roughly six contractions per cell over an 8 s clip, all out of phase. The
+    epidermis never contracts, so it sits at the dark end for free, and the
+    separation is exact -- every cell above half the colour reference is an
+    amnioserosa cell, measured, at both ends of the clip.
+    """
+
+    def __init__(
+        self,
+        height: float = 1920.0,
+        width: float = 1080.0,
+        seed: int = 1,
+        lens: tuple[float, float] = (0.36, 0.34),
+        amnio_radius: float = 32.0,
+        epi_radius: float = 13.0,
+        period: float = 42.0,
+        period_sd: float = 0.18,
+        amp: float = 0.34,
+        ratchet: float = 0.010,
+        ratchet_sd: float = 0.35,
+        ingress: float = 0.34,
+        margin: float = 0.25,
+        lloyd: float = 0.55,
+        gain: float = 0.06,
+        pitch: float = 5.0,
+        seam: float = 1.6,
+        seam_range: float = 8.0,
+        rim_boost: float = 1.5,
+    ) -> None:
+        self.h, self.w = float(height), float(width)
+        # The sheet runs well past the frame. It has to: the epidermis closes
+        # the hole by *flowing in*, and with the tissue clamped to the frame
+        # edges there is nowhere for it to flow from -- the last cut left 65
+        # amnioserosa cells owning enormous territories because the epidermis
+        # around them was jammed against the wall and could not advance. The
+        # epidermis really does wrap the whole embryo, so this is the honest
+        # geometry as well as the one that works. 0.25 puts the outer edge
+        # 270 px clear of the frame, against the ~80 px of inward travel the
+        # 698,000 px^2 the hole gives up actually asks of it.
+        self.pad = margin * float(width)
+        self._pitch = float(pitch)
+        self.rng = np.random.default_rng(seed)
+        self.amp, self.lloyd, self.gain = amp, lloyd, gain
+        self.seam, self.seam_range = seam, seam_range
+        self.ingress, self.epi_radius = ingress, epi_radius
+        self.rim_boost = rim_boost
+        self.t = 0.0
+
+        rng = self.rng
+        ax, ay = lens[0] * self.w, lens[1] * self.h
+        cx, cy = self.w * 0.5, self.h * 0.5
+
+        # Amnioserosa on a jittered hex lattice inside the lens, epidermis on
+        # the same lattice outside it. Seeding both from one lattice rather
+        # than at random is what lets the sheet be packed at frame one instead
+        # of spending the opening seconds relaxing out of an overlap.
+        pts, kind = [], []
+        for r0, inside in ((amnio_radius, True), (epi_radius, False)):
+            lattice = r0 * 1.86
+            lo_x, hi_x = -self.pad, self.w + self.pad
+            lo_y, hi_y = -self.pad, self.h + self.pad
+            rows = int((hi_y - lo_y) / (lattice * 0.866)) + 3
+            cols = int((hi_x - lo_x) / lattice) + 3
+            for j in range(rows):
+                for i in range(cols):
+                    x = lo_x + (i + 0.5 * (j % 2)) * lattice
+                    y = lo_y + j * lattice * 0.866
+                    if not (lo_x <= x <= hi_x and lo_y <= y <= hi_y):
+                        continue
+                    u = (x - cx) / ax
+                    v = (y - cy) / ay
+                    # The lens: two circular arcs, so it is pointed at the ends
+                    # rather than elliptical. The points are where it zips.
+                    inlens = abs(u) <= math.sqrt(max(1.0 - v * v, 0.0)) ** 0.72
+                    if inlens != inside:
+                        continue
+                    if inside is False and inlens:
+                        continue
+                    # 0.30, not 0.16: at 0.16 the relaxed sheet keeps the seeding
+                    # lattice and draws as a honeycomb, which is a beehive rather
+                    # than an epithelium. Amnioserosa cells are irregular.
+                    pts.append((x + rng.normal(0, r0 * 0.30), y + rng.normal(0, r0 * 0.30)))
+                    kind.append(1 if inside else 0)
+
+        self.p = np.asarray(pts, dtype=np.float64)
+        self.kind = np.asarray(kind, dtype=np.int8)          # 1 amnioserosa, 0 epidermis
+        n = len(self.p)
+        self.r0 = np.where(self.kind == 1, amnio_radius, epi_radius).astype(np.float64)
+        self.A0 = np.pi * self.r0 ** 2
+        self.A_amnio_0 = float(self.A0[self.kind == 1].sum())
+        # The cell's volume, fixed. Apical area is what changes; the cell keeps
+        # what it has and gets taller, which is what `heights` reports.
+        self.vol = self.A0.copy()
+        self.phase = rng.uniform(0, 2 * np.pi, n)
+        self.per = period * np.exp(rng.normal(0, period_sd, n))
+        # Per-cell ratchet rate. One shared rate puts every ingression event in
+        # the same handful of steps -- measured at the gate, the sheet emptied
+        # at step 132 of 255. The spread is what spaces them over the clip.
+        self.rate = ratchet * np.exp(rng.normal(0, ratchet_sd, n))
+        self.floor = ingress * np.pi * amnio_radius ** 2
+        # The power weight, in radius units. It is a *state variable* chased
+        # toward whatever makes the cell's territory match its preferred area,
+        # not a number read off the preferred area directly -- reading it off
+        # was the whole failure: a weight that does not match the territory the
+        # diagram actually hands out steals slivers from the neighbours, and
+        # the last second of the clip came out as radial fans.
+        self.rw = np.sqrt(self.A0 / np.pi)
+        # `self._pitch`, not `pitch`. The seeding loop above used to rebind the
+        # name, so the mechanics grid was built at 24.18 px instead of 5 and
+        # `_px` was 585 instead of 25 -- every territory area, `hole()` and
+        # `heights()` wrong by 23x, and an amnioserosa cell resolved by four
+        # grid points. It is the reason the tiling would not hold still.
+        xs = np.arange(-self.pad + self._pitch * 0.5, self.w + self.pad, self._pitch)
+        ys = np.arange(-self.pad + self._pitch * 0.5, self.h + self.pad, self._pitch)
+        self._grid = np.stack(np.meshgrid(xs, ys, indexing="xy"), -1).reshape(-1, 2)
+        self._px = self._pitch * self._pitch
+        self.area = np.pi * self.rw ** 2
+        # How hard the cell is pulling: the fractional rate at which it is
+        # commanding its own apical area down, smoothed. This is the myosin
+        # channel -- medial myosin is what a dorsal closure movie is actually
+        # filmed in, and it is what pulses -- and it is intrinsic to the cell
+        # and independent of anything about the camera.
+        #
+        # The obvious alternative, the rate the cell's *territory* shrinks, was
+        # tried and does not work: the sheet jostles its neighbours as it
+        # closes, so a resting epidermal tile fluctuates as fast as an
+        # amnioserosa cell contracts. Measured, 98th percentile of the pulse:
+        # amnioserosa 0.0237, epidermis 0.0200. No separation to colour with.
+        #
+        # Fractional, not absolute, so a large cell and a small one pulling
+        # equally hard read the same; the colour is effort, not size.
+        self.pulse = np.zeros(len(self.p))
+        self.gone = 0
+
+    # ------------------------------------------------------------------ state
+    def _pref(self) -> np.ndarray:
+        """Preferred apical area. The beat is on the amnioserosa only."""
+        beat = 1.0 + self.amp * np.sin(2 * np.pi * self.t / self.per + self.phase)
+        return np.where(self.kind == 1, self.A0 * beat, self.A0)
+
+    def _radii(self) -> np.ndarray:
+        """Radius of the territory the cell actually holds."""
+        return np.sqrt(np.maximum(self.area, 1.0) / np.pi)
+
+    @property
+    def count(self) -> int:
+        return len(self.p)
+
+    def relax(self, n: int = 80) -> None:
+        """Pack the sheet without advancing the clock.
+
+        Stepping to settle would ratchet as well, and 60 settle steps cost 26%
+        of the hole before frame one -- the opening picture is the hole.
+        """
+        for _ in range(n):
+            self._mechanics()
+
+    # ------------------------------------------------------------------- step
+    def step(self, n: int = 1) -> None:
+        for _ in range(n):
+            self._one()
+
+    def _one(self) -> None:
+        # Sampled before the clock moves, or the difference below sees only the
+        # ratchet increment and not the beat -- which cost an ending: the
+        # survivors of the ingression are the cells with the *slowest* ratchet,
+        # so a colour built on the ratchet alone dims to nothing exactly as the
+        # clip finishes. The beat term is 0.051 a step at peak against the
+        # ratchet's 0.010, and it is amplitude-independent, so a cell pulls as
+        # visibly in the last second as in the first.
+        was = self._pref()
+        self.t += 1.0
+
+        # The ratchet: area is only partly given back after each contraction.
+        amnio = self.kind == 1
+        ph = 2 * np.pi * self.t / self.per + self.phase
+        pull = amnio & (np.cos(ph) < 0.0)
+        # A cell contracts harder the more of its neighbourhood is epidermis --
+        # it is the one taking the tension. That is what puts the zipper in:
+        # the lens is pointed at its two ends, so a cell there is surrounded on
+        # three sides rather than two, ratchets faster, and leaves sooner. The
+        # canthi retreat first and nothing had to be told where they are.
+        self.A0 = np.where(pull, self.A0 * (1.0 - self.rate * (1.0 + self.rim_boost * self._rim())),
+                           self.A0)
+
+        # The epidermis stretches as well as flows. Both are needed and each
+        # fails alone: clamped to the frame it has nowhere to flow from and the
+        # last cells end up owning enormous territories, and flowing without
+        # stretching leaves the sheet under-packed once the hole has given up
+        # its area -- 4.41M px^2 of preferred area in a 4.91M px^2 field -- at
+        # which point the packing falls apart into radial fans.
+        epi = ~amnio
+        if epi.any():
+            released = self.A_amnio_0 - float(self.A0[amnio].sum())
+            share = released / int(epi.sum())
+            self.A0 = np.where(epi, np.pi * self.epi_radius ** 2 + share, self.A0)
+
+        self._mechanics()
+        # 0.28 over a 42-step beat keeps the pulse and drops the step noise.
+        drop = (was - self._pref()) / np.maximum(was, 1.0)
+        self.pulse = 0.72 * self.pulse + 0.28 * drop
+
+        # Ingression: a cell that has contracted past the floor leaves the
+        # sheet, and the neighbours close over it.
+        leaving = amnio & (self.A0 < self.floor)
+        if leaving.any():
+            keep = ~leaving
+            self.gone += int(leaving.sum())
+            for name in ("p", "kind", "r0", "A0", "phase", "per", "rate",
+                         "vol", "rw", "area", "pulse"):
+                setattr(self, name, getattr(self, name)[keep])
+
+    def _rim(self) -> np.ndarray:
+        """Fraction of each cell's neighbourhood that is epidermis."""
+        out = np.zeros(len(self.p))
+        who = np.flatnonzero(self.kind == 1)
+        if not len(who):
+            return out
+        near = cKDTree(self.p).query_ball_point(self.p[who], 2.4 * float(self.r0.max()))
+        epi = (self.kind == 0).astype(np.float64)
+        out[who] = [epi[j].mean() if len(j) else 0.0 for j in near]
+        return out
+
+    def _mechanics(self) -> None:
+        """One Laguerre-Lloyd pass with an area target.
+
+        Soft discs cannot do this job. They constrain overlap, not territory,
+        so nothing stops a cell's drawn tile from disagreeing with the area it
+        wants -- four cuts died on that, ending as scattered discs in a void,
+        as sixty cells owning enormous polygons, and twice as radial fans.
+        Lloyd relaxation constrains the tiling itself and is strongly
+        regularising, and the weight feedback is what makes each tile the size
+        the cell is asking for. Tearing is impossible by construction: the
+        diagram partitions the plane whatever the cells do.
+        """
+        g = self._grid
+        n = len(self.p)
+        k = min(8, n)
+        d, idx = cKDTree(self.p).query(g, k=k)
+        if k == 1:
+            idx = idx[:, None]; d = d[:, None]
+        power = d ** 2 - self.rw[idx] ** 2
+        own = idx[np.arange(len(g)), np.argmin(power, axis=1)]
+
+        count = np.bincount(own, minlength=n).astype(np.float64)
+        cx = np.bincount(own, weights=g[:, 0], minlength=n)
+        cy = np.bincount(own, weights=g[:, 1], minlength=n)
+        live = count > 0.0
+        centre = np.zeros((n, 2))
+        centre[live] = np.column_stack((cx[live], cy[live])) / count[live, None]
+        self.p[live] += self.lloyd * (centre[live] - self.p[live])
+
+        self.area = count * self._px
+        want = np.sqrt(np.maximum(self._pref(), 1.0) / np.pi)
+        have = np.sqrt(np.maximum(self.area, 1.0) / np.pi)
+        # Bounded, and bounded twice. A power diagram is violently sensitive to
+        # weight differences -- once a weight exceeds a neighbour's by more
+        # than the distance between them it swallows that neighbour whole -- so
+        # an unbounded integrator here does not converge, it rings. Measured on
+        # the first version at gain 0.35 with no clamp: weights ran 32 -> 274,
+        # amnioserosa territories collapsed to three grid cells and recovered
+        # to 7,600 px^2 and back, every cell, every few steps, and the beat was
+        # buried under the ringing (98th percentile of the pulse: 0.0000).
+        step = np.clip(self.gain * (want - have), -0.5, 0.5)
+        self.rw = np.clip(self.rw + step, 0.55 * want, 1.7 * want)
+
+        self._seam()
+        np.clip(self.p[:, 0], -self.pad, self.w + self.pad, out=self.p[:, 0])
+        np.clip(self.p[:, 1], -self.pad, self.h + self.pad, out=self.p[:, 1])
+
+    def _seam(self) -> None:
+        """The zipper: two epidermal cells facing each other across the hole pull together.
+
+        The lens is narrowest at its two ends, so that is where this bites
+        first and the seam runs inward from both canthi. Nothing tells it where
+        they are.
+        """
+        p = self.p
+        eps = np.flatnonzero(self.kind == 0)
+        ams = np.flatnonzero(self.kind == 1)
+        if len(eps) < 2 or not len(ams):
+            return
+        reach = self.seam_range * self.epi_radius
+        near = np.asarray(list(cKDTree(p[eps]).query_pairs(reach)), dtype=np.int64)
+        if not len(near):
+            return
+        a, b = eps[near[:, 0]], eps[near[:, 1]]
+        delta = p[b] - p[a]
+        L = np.maximum(np.hypot(delta[:, 0], delta[:, 1]), 1e-9)
+        r = self._radii()
+        far = L > 1.35 * (r[a] + r[b])
+        mid = 0.5 * (p[a] + p[b])
+        gap, who = cKDTree(p[ams]).query(mid)
+        across = far & (gap < r[ams][who])
+        if not across.any():
+            return
+        # Falloff with distance, so the closest facing pairs pull hardest.
+        # `reach` is the number that decides whether any of this happens: at
+        # 3.2 x the epidermal radius the rule fired once in a whole step,
+        # because two epidermal cells with an amnioserosa cell between them are
+        # at least 100 px apart and the reach was 58. Across-pairs per step at
+        # 58 / 144 / 252 px: 1 / 138 / 440 at the start, 0 / 28 / 107 by 180.
+        lam = np.clip(1.0 - L[across] / reach, 0.0, 1.0)
+        f = delta[across] * (self.seam * lam / L[across])[:, None]
+        np.add.at(p, a[across], +f)
+        np.add.at(p, b[across], -f)
+
+    # ----------------------------------------------------------------- probes
+    def radii(self) -> np.ndarray:
+        """The power weights, which is what the renderer tiles with."""
+        return self.rw
+
+    def heights(self) -> np.ndarray:
+        """How tall each cell is now, as a multiple of its resting height.
+
+        Apical constriction conserves volume: a cell that halves its apical
+        area is twice as tall, so there is twice as much of it under every
+        pixel it still covers. That is the one honest brightness signal in the
+        sheet -- the amnioserosa thickens as it pulls and the epidermis thins
+        as it stretches, which is exactly the separation the picture needs, and
+        neither is a decision anyone made about the look.
+        """
+        return np.clip(self.vol / np.maximum(self.area, 1e-9), 0.25, 4.0)
+
+    def hole(self) -> float:
+        """Area the amnioserosa still holds, in px^2. Territory, not preference."""
+        return float(self.area[self.kind == 1].sum())
+
+    def cells(self) -> tuple[np.ndarray, np.ndarray]:
+        """Positions, and how fast each cell is contracting right now.
+
+        Not ranked. The scalar is bimodal rather than skewed -- the epidermis
+        sits near zero by construction -- so ranking would drag the resting
+        sheet up the ramp and spend the palette on cells doing nothing.
+        """
+        return self.p.astype(np.float32), np.maximum(self.pulse, 0.0).astype(np.float32)
