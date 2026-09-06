@@ -33,6 +33,7 @@ account starts where the biology starts.
 | 9 | `reentry_excitable-medium_substrate` | Substrate | dish | *Nothing in the rule says spiral.* | Barkley's model, cited in-frame |
 | 10 | `protocell_particle-motion_alife` | Artificial Life | field | *The rule has no membrane in it. / Everything on screen has one.* | Schmickl 2016, cited in-frame |
 | 11 | `gyrus_differential-growth_venom` **`_v2` cut** | Wetware | dish | *It would fold anyway. The wall decides where.* | — |
+| 12 | `phyllotaxis_primordia_apex` | Biomorph | field | *The plant is not counting. You are.* | — |
 
 All 1080 × 1920, 30 fps, H.264, no audio. 8 s except `soliton` at 10 s and
 `medusa` at 12 s — the two pieces that needed the extra time, and the reason

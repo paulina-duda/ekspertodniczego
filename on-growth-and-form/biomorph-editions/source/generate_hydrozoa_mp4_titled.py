@@ -391,7 +391,7 @@ def plan_clip(frames: int) -> list[dict]:
     return plan
 
 
-def sample_frame(index: int, half: float, plan: list[dict], palettes):
+def sample_frame(index: int, half: float, plan: list[dict], palettes, vshift: float = 0.0):
     """One frame, per animal, so each keeps its own hue."""
     S: list[np.ndarray] = []
     C: list[np.ndarray] = []
@@ -412,7 +412,7 @@ def sample_frame(index: int, half: float, plan: list[dict], palettes):
             x, y, p = state(harmonics, m_eff, t + offset * SHEET_SPAN)
             body = (np.column_stack((x, y)) - centre) / divisor * display + seat
             pts, vals = strokes(body[:, 0] * half + half,
-                                half * 1920 / 1080 - body[:, 1] * half,
+                                half * 1920 / 1080 + vshift - body[:, 1] * half,
                                 ranks(np.abs(p - 1.0)))
             if not len(pts):
                 continue
@@ -425,7 +425,7 @@ def sample_frame(index: int, half: float, plan: list[dict], palettes):
 
 
 def render_buffer(index, args, plan, palettes, reference):
-    S, C, W = sample_frame(index, args.width / 2, plan, palettes)
+    S, C, W = sample_frame(index, args.width / 2, plan, palettes, args.vshift)
     colour_sum, density = glow.splat(args.width, args.height, S, C, W)
     mapped = glow.flame_map(colour_sum, density, reference, boost=args.boost)
     mapped = glow.bloom(mapped, threshold=args.bloom_threshold, strength=args.bloom_strength)
@@ -436,17 +436,24 @@ def draw_hook(overlay: Image.Image, args: argparse.Namespace) -> None:
     if not args.hook:
         return
     draw = ImageDraw.Draw(overlay)
-    caption_font = ImageFont.truetype(str(args.equation_face), CAPTION_SIZE)
-    caption_box = draw.multiline_textbbox(
-        (0, 0), "\n".join(CAPTION), font=caption_font, spacing=max(4, CAPTION_SIZE // 3)
-    )
-    caption_ink_top = overlay.height - args.caption_bottom - caption_box[3] - 4 + caption_box[1]
     font = ImageFont.truetype(str(glow.MONO_FONT), args.hook_size)
     text = "\n".join(args.hook)
     spacing = max(6, args.hook_size // 3)
     box = draw.multiline_textbbox((0, 0), text, font=font, spacing=spacing, align="center")
+    if args.no_caption:
+        # No data block to clear, so the hook takes the block's own anchor
+        # (bottom margin) rather than sitting HOOK_GAP above an empty one --
+        # that left it stranded high up over a dead patch of frame.
+        top = overlay.height - args.caption_bottom - box[3] - 4
+    else:
+        caption_font = ImageFont.truetype(str(args.equation_face), CAPTION_SIZE)
+        caption_box = draw.multiline_textbbox(
+            (0, 0), "\n".join(CAPTION), font=caption_font, spacing=max(4, CAPTION_SIZE // 3)
+        )
+        caption_ink_top = overlay.height - args.caption_bottom - caption_box[3] - 4 + caption_box[1]
+        top = caption_ink_top - HOOK_GAP - box[3]
     draw.multiline_text(
-        (overlay.width / 2 - (box[0] + box[2]) / 2, caption_ink_top - HOOK_GAP - box[3]),
+        (overlay.width / 2 - (box[0] + box[2]) / 2, top),
         text, font=font, fill=(255, 255, 255, 244), spacing=spacing, align="center",
         stroke_width=4, stroke_fill=(0, 0, 0, 165),
     )
@@ -463,7 +470,7 @@ def text_layer(args: argparse.Namespace) -> Image.Image:
 
 def build_overlay(args: argparse.Namespace) -> Image.Image:
     overlay = glow.make_caption(
-        args.width, args.height, TITLE, CAPTION,
+        args.width, args.height, TITLE, () if args.no_caption else CAPTION,
         equation_size=CAPTION_SIZE, margin=MARGIN, equation_face=args.equation_face,
         top_margin=args.title_top, bottom_margin=args.caption_bottom, scrim=args.scrim,
     )
@@ -511,7 +518,7 @@ def report(frames: int, args: argparse.Namespace, plan: list[dict], palettes) ->
     lo = np.array([np.inf, np.inf])
     hi = np.array([-np.inf, -np.inf])
     for index in range(0, frames, 6):
-        S, _, _ = sample_frame(index, half, plan, palettes)
+        S, _, _ = sample_frame(index, half, plan, palettes, args.vshift)
         lo = np.minimum(lo, S.min(axis=0))
         hi = np.maximum(hi, S.max(axis=0))
     print(f"  ink box over the clip: x {lo[0]:.0f}..{hi[0]:.0f} of {args.width}, "
@@ -545,7 +552,7 @@ def render(args: argparse.Namespace) -> Path:
     # One density reference for the whole clip, taken off frame one: a per-frame
     # reference makes the tone curve breathe with the animal and undoes the
     # point of having kept the pulse.
-    S, C, W = sample_frame(0, args.width / 2, plan, palettes)
+    S, C, W = sample_frame(0, args.width / 2, plan, palettes, args.vshift)
     _, density = glow.splat(args.width, args.height, S, C, W)
     reference = float(np.percentile(density[density > 0], 99.0))
     print(f"  density reference (p99 of frame one): {reference:.2f}", flush=True)
@@ -603,6 +610,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="render these frame indices as PNGs instead of a clip")
     parser.add_argument("--title-top", type=int, default=240)
     parser.add_argument("--caption-bottom", type=int, default=190)
+    parser.add_argument("--no-caption", action="store_true",
+                        help="drop the data block; title and hook only")
+    parser.add_argument("--vshift", type=float, default=0.0,
+                        help="push the three animals down this many px; 0 keeps the frame's own centre")
     parser.add_argument("--scrim", type=float, default=0.95)
     parser.add_argument("--hook-size", type=int, default=34)
     parser.add_argument("--font", choices=sorted(FONT_FAMILIES), default="plex")

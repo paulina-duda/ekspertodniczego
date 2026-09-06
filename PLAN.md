@@ -34,11 +34,11 @@ edition's README.
 | Piece | Shape | State | Hook |
 | --- | --- | --- | --- |
 | `folding` | field | **posted** (1st) — DejaVu-era, staying that way by decision | — |
-| `gyrus` | dish + hook | `folding` 2.0, built 2026-09-01 — **ready to post** | *It would fold anyway. The wall decides where.* |
+| `gyrus` | dish + hook | `folding` 2.0, **posted** (11th) — `_v2` cut | *It would fold anyway. The wall decides where.* |
 | `turing` | field | **posted** (7th) — DejaVu-era, staying that way by decision | — |
-| `physarum` | slide + hook | reworked 2026-08-25 | *No brain. One cell. Still finds a way.* |
+| `physarum` | slide + hook | **parked** — reworked 2026-08-25, not queued | *No brain. One cell. Still finds a way.* |
 | `somite` | field + hook | built, **rejected** — fails T4 | *Your spine was counted, not measured.* |
-| `phyllotaxis` | field + hook | built, `APEX` palette shipped 2026-08-31 | *The plant is not counting. You are.* |
+| `phyllotaxis` | field + hook | `APEX` palette, **posted** | *The plant is not counting. You are.* |
 | `comet` | field + hook | built 2026-08-30 | *No motor. It is pushed by what it builds.* |
 | `trabecula` | field + hook | built, **rejected** — fails T1/T4 | *No one drew this. The load did.* |
 | `venation` | field | built, **rejected** — T1 confirmed on the cut, 44.4% still | *The vein is not a route. It is a leftover.* |
@@ -167,10 +167,11 @@ grid for two constants, the visual gain is subtle, and the cost is a
 
 ## Queued
 
-**Ready to post** — cut, measured, and judged worth posting: `phyllotaxis`,
-`comet`, `gyrus`, `closure`, `hydrocreatures`, `defect`, `replicator`. Paulina posts
-`comet` herself and will say when; `replicator` still has a colour to pick
-between `FORGE` and `VERDIGRIS`, decided at publish, not before.
+**Ready to post** — cut, measured, and judged worth posting: `comet`,
+`closure`, `hydrocreatures`, `defect`, `replicator`. `phyllotaxis` and `gyrus`
+have since posted and are off this list. Paulina posts `comet` herself and
+will say when; `replicator` still has a colour to pick between `FORGE` and
+`VERDIGRIS`, decided at publish, not before.
 
 `phyllotaxis` and `comet` were measured on the finished cut 2026-08-30: **0.0%
 still frames** each, profiles 29/23% and 12/48% across the quarters. `comet`
