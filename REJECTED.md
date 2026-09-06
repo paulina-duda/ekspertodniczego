@@ -50,7 +50,7 @@ Never restate a test — they live in `BRIEF.md`.
 | Segment edition | `segment-editions/` | **subject** | ugly; dropped entirely |
 | Attractors, proteins | posted early, since taken down | **subject** | mathematics and structural biology, not biology-as-algorithm |
 | `sector` | neutral drift at an expanding colony frontier, lineages lost to chance | **T1** | half the lineages gone in the first quarter, then flat — 14 / 7 / 7 / 7 / 7 |
-| `division` | one motion law that makes cells, which grow and divide (primordial particle system) | **T1** | soup into cells is over by second two — visible blobs 0 / 50 / 57 / 56 / 55, and no pacing fixes it |
+| `division` | one motion law that makes cells, which grow and divide (primordial particle system) | **T1** | soup into cells is over by second two — visible blobs 0 / 50 / 57 / 56 / 55, and no pacing fixes it — **nor does density**, which is the one lever that looks like it works: at 0.060 the profile passes (25.0% first quarter, 58.3% last) and **T2 then fails outright**, zero divisions in 400 steps among anything cell-sized, against 127 among specks at the detection floor |
 | `takeover` | swarm-chemistry recipes inherited on contact: heredity with no fitness function | **T1** | the contagion saturates in the first quarter — 0.25 → 1.00 by frame 57; transmission 100× slower still reads 84% / 6% |
 | `budget` | Flow-Lenia — mass conserved, so different rules compete for a fixed amount of matter | **build** | 160 parameter draws, every one a static droplet; the best traveller moved 0.77 cells in 500 steps |
 | `chemotaxis` | Budrene-Berg aggregate arrays: E. coli chasing its own attractant | **build** | ten settings sat either side of the pattern — no aggregation at all, or collapse, or spots one grid cell wide |
@@ -63,6 +63,7 @@ Never restate a test — they live in `BRIEF.md`.
 
 | `anastomosis` | sprouting angiogenesis: tips climb VEGF, fuse into loops, and the flow they carry prunes the losers | **T1** | 16 parameter sets, every one a relaxation to a fixed perfused network — first quarter 44.1–166.6% of the total, last quarter **0.0% or negative in all 16**, with q3 and q4 bit-identical in eight of them; and the picture is frozen at 0.26–0.62% live against `ridge`'s rejected 1.6%. Pruning does not rescue the reveal: it reaches its steady state and holds it |
 | `fusion` | myoblasts crawling, aligning and fusing end to end into myotubes — the account's only merging process | **T1** | coalescence is front-loaded and 32 parameter sets say so: at honest proliferation the tube length puts 56.8–83.7% of its change in the first quarter and 2.1–7.5% in the last. The settings that pass (12.7% / 28.4%) do it on a 1 s myoblast doubling time, so the arc is exponential proliferation, not fusion — a different piece, and one whose stiff long fibres sit at 1.5–5.7% live |
+| `swarmalator` | particles that swarm in space and synchronise in phase, each coupled to the other (O'Keeffe, Hong & Strogatz 2017) | **T1** | the active phase wave is a steady state, not an arc — order parameter 0.032 / 0.775 / 0.773 / 0.781 / 0.764, **101.5% of the change in the first quarter** and none after, at a mean speed pinned at 0.163 |
 
 A dozen more went on **T1** alone in the 2026-08 shortlist: always coarsening,
 filling, settling or remodelling. **`condensate`** took 1.2M steps and three
